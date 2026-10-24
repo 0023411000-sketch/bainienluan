@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Định Hướng Nghề Nghiệp CNTT{% endblock %} - IT Career Compass</title>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap 5 CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="d-flex flex-column h-100 bg-light">
+
+    <!-- 1. Thanh điều hướng (Navbar) -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/">
+                <i class="bi bi-compass-fill fs-4 text-warning"></i>
+                <span>IT CareerCompass</span>
+            </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" 
+                    aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="mainNavbar">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'profile' %}active{% endif %}" href="/profile">
+                            <i class="bi bi-person-badge me-1"></i>Hồ sơ sinh viên
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'jobs' %}active{% endif %}" href="/jobs">
+                            <i class="bi bi-briefcase me-1"></i>Vị trí & Tuyển dụng
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'statistics' %}active{% endif %}" href="/statistics">
+                            <i class="bi bi-bar-chart-line me-1"></i>Thống kê kỹ năng
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'comparison' %}active{% endif %}" href="/comparison">
+                            <i class="bi bi-check2-circle me-1"></i>Đánh giá phù hợp
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'roadmap' %}active{% endif %}" href="/roadmap">
+                            <i class="bi bi-signpost-split me-1"></i>Lộ trình phát triển
+                        </a>
+                    </li>
+                </ul>
+
+                <!-- Khu vực người dùng / Đăng nhập -->
+                <div class="d-flex align-items-center gap-2">
+                    <!-- Dropdown tài khoản -->
+                    <div class="dropdown" id="userMenu">
+                        <button class="btn btn-outline-light btn-sm dropdown-toggle d-flex align-items-center gap-2" 
+                                type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle fs-5"></i>
+                            <span id="navUserName">Nguyễn Văn A (Sinh viên)</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow">
+                            <li><a class="dropdown-item" href="/profile"><i class="bi bi-pencil-square me-2"></i>Cập nhật hồ sơ</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="/login" id="btnLogout"><i class="bi bi-box-arrow-right me-2"></i>Đăng xuất</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- Nút đăng nhập/đăng ký (khi chưa đăng nhập) -->
+                    <div class="d-none" id="authButtons">
+                        <a href="/login" class="btn btn-sm btn-light me-2">Đăng nhập</a>
+                        <a href="/register" class="btn btn-sm btn-outline-light">Đăng ký</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 2. Vùng thông báo Flash & Alert Container -->
+    <div class="container mt-3">
+        <!-- Flash messages từ Flask (nếu có) -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show shadow-sm" role="alert">
+                        <i class="bi bi-info-circle me-2"></i>{{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Vùng thông báo động do JavaScript gọi (Toast / Alert client-side) -->
+        <div id="dynamicAlertContainer"></div>
+    </div>
+
+    <!-- 3. Vùng nội dung chính của từng trang -->
+    <main class="flex-shrink-0 my-3">
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- 4. Lớp phủ Loading toàn màn hình khi đang gọi API -->
+    <div id="globalLoading" class="loading-overlay d-none">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Đang tải...</span>
+        </div>
+        <p class="mt-3 fw-semibold text-secondary" id="loadingText">Đang tải dữ liệu...</p>
+    </div>
+
+    <!-- 5. Chân trang (Footer) -->
+    <footer class="footer mt-auto py-3 bg-white border-top">
+        <div class="container text-center text-muted small">
+            <div class="row align-items-center">
+                <div class="col-md-6 text-md-start">
+                    <span>© 2026 <strong>IT CareerCompass</strong> - Hệ thống hỗ trợ định hướng kỹ năng nghề nghiệp.</span>
+                </div>
+                <div class="col-md-6 text-md-end mt-2 mt-md-0">
+                    <span class="badge bg-secondary-subtle text-secondary border">Dữ liệu tuyển dụng CNTT</span>
+                    <span class="badge bg-primary-subtle text-primary border ms-1">Phiên bản 1.0</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 Bundle JS (bao gồm Popper) CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Chart.js 4.x CDN (Dùng cho Module 3, 4, 5) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+    <!-- JavaScript cơ sở -->
+    <script src="{{ url_for('static', filename='js/mock_data.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/api.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <!-- Block JS riêng cho từng trang -->
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
