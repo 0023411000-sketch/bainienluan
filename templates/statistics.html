@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}Thống Kê Kỹ Năng Theo Vị Trí Tuyển Dụng{% endblock %}
+
+{% block content %}
+<!-- Tiêu đề trang -->
+<div class="row align-items-center mb-4">
+    <div class="col-md-7">
+        <h2 class="h3 fw-bold text-dark mb-1">
+            <i class="bi bi-bar-chart-line-fill text-primary me-2"></i>Thống Kê Kỹ Năng & Xu Hướng Công Nghệ
+        </h2>
+        <p class="text-secondary mb-0 small">
+            Phân tích chuyên sâu tần suất xuất hiện của các kỹ năng, công nghệ và chứng chỉ từ các tin tuyển dụng thực tế.
+        </p>
+    </div>
+    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+        <a href="/compare" class="btn btn-outline-primary btn-sm me-2">
+            <i class="bi bi-speedometer2 me-1"></i>So sánh với hồ sơ cá nhân
+        </a>
+    </div>
+</div>
+
+<!-- Bộ lọc chọn vị trí nghề nghiệp -->
+<div class="card border-0 shadow-sm mb-4 bg-white">
+    <div class="card-body p-3">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-8 col-lg-7">
+                <label for="statPositionSelect" class="form-label fw-bold text-dark small mb-1">
+                    <i class="bi bi-diagram-3 text-primary me-1"></i>Chọn vị trí nghề nghiệp cần thống kê:
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light text-secondary"><i class="bi bi-briefcase"></i></span>
+                    <select class="form-select form-select-lg fs-6 fw-semibold" id="statPositionSelect">
+                        <!-- Danh mục vị trí nạp tự động từ JS -->
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4 col-lg-5 text-md-end pt-md-4">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 fs-6">
+                    <i class="bi bi-file-earmark-text me-1"></i>Số tin đã phân tích: <strong id="totalJobsAnalyzedCount">--</strong>
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hai biểu đồ trực quan hóa -->
+<div class="row g-4 mb-4">
+    <!-- Cột trái: Biểu đồ cột ngang Top kỹ năng yêu cầu nhiều nhất -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="card-title fw-bold text-dark mb-0 fs-6">
+                    <i class="bi bi-bar-chart-steps text-primary me-2"></i>Top Kỹ Năng Yêu Cầu Nhiều Nhất
+                </h5>
+                <span class="badge bg-light text-secondary border">Tần suất xuất hiện (%)</span>
+            </div>
+            <div class="card-body">
+                <div class="chart-wrapper" style="min-height: 360px;">
+                    <canvas id="skillsHorizontalBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cột phải: Biểu đồ tròn công nghệ & Danh sách chứng chỉ -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="card-title fw-bold text-dark mb-0 fs-6">
+                    <i class="bi bi-pie-chart-fill text-success me-2"></i>Tỷ Lệ Công Nghệ & Framework
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-wrapper" style="min-height: 250px;">
+                    <canvas id="technologiesPieChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thẻ danh sách chứng chỉ phổ biến -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="card-title fw-bold text-dark mb-0 fs-6">
+                    <i class="bi bi-patch-check-fill text-warning me-2"></i>Chứng Chỉ Nghề Nghiệp Khuyên Dùng
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="popularCertificatesList">
+                    <!-- Nạp động từ JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/statistics.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}Không tìm thấy trang (404 Not Found){% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center py-5">
+    <div class="col-12 col-md-8 col-lg-6 text-center">
+        <!-- Icon 404 -->
+        <div class="display-1 fw-bold text-primary mb-2" style="font-size: 6rem; letter-spacing: -2px;">
+            4<span class="text-warning">0</span>4
+        </div>
+        <div class="mb-3">
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 fs-6">
+                <i class="bi bi-exclamation-octagon-fill me-1"></i>Trang không tồn tại hoặc đã bị di chuyển
+            </span>
+        </div>
+
+        <h3 class="fw-bold text-dark mb-2">Rất tiếc! Chúng tôi không tìm thấy đường dẫn bạn yêu cầu</h3>
+        <p class="text-secondary small mb-4 mx-auto" style="max-width: 480px;">
+            Trang bạn đang cố gắng truy cập có thể đã được đổi tên, xóa bỏ hoặc địa chỉ URL bị nhập sai. Vui lòng kiểm tra lại thanh địa chỉ hoặc quay lại các trang chức năng chính.
+        </p>
+
+        <!-- Các liên kết điều hướng nhanh -->
+        <div class="d-flex flex-wrap justify-content-center gap-2">
+            <a href="/dashboard" class="btn btn-primary px-4 shadow-sm">
+                <i class="bi bi-grid-1x2-fill me-2"></i>Về Trang Tổng Quan
+            </a>
+            <a href="/profile" class="btn btn-outline-secondary px-3">
+                <i class="bi bi-person-vcard me-2"></i>Hồ Sơ Năng Lực
+            </a>
+            <a href="/compare" class="btn btn-outline-secondary px-3">
+                <i class="bi bi-speedometer2 me-2"></i>Đánh Giá Phù Hợp
+            </a>
+        </div>
+
+        <div class="mt-5 pt-3 border-top text-muted small">
+            Đề tài: <strong>NLCNPM23CS-38</strong> - Hệ thống hỗ trợ định hướng kỹ năng nghề nghiệp cho sinh viên CNTT
+        </div>
+    </div>
+</div>
+{% endblock %}
