@@ -105,7 +105,11 @@ const API = {
                 Utils.auth.setUser(newUser);
                 return mockResponse(newUser, true, "Đăng ký tài khoản thành công!");
             }
-            return await httpFetch('/auth/register', 'POST', userData);
+            const res = await httpFetch('/auth/register', 'POST', userData);
+            if (res.success && res.data) {
+                Utils.auth.setUser(res.data);
+            }
+            return res;
         },
 
         async logout() {
