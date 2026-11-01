@@ -158,3 +158,4 @@ main (Khoá bảo vệ - Chỉ đưa code lên thủ công khi hoàn thiện & �
 3. **Bảo vệ nhánh `main`:**
    - Không thành viên nào được chạy lệnh `git push origin main` khi chưa có sự đồng ý của chủ dự án.
    - Mọi công việc phát triển và tích hợp chỉ diễn ra trên `thanh-vien-1`, `thanh-vien-2` và `develop`.
+
