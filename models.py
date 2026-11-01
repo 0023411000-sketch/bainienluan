@@ -2,7 +2,7 @@
 models.py - Thiết kế Cơ sở dữ liệu SQLite (Phân hệ Thành viên 1)
 Đề tài: NLCNPM23CS-38 - Xây dựng ứng dụng hỗ trợ định hướng kỹ năng nghề nghiệp cho sinh viên CNTT dựa trên tin tuyển dụng
 
-Các bảng dữ liệu:
+Các bảng dữ liệu của Thành viên 1:
 1. users              : Tài khoản người dùng (sinh viên)
 2. student_profiles   : Thông tin cá nhân của sinh viên
 3. courses            : Học phần đã học (mục 1 hồ sơ)
@@ -11,7 +11,6 @@ Các bảng dữ liệu:
 6. experiences        : Kinh nghiệm thực tế & dự án (mục 4 hồ sơ)
 7. positions          : Danh mục vị trí nghề nghiệp CNTT
 8. jobs               : Danh sách tin tuyển dụng liên quan
-9. learning_plans     : Kế hoạch phát triển năng lực cá nhân
 """
 
 import os
@@ -55,7 +54,6 @@ def dump_json_list(val, delimiter=","):
     text = str(val).strip()
     if not text:
         return json.dumps([], ensure_ascii=False)
-    # Hỗ trợ tách theo dấu chấm phẩy (CSV) hoặc dấu phẩy (Form)
     if ";" in text and delimiter == ";":
         cleaned = [s.strip() for s in text.split(";") if s.strip()]
     else:
@@ -64,7 +62,7 @@ def dump_json_list(val, delimiter=","):
 
 
 def init_db():
-    """Khởi tạo cấu trúc các bảng trong cơ sở dữ liệu SQLite."""
+    """Khởi tạo cấu trúc các bảng của Thành viên 1 trong cơ sở dữ liệu SQLite."""
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -188,25 +186,10 @@ def init_db():
         );
     """)
 
-    # 9. Bảng learning_plans (Kế hoạch phát triển năng lực)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS learning_plans (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            title TEXT NOT NULL,
-            category TEXT DEFAULT 'Kỹ năng bổ sung',
-            type TEXT DEFAULT 'skill',
-            status TEXT DEFAULT 'todo',
-            target_date TEXT DEFAULT '',
-            note TEXT DEFAULT '',
-            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        );
-    """)
-
     conn.commit()
     conn.close()
 
 
 if __name__ == "__main__":
     init_db()
-    print(f"Đã khởi tạo cơ sở dữ liệu SQLite tại: {DB_PATH}")
+    print(f"Đã khởi tạo cơ sở dữ liệu SQLite (Thành viên 1) tại: {DB_PATH}")

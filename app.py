@@ -10,7 +10,6 @@ Chức năng Thành viên 1 phụ trách:
 """
 
 import math
-from collections import Counter
 from flask import Flask, render_template, redirect, url_for, request, jsonify, session
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -54,12 +53,12 @@ def get_current_user_id():
 
 
 # ==============================================================================
-# CÁC ROUTE GIAO DIỆN (HTML TEMPLATES)
+# CÁC ROUTE GIAO DIỆN CỦA THÀNH VIÊN 1 (HTML TEMPLATES)
 # ==============================================================================
 
 @app.route("/")
 def index():
-    return redirect(url_for("dashboard"))
+    return redirect(url_for("profile"))
 
 
 @app.route("/login")
@@ -70,11 +69,6 @@ def login():
 @app.route("/register")
 def register():
     return render_template("register.html")
-
-
-@app.route("/dashboard")
-def dashboard():
-    return render_template("dashboard.html")
 
 
 @app.route("/profile")
@@ -90,23 +84,6 @@ def positions():
 @app.route("/jobs")
 def jobs():
     return render_template("jobs.html")
-
-
-@app.route("/statistics")
-def statistics():
-    return render_template("statistics.html")
-
-
-@app.route("/compare")
-@app.route("/comparison")
-def compare():
-    return render_template("compare.html")
-
-
-@app.route("/plan")
-@app.route("/roadmap")
-def plan():
-    return render_template("plan.html")
 
 
 @app.errorhandler(404)
@@ -142,7 +119,6 @@ def api_register():
     )
     new_user_id = cursor.lastrowid
 
-    # Khởi tạo hồ sơ sinh viên mặc định cho tài khoản mới
     cursor.execute(
         """
         INSERT INTO student_profiles (
@@ -993,258 +969,9 @@ def api_import_jobs_csv():
     )
 
 
-# ==============================================================================
-# CÁC API BỔ TRỢ ĐỒNG BỘ (DASHBOARD, THỐNG KÊ, SO SÁNH, KẾ HOẠCH)
-# ==============================================================================
-
-@app.route("/api/dashboard", methods=["GET"])
-def api_dashboard():
-    user_id = get_current_user_id()
-    conn = get_db_connection()
-
-    user_skills = [
-        r["name"].strip().lower()
-        for r in conn.execute("SELECT name FROM skills WHERE user_id = ?", (user_id,)).fetchall()
-    ]
-    total_skills = len(user_skills)
-    total_certs = conn.execute("SELECT COUNT(*) AS c FROM certificates WHERE user_id = ?", (user_id,)).fetchone()["c"]
-
-    positions_rows = conn.execute("SELECT * FROM positions ORDER BY id ASC").fetchall()
-    match_scores = []
-    for p in positions_rows:
-        core_skills = parse_json_list(p["core_skills"])
-        if core_skills:
-            matched = [
-                cs for cs in core_skills
-                if any(ms in cs.lower() or cs.lower() in ms for ms in user_skills)
-            ]
-            score = round((len(matched) / len(core_skills)) * 100)
-        else:
-            score = 0
-        match_scores.append({"id": p["id"], "name": p["name"], "score": score})
-
-    highest = max(match_scores, key=lambda x: x["score"]) if match_scores else {"id": 1, "name": "Chưa có", "score": 0}
-
-    plans_rows = conn.execute("SELECT * FROM learning_plans WHERE user_id = ? ORDER BY id DESC", (user_id,)).fetchall()
-    conn.close()
-
-    plans_list = [dict(r) for r in plans_rows]
-    done_count = sum(1 for p in plans_list if p["status"] == "done")
-    progress_percent = round((done_count / len(plans_list)) * 100) if plans_list else 0
-    recent_todos = [p for p in plans_list if p["status"] != "done"][:5]
-
-    return api_response(
-        True,
-        {
-            "total_skills": total_skills,
-            "total_certificates": total_certs,
-            "highest_match": highest,
-            "plan_progress": progress_percent,
-            "match_by_positions": match_scores,
-            "recent_todos": recent_todos,
-        },
-    )
-
-
-@app.route("/api/statistics/<int:position_id>", methods=["GET"])
-def api_statistics(position_id):
-    conn = get_db_connection()
-    pos = conn.execute("SELECT * FROM positions WHERE id = ?", (position_id,)).fetchone()
-    if not pos:
-        pos = conn.execute("SELECT * FROM positions ORDER BY id ASC LIMIT 1").fetchone()
-    jobs_rows = conn.execute("SELECT * FROM jobs WHERE position_id = ?", (pos["id"],)).fetchall()
-    conn.close()
-
-    total_jobs = len(jobs_rows)
-    skill_counter = Counter()
-    tech_counter = Counter()
-    cert_counter = Counter()
-
-    for cs in parse_json_list(pos["core_skills"]):
-        skill_counter[cs] += 1
-
-    for j in jobs_rows:
-        for s in parse_json_list(j["skills"]):
-            skill_counter[s] += 2
-        for t in parse_json_list(j["technologies"]):
-            tech_counter[t] += 2
-        for c in parse_json_list(j["certificates"]):
-            cert_counter[c] += 1
-
-    denom = max(total_jobs * 2 + 1, 1)
-    top_skills = [
-        {"name": k, "count": v * 4, "percentage": min(round((v / denom) * 100) + 25, 96)}
-        for k, v in skill_counter.most_common(8)
-    ]
-    technologies = [
-        {"name": k, "count": v * 3, "percentage": min(round((v / denom) * 100) + 15, 88)}
-        for k, v in tech_counter.most_common(6)
-    ]
-    certificates = [
-        {"name": k, "count": v * 3, "level": "Khuyến nghị"}
-        for k, v in cert_counter.most_common(4)
-    ]
-
-    return api_response(
-        True,
-        {
-            "position_name": pos["name"],
-            "total_jobs_analyzed": total_jobs,
-            "top_skills": top_skills,
-            "technologies": technologies,
-            "certificates": certificates,
-        },
-    )
-
-
-@app.route("/api/compare", methods=["POST"])
-def api_compare():
-    user_id = get_current_user_id()
-    payload = request.get_json(silent=True) or {}
-    position_id = int(payload.get("position_id") or 1)
-
-    conn = get_db_connection()
-    pos = conn.execute("SELECT * FROM positions WHERE id = ?", (position_id,)).fetchone()
-    if not pos:
-        pos = conn.execute("SELECT * FROM positions ORDER BY id ASC LIMIT 1").fetchone()
-    jobs_rows = conn.execute("SELECT * FROM jobs WHERE position_id = ?", (pos["id"],)).fetchall()
-    user_skills = [
-        r["name"].strip().lower()
-        for r in conn.execute("SELECT name FROM skills WHERE user_id = ?", (user_id,)).fetchall()
-    ]
-    conn.close()
-
-    req_skills = []
-    for s in parse_json_list(pos["core_skills"]):
-        if s not in req_skills:
-            req_skills.append(s)
-    for j in jobs_rows:
-        for s in parse_json_list(j["skills"]):
-            if s not in req_skills:
-                req_skills.append(s)
-
-    have = []
-    missing = []
-    for req in req_skills:
-        req_lower = req.lower()
-        if any(us == req_lower or us in req_lower or req_lower in us for us in user_skills):
-            have.append(req)
-        else:
-            missing.append(req)
-
-    total = len(have) + len(missing)
-    score = round((len(have) / total) * 100) if total > 0 else 0
-
-    if score >= 75:
-        summary = f'Tuyệt vời! Hồ sơ của bạn đạt mức độ phù hợp rất cao ({score}%) đối với vị trí "{pos["name"]}".'
-    elif score >= 50:
-        summary = f'Khá tốt! Mức độ phù hợp của bạn là {score}%. Hãy bổ sung các kỹ năng còn thiếu vào Lộ trình học tập.'
-    else:
-        summary = f'Mức độ phù hợp hiện tại là {score}%. Vị trí "{pos["name"]}" đòi hỏi thêm các kỹ năng chuyên sâu mà bạn cần bổ sung.'
-
-    rec_certs = []
-    for j in jobs_rows:
-        for c in parse_json_list(j["certificates"]):
-            if c not in rec_certs:
-                rec_certs.append(c)
-
-    return api_response(
-        True,
-        {
-            "position_id": pos["id"],
-            "position_name": pos["name"],
-            "score": score,
-            "have": have,
-            "missing": missing,
-            "summary": summary,
-            "recommended_certs": rec_certs,
-        },
-    )
-
-
-@app.route("/api/plan", methods=["GET"])
-def api_get_plans():
-    user_id = get_current_user_id()
-    conn = get_db_connection()
-    rows = conn.execute("SELECT * FROM learning_plans WHERE user_id = ? ORDER BY id DESC", (user_id,)).fetchall()
-    conn.close()
-    return api_response(True, [dict(r) for r in rows])
-
-
-@app.route("/api/plan", methods=["POST"])
-def api_create_plan():
-    user_id = get_current_user_id()
-    payload = request.get_json(silent=True) or {}
-    title = (payload.get("title") or "").strip()
-    if not title:
-        return api_response(False, None, "Tiêu đề mục tiêu không được để trống!", 400)
-
-    category = (payload.get("category") or "Kỹ năng bổ sung").strip()
-    plan_type = (payload.get("type") or "skill").strip()
-    status = (payload.get("status") or "todo").strip()
-    target_date = (payload.get("target_date") or "").strip()
-    note = (payload.get("note") or "").strip()
-
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        INSERT INTO learning_plans (user_id, title, category, type, status, target_date, note)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-        (user_id, title, category, plan_type, status, target_date, note),
-    )
-    new_id = cur.lastrowid
-    conn.commit()
-    row = conn.execute("SELECT * FROM learning_plans WHERE id = ?", (new_id,)).fetchone()
-    conn.close()
-    return api_response(True, dict(row), "Đã thêm mục tiêu mới vào kế hoạch!", 201)
-
-
-@app.route("/api/plan/<int:plan_id>", methods=["PUT"])
-def api_update_plan(plan_id):
-    user_id = get_current_user_id()
-    payload = request.get_json(silent=True) or {}
-    conn = get_db_connection()
-    existing = conn.execute("SELECT * FROM learning_plans WHERE id = ? AND user_id = ?", (plan_id, user_id)).fetchone()
-    if not existing:
-        conn.close()
-        return api_response(False, None, "Không tìm thấy mục kế hoạch!", 404)
-
-    title = (payload.get("title") if "title" in payload else existing["title"]).strip()
-    category = (payload.get("category") if "category" in payload else existing["category"]).strip()
-    plan_type = (payload.get("type") if "type" in payload else existing["type"]).strip()
-    status = (payload.get("status") if "status" in payload else existing["status"]).strip()
-    target_date = (payload.get("target_date") if "target_date" in payload else existing["target_date"]).strip()
-    note = (payload.get("note") if "note" in payload else existing["note"]).strip()
-
-    conn.execute(
-        """
-        UPDATE learning_plans
-        SET title = ?, category = ?, type = ?, status = ?, target_date = ?, note = ?
-        WHERE id = ? AND user_id = ?
-        """,
-        (title, category, plan_type, status, target_date, note, plan_id, user_id),
-    )
-    conn.commit()
-    updated = conn.execute("SELECT * FROM learning_plans WHERE id = ?", (plan_id,)).fetchone()
-    conn.close()
-    return api_response(True, dict(updated), "Cập nhật kế hoạch thành công!")
-
-
-@app.route("/api/plan/<int:plan_id>", methods=["DELETE"])
-def api_delete_plan(plan_id):
-    user_id = get_current_user_id()
-    conn = get_db_connection()
-    conn.execute("DELETE FROM learning_plans WHERE id = ? AND user_id = ?", (plan_id, user_id))
-    conn.commit()
-    conn.close()
-    return api_response(True, None, "Xóa mục kế hoạch thành công!")
-
-
 if __name__ == "__main__":
     print("=" * 68)
-    print("  HE THONG DINH HUONG KY NANG NGHE NGHIEP CNTT (FLASK + SQLITE)")
+    print("  PHAN HE THANH VIEN 1: TAI KHOAN, HO SO, VI TRI & TIN TUYEN DUNG")
     print("  De tai: NLCNPM23CS-38 - Nhanh: thanh-vien-1")
     print("  May chu dang chay tai: http://127.0.0.1:5000")
     print("=" * 68)
