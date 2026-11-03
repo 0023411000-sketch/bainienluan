@@ -209,4 +209,4 @@ def init_db():
 
 if __name__ == "__main__":
     init_db()
-    print(f"Đã khởi tạo cơ sở dữ liệu SQLite tại: {DB_PATH}")
+    print(f"Da khoi tao co so du lieu SQLite tai: {DB_PATH}")

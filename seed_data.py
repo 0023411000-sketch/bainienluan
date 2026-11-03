@@ -3,7 +3,14 @@ seed_data.py - Khởi tạo cơ sở dữ liệu SQLite và nạp dữ liệu m�
 Đề tài: NLCNPM23CS-38
 """
 
-from werkzeug.security import generate_password_hash
+try:
+    from werkzeug.security import generate_password_hash
+except ImportError:
+    import hashlib
+    def generate_password_hash(password):
+        salt = "nlcnpm23cs38"
+        dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 600000)
+        return f"pbkdf2:sha256:600000${salt}${dk.hex()}"
 from models import init_db, get_db_connection, dump_json_list, DB_PATH
 
 
@@ -280,7 +287,7 @@ def seed_database():
 
     conn.commit()
     conn.close()
-    print(f"Đã nạp dữ liệu mẫu thành công vào: {DB_PATH}")
+    print(f"Da nap du lieu mau thanh cong vao: {DB_PATH}")
 
 
 if __name__ == "__main__":

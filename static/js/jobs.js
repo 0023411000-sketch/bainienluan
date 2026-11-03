@@ -7,6 +7,8 @@ let currentJobPage = 1;
 let currentJobSearch = '';
 let currentFilterPositionId = '';
 let jobModal = null;
+let jobDetailModal = null;
+let csvModal = null;
 let csvModal = null;
 let cachedJobs = [];
 let parsedCsvRecords = [];
@@ -15,6 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Khởi tạo các Modal
     const jModalEl = document.getElementById('jobModal');
     if (jModalEl) jobModal = new bootstrap.Modal(jModalEl);
+    const jdModalEl = document.getElementById('jobDetailModal');
+    if (jdModalEl) jobDetailModal = new bootstrap.Modal(jdModalEl);
 
     const cModalEl = document.getElementById('csvImportModal');
     if (cModalEl) csvModal = new bootstrap.Modal(cModalEl);
@@ -163,6 +167,9 @@ function renderJobsTable(jobs) {
                     <div>${skillBadges} ${techBadges}</div>
                 </td>
                 <td class="text-end">
+                    <button class="btn btn-sm btn-outline-info py-1 px-2 me-1" title="Xem chi tiết" onclick="openViewJobModal(${job.id})">
+                        <i class="bi bi-eye"></i>
+                    </button>
                     <button class="btn btn-sm btn-outline-secondary py-1 px-2 me-1" title="Sửa" onclick="openEditJobModal(${job.id})">
                         <i class="bi bi-pencil"></i>
                     </button>
@@ -180,6 +187,44 @@ function renderJobsTable(jobs) {
 // ==========================================
 // THÊM / SỬA / XÓA TIN TUYỂN DỤNG
 // ==========================================
+function openViewJobModal(id) {
+    const job = cachedJobs.find(j => j.id == id);
+    if (!job) return;
+    const bodyEl = document.getElementById('jobDetailModalBody');
+    if (!bodyEl) return;
+
+    const skillsHtml = (job.skills || []).length
+        ? job.skills.map(s => `<span class="badge badge-soft-primary me-1 mb-1">${Utils.escapeHtml(s)}</span>`).join('')
+        : '<span class="text-muted small">Không yêu cầu cụ thể</span>';
+    const techHtml = (job.technologies || []).length
+        ? job.technologies.map(t => `<span class="badge badge-soft-secondary me-1 mb-1">${Utils.escapeHtml(t)}</span>`).join('')
+        : '<span class="text-muted small">Không có</span>';
+    const certHtml = (job.certificates || []).length
+        ? job.certificates.map(c => `<span class="badge bg-warning-subtle text-dark border me-1 mb-1">${Utils.escapeHtml(c)}</span>`).join('')
+        : '<span class="text-muted small">Không bắt buộc</span>';
+
+    bodyEl.innerHTML = `
+        <div class="mb-3 border-bottom pb-2">
+            <h5 class="fw-bold text-primary mb-1">${Utils.escapeHtml(job.title)}</h5>
+            <div class="text-secondary fw-semibold"><i class="bi bi-building me-1"></i>${Utils.escapeHtml(job.company)}</div>
+        </div>
+        <div class="row g-2 mb-3 small">
+            <div class="col-md-6"><i class="bi bi-geo-alt text-primary me-1"></i><strong>Địa điểm:</strong> ${Utils.escapeHtml(job.location || 'Toàn quốc')}</div>
+            <div class="col-md-6"><i class="bi bi-cash-stack text-success me-1"></i><strong>Mức lương:</strong> ${Utils.escapeHtml(job.salary || 'Thỏa thuận')}</div>
+            <div class="col-md-6"><i class="bi bi-award text-info me-1"></i><strong>Kinh nghiệm:</strong> ${Utils.escapeHtml(job.experience_required || 'Không yêu cầu')}</div>
+            <div class="col-md-6"><i class="bi bi-calendar-event text-danger me-1"></i><strong>Hạn nộp:</strong> ${job.deadline ? Utils.formatDate(job.deadline) : 'Không giới hạn'}</div>
+        </div>
+        <div class="mb-2"><strong>Kỹ năng chuyên môn:</strong><div class="mt-1">${skillsHtml}</div></div>
+        <div class="mb-2"><strong>Công nghệ / Framework:</strong><div class="mt-1">${techHtml}</div></div>
+        <div class="mb-3"><strong>Chứng chỉ ưu tiên:</strong><div class="mt-1">${certHtml}</div></div>
+        <div class="bg-light p-3 rounded-3 small">
+            <strong>Mô tả công việc:</strong>
+            <p class="mb-0 mt-1 text-secondary">${Utils.escapeHtml(job.description || 'Chưa có mô tả chi tiết.')}</p>
+        </div>
+    `;
+    jobDetailModal?.show();
+}
+
 function openAddJobModal() {
     document.getElementById('jobModalTitle').innerHTML = '<i class="bi bi-briefcase text-primary me-2"></i>Đăng tin tuyển dụng mới';
     document.getElementById('jobId').value = '';
