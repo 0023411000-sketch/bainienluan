@@ -1,5 +1,5 @@
 """
-seed_data.py - Khởi tạo cơ sở dữ liệu SQLite và nạp dữ liệu mẫu thực tế (Thành viên 1)
+seed_data.py - Khởi tạo cơ sở dữ liệu SQLite và nạp dữ liệu mẫu (Phân hệ Thành viên 1)
 Đề tài: NLCNPM23CS-38
 """
 
@@ -8,12 +8,11 @@ from models import init_db, get_db_connection, dump_json_list, DB_PATH
 
 
 def seed_database():
-    """Khởi tạo các bảng và nạp dữ liệu mẫu nếu CSDL đang trống."""
+    """Khởi tạo các bảng của Thành viên 1 và nạp dữ liệu mẫu nếu CSDL đang trống."""
     init_db()
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Kiểm tra nếu đã có user thì không nạp trùng
     cursor.execute("SELECT COUNT(*) AS cnt FROM users")
     if cursor.fetchone()["cnt"] > 0:
         conn.close()
@@ -262,25 +261,9 @@ def seed_database():
             ),
         )
 
-    # 9. Nạp dữ liệu mẫu cho bảng learning_plans
-    plans_data = [
-        (1, "Học và thực hành chuyên sâu Docker & Containerization", "Kỹ năng thiếu (Backend)", "skill", "doing", "2026-11-30", "Làm chủ viết Multi-stage Dockerfile, Docker Compose và kết nối mạng giữa các container."),
-        (1, "Ôn thi chứng chỉ AWS Certified Cloud Practitioner (CLF-C02)", "Chứng chỉ nghề nghiệp", "certificate", "doing", "2026-12-25", "Học qua khóa học Stephane Maarek trên Udemy, luyện 6 đề thi thử."),
-        (1, "Nghiên cứu kiến trúc Microservices và gRPC với Go", "Nâng cao kỹ năng", "skill", "todo", "2027-01-15", "Đọc sách Designing Data-Intensive Applications của Martin Kleppmann."),
-        (1, "Xây dựng đồ án cá nhân: RESTful API mạng xã hội thu nhỏ", "Kinh nghiệm / Portfolio", "project", "done", "2026-09-15", "Hoàn thành API với Flask, Redis caching, Celery background worker và PostgreSQL."),
-        (1, "Thực hành cấu hình CI/CD Pipeline bằng GitHub Actions", "Kỹ năng thiếu (DevOps)", "skill", "todo", "2026-12-10", "Tự động chạy pytest và deploy container lên AWS EC2 khi push code."),
-    ]
-    cursor.executemany(
-        """
-        INSERT INTO learning_plans (user_id, title, category, type, status, target_date, note)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-        plans_data,
-    )
-
     conn.commit()
     conn.close()
-    print(f"Đã nạp dữ liệu mẫu thành công vào: {DB_PATH}")
+    print(f"Đã nạp dữ liệu mẫu (Thành viên 1) thành công vào: {DB_PATH}")
 
 
 if __name__ == "__main__":
