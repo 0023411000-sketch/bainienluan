@@ -57,6 +57,7 @@ def get_current_user_id():
 # ==============================================================================
 
 @app.route("/")
+@app.route("/dashboard")
 def index():
     return redirect(url_for("profile"))
 
@@ -264,6 +265,7 @@ def api_update_profile():
             major = ?,
             academic_year = ?,
             gpa = ?,
+            target_position_id = ?,
             bio = ?
         WHERE user_id = ?
         """,
@@ -277,6 +279,7 @@ def api_update_profile():
             (payload.get("major") or "").strip(),
             (payload.get("academic_year") or "").strip(),
             str(payload.get("gpa") or "0.0").strip(),
+            int(payload.get("target_position_id") or 1),
             (payload.get("bio") or "").strip(),
             user_id,
         ),
