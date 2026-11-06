@@ -52,6 +52,17 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadProfileData() {
     try {
         Utils.showLoading(true, 'Đang tải hồ sơ sinh viên...');
+        try {
+            const posRes = await API.positions.getAll({ limit: 100 });
+            if (posRes.success && posRes.data && posRes.data.items) {
+                const targetSelect = document.getElementById('infoTargetPosition');
+                if (targetSelect && posRes.data.items.length > 0) {
+                    targetSelect.innerHTML = posRes.data.items
+                        .map(p => `<option value="${p.id}">${Utils.escapeHtml(p.name)}</option>`)
+                        .join('');
+                }
+            }
+        } catch (_) {}
         const res = await API.profile.get();
         if (res.success && res.data) {
             currentProfile = res.data;

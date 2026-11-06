@@ -1,12 +1,17 @@
 """
-app.py - Ứng dụng Flask Backend & Frontend tích hợp SQLite (Phân hệ Thành viên 1)
+app.py - Ứng dụng Flask Backend & Frontend tích hợp SQLite (Phân hệ Thành viên 1 & Thành viên 2)
 Đề tài: NLCNPM23CS-38 - Xây dựng ứng dụng hỗ trợ định hướng kỹ năng nghề nghiệp cho sinh viên CNTT dựa trên tin tuyển dụng
 
-Chức năng Thành viên 1 phụ trách:
-1. Thiết kế & khởi tạo CSDL SQLite (models.py, seed_data.py, database.db)
-2. Xác thực & Quản lý tài khoản (/api/auth/register, /api/auth/login, /api/auth/logout)
-3. Quản lý Hồ sơ sinh viên & 4 danh mục con (/api/profile, courses, skills, certificates, experiences)
-4. Quản lý Vị trí nghề nghiệp & Tin tuyển dụng + Nhập file CSV (/api/positions, /api/jobs, /api/jobs/import-csv)
+Chức năng hệ thống:
+- Phân hệ Core Data & CRUD:
+  1. Thiết kế & khởi tạo CSDL SQLite (models.py, seed_data.py, database.db)
+  2. Xác thực & Quản lý tài khoản (/api/auth/register, /api/auth/login, /api/auth/logout)
+  3. Quản lý Hồ sơ sinh viên & 4 danh mục con (/api/profile, courses, skills, certificates, experiences)
+  4. Quản lý Vị trí nghề nghiệp & Tin tuyển dụng + Nhập file CSV (/api/positions, /api/jobs, /api/jobs/import-csv)
+- Phân hệ Analytics & Recommendation:
+  5. Tổng hợp & Thống kê yêu cầu tuyển dụng theo vị trí (/api/statistics/<position_id>)
+  6. Đánh giá & So sánh hồ sơ với vị trí nghề nghiệp + Gợi ý khóa học & Lịch sử (/api/compare, /api/compare/history)
+  7. Quản lý Kế hoạch phát triển năng lực & Dashboard tổng quan (/api/plan, /api/dashboard)
 """
 
 import math
@@ -115,7 +120,7 @@ def page_not_found(e):
 
 
 # ==============================================================================
-# PHẦN 1 (THÀNH VIÊN 1): API XÁC THỰC & QUẢN LÝ TÀI KHOẢN (/api/auth/*)
+# PHẦN 1 (THÀNH VIÊN 2): API XÁC THỰC & QUẢN LÝ TÀI KHOẢN (/api/auth/*)
 # ==============================================================================
 
 @app.route("/api/auth/register", methods=["POST"])
@@ -203,7 +208,7 @@ def api_logout():
 
 
 # ==============================================================================
-# PHẦN 2 (THÀNH VIÊN 1): API QUẢN LÝ HỒ SƠ SINH VIÊN (4 DANH MỤC) (/api/profile/*)
+# PHẦN 2 (THÀNH VIÊN 2): API QUẢN LÝ HỒ SƠ SINH VIÊN (4 DANH MỤC) (/api/profile/*)
 # ==============================================================================
 
 @app.route("/api/profile", methods=["GET"])
@@ -633,7 +638,7 @@ def api_delete_experience(item_id):
 
 
 # ==============================================================================
-# PHẦN 3 (THÀNH VIÊN 1): API QUẢN LÝ VỊ TRÍ NGHỀ NGHIỆP (/api/positions/*)
+# PHẦN 3 (THÀNH VIÊN 2): API QUẢN LÝ VỊ TRÍ NGHỀ NGHIỆP (/api/positions/*)
 # ==============================================================================
 
 def serialize_position(row):
@@ -756,7 +761,7 @@ def api_delete_position(pos_id):
 
 
 # ==============================================================================
-# PHẦN 4 (THÀNH VIÊN 1): API QUẢN LÝ TIN TUYỂN DỤNG & NHẬP CSV (/api/jobs/*)
+# PHẦN 4 (THÀNH VIÊN 2): API QUẢN LÝ TIN TUYỂN DỤNG & NHẬP CSV (/api/jobs/*)
 # ==============================================================================
 
 def serialize_job(row):
@@ -1061,6 +1066,7 @@ def api_statistics(position_id):
     skill_counter = Counter()
     tech_counter = Counter()
     cert_counter = Counter()
+    exp_counter = Counter()
 
     for cs in parse_json_list(pos["core_skills"]):
         skill_counter[cs] += 1
@@ -1072,6 +1078,9 @@ def api_statistics(position_id):
             tech_counter[t] += 2
         for c in parse_json_list(j["certificates"]):
             cert_counter[c] += 1
+        exp_req = (j["experience_required"] or "Không yêu cầu").strip()
+        if exp_req:
+            exp_counter[exp_req] += 1
 
     denom = max(total_jobs * 2 + 1, 1)
     top_skills = [
@@ -1086,6 +1095,10 @@ def api_statistics(position_id):
         {"name": k, "count": v * 3, "level": "Khuyến nghị"}
         for k, v in cert_counter.most_common(4)
     ]
+    experience_stats = [
+        {"level": k, "count": v}
+        for k, v in exp_counter.most_common(4)
+    ]
 
     return api_response(
         True,
@@ -1095,6 +1108,7 @@ def api_statistics(position_id):
             "top_skills": top_skills,
             "technologies": technologies,
             "certificates": certificates,
+            "experience_stats": experience_stats,
         },
     )
 
@@ -1114,7 +1128,11 @@ def api_compare():
         r["name"].strip().lower()
         for r in conn.execute("SELECT name FROM skills WHERE user_id = ?", (user_id,)).fetchall()
     ]
-    conn.close()
+    user_certs = [
+        r["name"].strip().lower()
+        for r in conn.execute("SELECT name FROM certificates WHERE user_id = ?", (user_id,)).fetchall()
+    ]
+    all_recs_rows = conn.execute("SELECT * FROM course_recommendations").fetchall()
 
     req_skills = []
     for s in parse_json_list(pos["core_skills"]):
@@ -1145,10 +1163,84 @@ def api_compare():
         summary = f'Mức độ phù hợp hiện tại là {score}%. Vị trí "{pos["name"]}" đòi hỏi thêm các kỹ năng chuyên sâu mà bạn cần bổ sung.'
 
     rec_certs = []
+    missing_certs = []
     for j in jobs_rows:
         for c in parse_json_list(j["certificates"]):
             if c not in rec_certs:
                 rec_certs.append(c)
+                c_lower = c.lower()
+                if not any(uc == c_lower or uc in c_lower or c_lower in uc for uc in user_certs):
+                    missing_certs.append(c)
+
+    # Đối chiếu kho gợi ý khóa học / chứng chỉ (course_recommendations) theo kỹ năng còn thiếu
+    recommendations = []
+    seen_titles = set()
+    for m_skill in missing:
+        m_lower = m_skill.lower()
+        matched_rec = None
+        for r in all_recs_rows:
+            sk_lower = r["skill_name"].strip().lower()
+            if sk_lower == m_lower or sk_lower in m_lower or m_lower in sk_lower:
+                matched_rec = dict(r)
+                break
+        if matched_rec and matched_rec["title"] not in seen_titles:
+            seen_titles.add(matched_rec["title"])
+            recommendations.append(matched_rec)
+        elif not matched_rec:
+            fallback_title = f"Khóa học thực chiến {m_skill} cho vị trí {pos['name']}"
+            if fallback_title not in seen_titles:
+                seen_titles.add(fallback_title)
+                recommendations.append({
+                    "id": 0,
+                    "skill_name": m_skill,
+                    "title": fallback_title,
+                    "provider": "Coursera / Udemy",
+                    "rec_type": "course",
+                    "duration": "4 tuần",
+                    "url": "https://www.coursera.org",
+                    "description": f"Bổ sung kiến thức nền tảng và dự án thực hành về {m_skill} đáp ứng yêu cầu doanh nghiệp.",
+                })
+
+    # Lưu kết quả vào bảng comparison_history (tránh lưu trùng liên tiếp cùng vị trí + cùng điểm)
+    last_hist = conn.execute(
+        "SELECT position_id, score FROM comparison_history WHERE user_id = ? ORDER BY id DESC LIMIT 1",
+        (user_id,),
+    ).fetchone()
+    if not last_hist or last_hist["position_id"] != pos["id"] or last_hist["score"] != score:
+        conn.execute(
+            """
+            INSERT INTO comparison_history (user_id, position_id, position_name, score, matched_skills, missing_skills)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                user_id,
+                pos["id"],
+                pos["name"],
+                score,
+                dump_json_list(have),
+                dump_json_list(missing),
+            ),
+        )
+        conn.commit()
+
+    history_rows = conn.execute(
+        "SELECT id, position_id, position_name, score, matched_skills, missing_skills, created_at FROM comparison_history WHERE user_id = ? ORDER BY id DESC LIMIT 5",
+        (user_id,),
+    ).fetchall()
+    conn.close()
+
+    history_list = [
+        {
+            "id": h["id"],
+            "position_id": h["position_id"],
+            "position_name": h["position_name"],
+            "score": h["score"],
+            "matched_count": len(parse_json_list(h["matched_skills"])),
+            "missing_count": len(parse_json_list(h["missing_skills"])),
+            "created_at": h["created_at"],
+        }
+        for h in history_rows
+    ]
 
     return api_response(
         True,
@@ -1158,10 +1250,37 @@ def api_compare():
             "score": score,
             "have": have,
             "missing": missing,
+            "missing_certs": missing_certs,
             "summary": summary,
             "recommended_certs": rec_certs,
+            "recommendations": recommendations,
+            "history": history_list,
         },
     )
+
+
+@app.route("/api/compare/history", methods=["GET"])
+def api_compare_history():
+    user_id = get_current_user_id()
+    conn = get_db_connection()
+    rows = conn.execute(
+        "SELECT id, position_id, position_name, score, matched_skills, missing_skills, created_at FROM comparison_history WHERE user_id = ? ORDER BY id DESC LIMIT 10",
+        (user_id,),
+    ).fetchall()
+    conn.close()
+    items = [
+        {
+            "id": r["id"],
+            "position_id": r["position_id"],
+            "position_name": r["position_name"],
+            "score": r["score"],
+            "matched_skills": parse_json_list(r["matched_skills"]),
+            "missing_skills": parse_json_list(r["missing_skills"]),
+            "created_at": r["created_at"],
+        }
+        for r in rows
+    ]
+    return api_response(True, items)
 
 
 @app.route("/api/plan", methods=["GET"])
@@ -1247,7 +1366,7 @@ def api_delete_plan(plan_id):
 if __name__ == "__main__":
     print("=" * 68)
     print("  HE THONG DINH HUONG KY NANG NGHE NGHIEP CNTT (FLASK + SQLITE)")
-    print("  De tai: NLCNPM23CS-38 - Nhanh: thanh-vien-1")
+    print("  De tai: NLCNPM23CS-38 - Nhanh: thanh-vien-2")
     print("  May chu dang chay tai: http://127.0.0.1:5000")
     print("=" * 68)
     app.run(debug=True, host="0.0.0.0", port=5000)

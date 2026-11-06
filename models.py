@@ -1,17 +1,21 @@
 """
-models.py - Thiết kế Cơ sở dữ liệu SQLite (Phân hệ Thành viên 1)
+models.py - Thiết kế Cơ sở dữ liệu SQLite (Phân hệ Thành viên 1 & Thành viên 2)
 Đề tài: NLCNPM23CS-38 - Xây dựng ứng dụng hỗ trợ định hướng kỹ năng nghề nghiệp cho sinh viên CNTT dựa trên tin tuyển dụng
 
 Các bảng dữ liệu:
-1. users              : Tài khoản người dùng (sinh viên)
-2. student_profiles   : Thông tin cá nhân của sinh viên
-3. courses            : Học phần đã học (mục 1 hồ sơ)
-4. skills             : Kỹ năng chuyên môn & mức độ 1-5 (mục 2 hồ sơ)
-5. certificates       : Chứng chỉ nghề nghiệp/ngoại ngữ (mục 3 hồ sơ)
-6. experiences        : Kinh nghiệm thực tế & dự án (mục 4 hồ sơ)
-7. positions          : Danh mục vị trí nghề nghiệp CNTT
-8. jobs               : Danh sách tin tuyển dụng liên quan
-9. learning_plans     : Kế hoạch phát triển năng lực cá nhân
+- Nhóm Core Data & CRUD (Người dùng, Hồ sơ sinh viên, Vị trí & Tin tuyển dụng):
+  1. users                  : Tài khoản người dùng (sinh viên)
+  2. student_profiles       : Thông tin cá nhân của sinh viên
+  3. courses                : Học phần đã học (mục 1 hồ sơ)
+  4. skills                 : Kỹ năng chuyên môn & mức độ 1-5 (mục 2 hồ sơ)
+  5. certificates           : Chứng chỉ nghề nghiệp/ngoại ngữ (mục 3 hồ sơ)
+  6. experiences            : Kinh nghiệm thực tế & dự án (mục 4 hồ sơ)
+  7. positions              : Danh mục vị trí nghề nghiệp CNTT
+  8. jobs                   : Danh sách tin tuyển dụng liên quan
+- Nhóm Analytics & Recommendation (Phân tích, Đối sánh, Gợi ý & Kế hoạch):
+  9. learning_plans         : Kế hoạch phát triển năng lực cá nhân
+  10. course_recommendations: Kho gợi ý khóa học / chứng chỉ theo kỹ năng còn thiếu
+  11. comparison_history    : Lịch sử đánh giá & đối sánh độ phù hợp hồ sơ
 """
 
 import os
@@ -200,6 +204,36 @@ def init_db():
             target_date TEXT DEFAULT '',
             note TEXT DEFAULT '',
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+    """)
+
+    # 10. Bảng course_recommendations (Kho gợi ý khóa học / chứng chỉ theo kỹ năng)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS course_recommendations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            skill_name TEXT NOT NULL,
+            title TEXT NOT NULL,
+            provider TEXT DEFAULT 'Coursera / Udemy',
+            rec_type TEXT DEFAULT 'course',
+            duration TEXT DEFAULT '4 tuần',
+            url TEXT DEFAULT '',
+            description TEXT DEFAULT ''
+        );
+    """)
+
+    # 11. Bảng comparison_history (Lịch sử đánh giá & đối sánh hồ sơ)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS comparison_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            position_id INTEGER NOT NULL,
+            position_name TEXT NOT NULL,
+            score INTEGER DEFAULT 0,
+            matched_skills TEXT DEFAULT '[]',
+            missing_skills TEXT DEFAULT '[]',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+            FOREIGN KEY (position_id) REFERENCES positions (id) ON DELETE CASCADE
         );
     """)
 

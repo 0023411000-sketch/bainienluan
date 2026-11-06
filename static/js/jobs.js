@@ -9,7 +9,6 @@ let currentFilterPositionId = '';
 let jobModal = null;
 let jobDetailModal = null;
 let csvModal = null;
-let csvModal = null;
 let cachedJobs = [];
 let parsedCsvRecords = [];
 

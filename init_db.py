@@ -1,5 +1,5 @@
 """
-init_db.py - Script khởi tạo Cơ sở dữ liệu SQLite và nạp dữ liệu mẫu (Phân hệ Thành viên 1)
+init_db.py - Script khởi tạo Cơ sở dữ liệu SQLite và nạp dữ liệu mẫu (Phân hệ Thành viên 2)
 Đề tài: NLCNPM23CS-38 - Xây dựng ứng dụng hỗ trợ định hướng kỹ năng nghề nghiệp cho sinh viên CNTT dựa trên tin tuyển dụng
 
 Cách chạy:
