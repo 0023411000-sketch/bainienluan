@@ -152,16 +152,16 @@ function renderComparisonResult(data) {
     renderScoreDoughnutChart(score);
 
     // Hiển thị chứng chỉ khuyến nghị & gợi ý khóa học
-    renderRecommendations(data.recommended_certs || [], data.missing_certs || [], data.recommendations || []);
+    renderRecommendations(data.recommended_certs || [], data.missing_certs || [], data.recommendations || [], data.suggested_academic_courses || []);
 
     // Hiển thị lịch sử đối sánh
     renderComparisonHistory(data.history || []);
 }
 
 /**
- * Hiển thị danh sách chứng chỉ ưu tiên và khóa học gợi ý cho kỹ năng còn thiếu
+ * Hiển thị danh sách chứng chỉ ưu tiên, môn học đại học và khóa học gợi ý cho kỹ năng còn thiếu
  */
-function renderRecommendations(recCerts, missingCerts, recommendations) {
+function renderRecommendations(recCerts, missingCerts, recommendations, suggestedAcademicCourses = []) {
     const certsContainer = document.getElementById('recommendedCertsContainer');
     if (certsContainer) {
         if (!recCerts || recCerts.length === 0) {
@@ -178,10 +178,42 @@ function renderRecommendations(recCerts, missingCerts, recommendations) {
         }
     }
 
+    // Hiển thị Môn học Đại học CNTT đề xuất
+    const acadContainer = document.getElementById('academicCoursesContainer');
+    if (acadContainer) {
+        if (!suggestedAcademicCourses || suggestedAcademicCourses.length === 0) {
+            acadContainer.innerHTML = `<div class="col-12 text-muted small">Bạn đã hoàn thành các môn học CNTT trọng tâm của vị trí này.</div>`;
+        } else {
+            acadContainer.innerHTML = suggestedAcademicCourses.map((c, cIdx) => `
+                <div class="col-12">
+                    <div class="border rounded-3 p-2 px-3 bg-light-subtle d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="badge bg-secondary-subtle text-dark border font-monospace">${Utils.escapeHtml(c.code)}</span>
+                                <span class="fw-bold text-dark small">${Utils.escapeHtml(c.name)}</span>
+                                <span class="badge bg-light text-secondary border small">${c.credits || 3} tín chỉ</span>
+                            </div>
+                            <div class="text-secondary small">
+                                ${(c.matched_missing_skills || []).map(sk => `<span class="badge badge-soft-danger me-1"><i class="bi bi-tag me-1"></i>${Utils.escapeHtml(sk)}</span>`).join('')}
+                                <span class="text-muted ms-1">${Utils.escapeHtml(c.reason || c.description || '')}</span>
+                            </div>
+                        </div>
+                        <div class="text-md-end flex-shrink-0">
+                            <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2" onclick="addAcademicCourseToPlan(${cIdx})">
+                                <i class="bi bi-calendar-plus me-1"></i>Vào Kế hoạch
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
     const recsContainer = document.getElementById('courseRecommendationsContainer');
     const badgeRecsCount = document.getElementById('badgeRecsCount');
     if (badgeRecsCount) {
-        badgeRecsCount.textContent = `${recommendations.length} gợi ý`;
+        const totalRecs = (recommendations ? recommendations.length : 0) + (suggestedAcademicCourses ? suggestedAcademicCourses.length : 0);
+        badgeRecsCount.textContent = `${totalRecs} gợi ý`;
     }
     if (!recsContainer) return;
 
@@ -212,6 +244,28 @@ function renderRecommendations(recCerts, missingCerts, recommendations) {
             </div>
         </div>
     `).join('');
+}
+
+async function addAcademicCourseToPlan(index) {
+    if (!lastComparisonResult || !lastComparisonResult.suggested_academic_courses) return;
+    const c = lastComparisonResult.suggested_academic_courses[index];
+    if (!c) return;
+
+    try {
+        const res = await API.plan.create({
+            title: `Học phần: ${c.name} (${c.code})`,
+            category: `Học phần cho vị trí ${lastComparisonResult.position_name}`,
+            type: 'course',
+            status: 'todo',
+            target_date: '',
+            note: c.description || c.reason || 'Môn học CNTT trọng tâm.'
+        });
+        if (res.success) {
+            Utils.showToast(`Đã thêm môn "${c.name}" vào Kế hoạch học tập!`, 'success');
+        }
+    } catch (e) {
+        Utils.showToast('Lỗi khi thêm vào kế hoạch học tập!', 'danger');
+    }
 }
 
 /**

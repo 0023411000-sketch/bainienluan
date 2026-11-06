@@ -319,6 +319,12 @@ def api_get_profile():
         "SELECT id, title, company, role_type, start_date, end_date, description FROM experiences WHERE user_id = ? ORDER BY id ASC",
         (user_id,),
     ).fetchall()
+    courses_list = [dict(r) for r in courses_rows]
+    skills_list = [dict(r) for r in skills_rows]
+    certs_list = [dict(r) for r in certs_rows]
+    exps_list = [dict(r) for r in exps_rows]
+    target_pos_id = prof["target_position_id"] if prof and prof["target_position_id"] else 1
+    eval_result = evaluate_profile_fit_and_suggest_courses(user_id, target_pos_id, save_history=False, conn=conn)
     conn.close()
 
     data = {
@@ -332,13 +338,14 @@ def api_get_profile():
             "major": prof["major"],
             "academic_year": prof["academic_year"],
             "gpa": prof["gpa"],
-            "target_position_id": prof["target_position_id"],
+            "target_position_id": target_pos_id,
             "bio": prof["bio"],
         },
-        "courses": [dict(r) for r in courses_rows],
-        "skills": [dict(r) for r in skills_rows],
-        "certificates": [dict(r) for r in certs_rows],
-        "experiences": [dict(r) for r in exps_rows],
+        "courses": courses_list,
+        "skills": skills_list,
+        "certificates": certs_list,
+        "experiences": exps_list,
+        "evaluation": eval_result,
     }
     return api_response(True, data)
 
@@ -1317,185 +1324,379 @@ def api_statistics(position_id):
     )
 
 
-@app.route("/api/compare", methods=["POST"])
-def api_compare():
-    user_id = get_current_user_id()
-    payload = request.get_json(silent=True) or {}
-    position_id = int(payload.get("position_id") or 1)
+ACADEMIC_CURRICULUM = [
+    {
+        "code": "IT3090",
+        "name": "Cơ sở dữ liệu",
+        "credits": 3,
+        "skills": ["SQL", "Cơ sở dữ liệu", "Thiết kế CSDL", "Tối ưu truy vấn", "PostgreSQL"],
+        "positions": [1, 3, 4],
+        "description": "Trang bị kiến thức mô hình quan hệ, viết truy vấn SQL phức tạp, tối ưu chỉ mục và thiết kế kiến trúc CSDL."
+    },
+    {
+        "code": "IT4010",
+        "name": "Phát triển ứng dụng Web",
+        "credits": 3,
+        "skills": ["HTML5/CSS3", "JavaScript", "RESTful API", "Bootstrap", "Tailwind CSS", "Flask", "Node.js"],
+        "positions": [1, 2, 3],
+        "description": "Xây dựng ứng dụng web hiện đại chuẩn Client-Server, giao diện responsive và tích hợp RESTful API."
+    },
+    {
+        "code": "IT4060",
+        "name": "Lập trình mạng và hệ thống phân tán",
+        "credits": 3,
+        "skills": ["RESTful API", "Socket", "Microservices", "Java", "Python", "Golang", "Redis"],
+        "positions": [1, 3, 5],
+        "description": "Lập trình socket đa luồng, đồng bộ dữ liệu thời gian thực và kiến trúc microservices chịu tải cao."
+    },
+    {
+        "code": "INT3110",
+        "name": "Giao diện người - máy & Thiết kế UI/UX",
+        "credits": 3,
+        "skills": ["UI/UX", "HTML5/CSS3", "JavaScript", "Tailwind CSS", "Bootstrap", "Mobile UX"],
+        "positions": [2, 7],
+        "description": "Nguyên lý trải nghiệm người dùng, thiết kế wireframe/prototype và xây dựng hệ thống Design System."
+    },
+    {
+        "code": "INT3306",
+        "name": "Phát triển ứng dụng Web hiện đại (Frontend)",
+        "credits": 3,
+        "skills": ["ReactJS", "TypeScript", "VueJS", "JavaScript", "Node.js", "Git"],
+        "positions": [2, 3],
+        "description": "Làm chủ kiến trúc Single Page Application với React/Vue, quản lý State và tích hợp TypeScript."
+    },
+    {
+        "code": "IT4520",
+        "name": "Điện toán đám mây & Công nghệ ảo hóa",
+        "credits": 3,
+        "skills": ["Docker", "Kubernetes", "AWS", "CI/CD", "Linux", "Terraform"],
+        "positions": [1, 3, 5, 8],
+        "description": "Đóng gói ứng dụng với Docker, điều phối cụm Kubernetes và triển khai hạ tầng đám mây AWS."
+    },
+    {
+        "code": "IT3070",
+        "name": "Hệ điều hành Linux & Quản trị hệ thống",
+        "credits": 3,
+        "skills": ["Linux", "Shell Scripting", "Prometheus", "Git", "DevOps"],
+        "positions": [1, 5],
+        "description": "Quản trị hệ điều hành Linux, phân quyền an toàn, tự động hóa bằng Bash Shell và giám sát hệ thống."
+    },
+    {
+        "code": "IT4409",
+        "name": "Kiểm thử và đảm bảo chất lượng phần mềm",
+        "credits": 2,
+        "skills": ["Kiểm thử phần mềm", "Thiết kế Test Case", "Postman", "Selenium", "Jira", "API Testing"],
+        "positions": [6, 3],
+        "description": "Thiết kế test case, tự động hóa kiểm thử API với Postman và giao diện web với Selenium WebDriver."
+    },
+    {
+        "code": "IT3160",
+        "name": "Nhập môn Trí tuệ nhân tạo",
+        "credits": 3,
+        "skills": ["Python", "Toán rời rạc & Đại số tuyến tính", "Scikit-Learn", "Trí tuệ nhân tạo"],
+        "positions": [8, 4],
+        "description": "Nền tảng thuật toán tìm kiếm thông minh, tối ưu hóa bài toán và ứng dụng thuật toán học máy cơ bản."
+    },
+    {
+        "code": "IT4170",
+        "name": "Học máy & Khai phá dữ liệu",
+        "credits": 3,
+        "skills": ["Python", "Machine Learning", "Scikit-Learn", "Pandas", "Data Cleaning", "Xác suất thống kê"],
+        "positions": [8, 4],
+        "description": "Quy trình tiền xử lý dữ liệu và huấn luyện các mô hình Machine Learning có giám sát/không giám sát."
+    },
+    {
+        "code": "IT4172",
+        "name": "Thị giác máy tính & Xử lý ảnh",
+        "credits": 3,
+        "skills": ["Computer Vision", "PyTorch", "TensorFlow", "Python", "Deep Learning"],
+        "positions": [8],
+        "description": "Xử lý ảnh số, huấn luyện mạng nơ-ron tích chập (CNN), nhận diện khuôn mặt và phát hiện vật thể YOLO."
+    },
+    {
+        "code": "IT4180",
+        "name": "Xử lý ngôn ngữ tự nhiên (NLP)",
+        "credits": 3,
+        "skills": ["NLP", "PyTorch", "TensorFlow", "Python", "Deep Learning"],
+        "positions": [8],
+        "description": "Xử lý văn bản tiếng Việt, trích xuất thực thể, dịch máy và ứng dụng mô hình ngôn ngữ lớn Transformers."
+    },
+    {
+        "code": "IT4220",
+        "name": "Phân tích dữ liệu kinh doanh & Trực quan hóa",
+        "credits": 3,
+        "skills": ["Power BI", "Tableau", "Excel nâng cao", "SQL", "Data Cleaning", "Phân tích dữ liệu"],
+        "positions": [4],
+        "description": "Thiết kế dashboard báo cáo quản trị BI, phân tích xu hướng và xây dựng mô hình dự báo kinh doanh."
+    },
+    {
+        "code": "MI2020",
+        "name": "Toán rời rạc & Xác suất thống kê ứng dụng",
+        "credits": 4,
+        "skills": ["Xác suất thống kê", "Toán rời rạc & Đại số tuyến tính", "Pandas"],
+        "positions": [4, 8],
+        "description": "Cơ sở toán học cho khoa học dữ liệu: phân phối xác suất, kiểm định giả thuyết và đại số ma trận tuyến tính."
+    },
+    {
+        "code": "IT4780",
+        "name": "Phát triển ứng dụng di động đa nền tảng",
+        "credits": 3,
+        "skills": ["Flutter", "Dart", "React Native", "Swift", "Kotlin", "Mobile UX", "RESTful API"],
+        "positions": [7],
+        "description": "Phát triển ứng dụng di động cho iOS & Android với Flutter/React Native, giao diện native và gọi API."
+    },
+    {
+        "code": "IT4110",
+        "name": "Kiến trúc và Thiết kế phần mềm",
+        "credits": 3,
+        "skills": ["Design Patterns", "Clean Code", "OOP", "Microservices", "Java", "Python", "Git"],
+        "positions": [1, 3],
+        "description": "Áp dụng các mẫu thiết kế hướng đối tượng (GoF), kiến trúc phân lớp Clean Architecture và nguyên lý SOLID."
+    },
+    {
+        "code": "IT4440",
+        "name": "Quản lý dự án phần mềm & Quy trình Agile",
+        "credits": 3,
+        "skills": ["Git", "Jira", "CI/CD", "Kiểm thử phần mềm", "Agile/Scrum"],
+        "positions": [1, 2, 3, 5, 6],
+        "description": "Quản lý chu trình phát triển phần mềm theo chuẩn Agile/Scrum, theo dõi task trên Jira và tích hợp Git."
+    }
+]
 
-    conn = get_db_connection()
-    pos = conn.execute("SELECT * FROM positions WHERE id = ?", (position_id,)).fetchone()
-    if not pos:
-        pos = conn.execute("SELECT * FROM positions ORDER BY id ASC LIMIT 1").fetchone()
-    jobs_rows = conn.execute("SELECT * FROM jobs WHERE position_id = ?", (pos["id"],)).fetchall()
-    user_skills = [
-        r["name"].strip().lower()
-        for r in conn.execute("SELECT name FROM skills WHERE user_id = ?", (user_id,)).fetchall()
-    ]
-    user_certs = [
-        r["name"].strip().lower()
-        for r in conn.execute("SELECT name FROM certificates WHERE user_id = ?", (user_id,)).fetchall()
-    ]
-    user_courses = [
-        r["name"].strip().lower()
-        for r in conn.execute("SELECT name FROM courses WHERE user_id = ?", (user_id,)).fetchall()
-    ]
-    user_exps = conn.execute(
-        "SELECT start_date, end_date FROM experiences WHERE user_id = ?", (user_id,)
-    ).fetchall()
-    all_recs_rows = conn.execute("SELECT * FROM course_recommendations").fetchall()
 
-    def _match(a, b):
-        return a == b or a in b or b in a
-
-    req_skills = []
-    for s in parse_json_list(pos["core_skills"]):
-        if s not in req_skills:
-            req_skills.append(s)
-    for j in jobs_rows:
-        for s in parse_json_list(j["skills"]):
-            if s not in req_skills:
-                req_skills.append(s)
-
-    # Tiêu chí 1: Kỹ năng / kiến thức (đối chiếu với Kỹ năng hoặc Học phần đã học)
-    have = []
-    have_by_courses = []
-    missing = []
-    for req in req_skills:
-        req_lower = req.lower()
-        if any(_match(us, req_lower) for us in user_skills):
-            have.append(req)
-        elif any(_match(uc, req_lower) for uc in user_courses):
-            have.append(req)
-            have_by_courses.append(req)
-        else:
-            missing.append(req)
-
-    # Tiêu chí 2: Chứng chỉ được yêu cầu/ưu tiên trong các tin tuyển dụng
-    rec_certs = []
-    missing_certs = []
-    for j in jobs_rows:
-        for c in parse_json_list(j["certificates"]):
-            if c not in rec_certs:
-                rec_certs.append(c)
-                c_lower = c.lower()
-                if not any(_match(uc, c_lower) for uc in user_certs):
-                    missing_certs.append(c)
-
-    # Tiêu chí 3: Số năm kinh nghiệm (yêu cầu tối thiểu phổ biến nhất trong các tin)
+def evaluate_profile_fit_and_suggest_courses(user_id, position_id=None, save_history=False, conn=None):
+    """
+    Hàm phân tích & đối sánh hồ sơ sinh viên với vị trí nghề nghiệp mong muốn,
+    đồng thời tự động gợi ý các môn học đại học và khóa học trực tuyến phù hợp.
+    """
     import re
     from datetime import date
 
-    def _min_years(text):
-        m = re.search(r"\d+", text or "")
-        return int(m.group()) if m else 0
+    close_conn = False
+    if conn is None:
+        conn = get_db_connection()
+        close_conn = True
 
-    def _to_date(s):
-        try:
-            y, mth = [int(x) for x in (s or "").split("-")[:2]]
-            return date(y, mth, 1)
-        except Exception:
-            return None
+    try:
+        # 1. Xác định vị trí nghề nghiệp mục tiêu
+        if not position_id:
+            prof = conn.execute("SELECT target_position_id FROM student_profiles WHERE user_id = ?", (user_id,)).fetchone()
+            position_id = prof["target_position_id"] if prof and prof["target_position_id"] else 1
 
-    req_years_list = [_min_years(j["experience_required"]) for j in jobs_rows]
-    required_years = Counter(req_years_list).most_common(1)[0][0] if req_years_list else 0
-    user_months = 0
-    for e in user_exps:
-        sd = _to_date(e["start_date"])
-        ed = _to_date(e["end_date"]) or date.today()
-        if sd and ed >= sd:
-            user_months += (ed.year - sd.year) * 12 + (ed.month - sd.month)
-    user_years = round(user_months / 12, 1)
-    experience_met = user_years >= required_years
+        pos = conn.execute("SELECT * FROM positions WHERE id = ?", (position_id,)).fetchone()
+        if not pos:
+            pos = conn.execute("SELECT * FROM positions ORDER BY id ASC LIMIT 1").fetchone()
 
-    matched_count = len(have) + (len(rec_certs) - len(missing_certs)) + (1 if experience_met else 0)
-    total = len(req_skills) + len(rec_certs) + 1
-    score = round(matched_count / total * 100) if total > 0 else 0
+        jobs_rows = conn.execute("SELECT * FROM jobs WHERE position_id = ?", (pos["id"],)).fetchall()
+        user_skills = [
+            r["name"].strip().lower()
+            for r in conn.execute("SELECT name FROM skills WHERE user_id = ?", (user_id,)).fetchall()
+        ]
+        user_certs = [
+            r["name"].strip().lower()
+            for r in conn.execute("SELECT name FROM certificates WHERE user_id = ?", (user_id,)).fetchall()
+        ]
+        user_courses_rows = conn.execute("SELECT code, name FROM courses WHERE user_id = ?", (user_id,)).fetchall()
+        user_course_codes = {r["code"].strip().upper() for r in user_courses_rows if r["code"]}
+        user_course_names = {r["name"].strip().lower() for r in user_courses_rows if r["name"]}
 
-    if score >= 75:
-        summary = f'Tuyệt vời! Hồ sơ của bạn đạt mức độ phù hợp rất cao ({score}%) đối với vị trí "{pos["name"]}".'
-    elif score >= 50:
-        summary = f'Khá tốt! Mức độ phù hợp của bạn là {score}%. Hãy bổ sung các kỹ năng còn thiếu vào Lộ trình học tập.'
-    else:
-        summary = f'Mức độ phù hợp hiện tại là {score}%. Vị trí "{pos["name"]}" đòi hỏi thêm các kỹ năng chuyên sâu mà bạn cần bổ sung.'
-    summary += (
-        f' Kinh nghiệm: bạn có khoảng {user_years} năm, yêu cầu phổ biến là {required_years}+ năm'
-        f' ({"đạt" if experience_met else "chưa đạt"}).'
-    )
+        user_exps = conn.execute(
+            "SELECT start_date, end_date FROM experiences WHERE user_id = ?", (user_id,)
+        ).fetchall()
+        all_recs_rows = conn.execute("SELECT * FROM course_recommendations").fetchall()
 
-    # Đối chiếu kho gợi ý khóa học / chứng chỉ (course_recommendations) theo kỹ năng còn thiếu
-    recommendations = []
-    seen_titles = set()
-    for m_skill in missing:
-        m_lower = m_skill.lower()
-        matched_rec = None
-        for r in all_recs_rows:
-            sk_lower = r["skill_name"].strip().lower()
-            if sk_lower == m_lower or sk_lower in m_lower or m_lower in sk_lower:
-                matched_rec = dict(r)
-                break
-        if matched_rec and matched_rec["title"] not in seen_titles:
-            seen_titles.add(matched_rec["title"])
-            recommendations.append(matched_rec)
-        elif not matched_rec:
-            fallback_title = f"Khóa học thực chiến {m_skill} cho vị trí {pos['name']}"
-            if fallback_title not in seen_titles:
-                seen_titles.add(fallback_title)
-                recommendations.append({
-                    "id": 0,
-                    "skill_name": m_skill,
-                    "title": fallback_title,
-                    "provider": "Coursera / Udemy",
-                    "rec_type": "course",
-                    "duration": "4 tuần",
-                    "url": "https://www.coursera.org",
-                    "description": f"Bổ sung kiến thức nền tảng và dự án thực hành về {m_skill} đáp ứng yêu cầu doanh nghiệp.",
+        def _match(a, b):
+            return a == b or a in b or b in a
+
+        # 2. Tổng hợp kỹ năng yêu cầu từ vị trí & tin tuyển dụng
+        req_skills = []
+        for s in parse_json_list(pos["core_skills"]):
+            if s not in req_skills:
+                req_skills.append(s)
+        for j in jobs_rows:
+            for s in parse_json_list(j["skills"]):
+                if s not in req_skills:
+                    req_skills.append(s)
+
+        # 3. Đối chiếu kỹ năng & kiến thức đã học
+        have = []
+        have_by_courses = []
+        missing = []
+        for req in req_skills:
+            req_lower = req.lower()
+            if any(_match(us, req_lower) for us in user_skills):
+                have.append(req)
+            elif any(_match(uc, req_lower) for uc in user_course_names):
+                have.append(req)
+                have_by_courses.append(req)
+            else:
+                missing.append(req)
+
+        # 4. Đối chiếu chứng chỉ
+        rec_certs = []
+        missing_certs = []
+        for j in jobs_rows:
+            for c in parse_json_list(j["certificates"]):
+                if c not in rec_certs:
+                    rec_certs.append(c)
+                    c_lower = c.lower()
+                    if not any(_match(uc, c_lower) for uc in user_certs):
+                        missing_certs.append(c)
+
+        # 5. Đối chiếu số năm kinh nghiệm
+        def _min_years(text):
+            m = re.search(r"\d+", text or "")
+            return int(m.group()) if m else 0
+
+        def _to_date(s):
+            try:
+                y, mth = [int(x) for x in (s or "").split("-")[:2]]
+                return date(y, mth, 1)
+            except Exception:
+                return None
+
+        req_years_list = [_min_years(j["experience_required"]) for j in jobs_rows]
+        required_years = Counter(req_years_list).most_common(1)[0][0] if req_years_list else 0
+        user_months = 0
+        for e in user_exps:
+            sd = _to_date(e["start_date"])
+            ed = _to_date(e["end_date"]) or date.today()
+            if sd and ed >= sd:
+                user_months += (ed.year - sd.year) * 12 + (ed.month - sd.month)
+        user_years = round(user_months / 12, 1)
+        experience_met = user_years >= required_years
+
+        matched_count = len(have) + (len(rec_certs) - len(missing_certs)) + (1 if experience_met else 0)
+        total = len(req_skills) + len(rec_certs) + 1
+        score = round(matched_count / total * 100) if total > 0 else 0
+
+        if score >= 75:
+            summary = f'Tuyệt vời! Hồ sơ của bạn đạt mức độ phù hợp rất cao ({score}%) đối với vị trí "{pos["name"]}".'
+        elif score >= 50:
+            summary = f'Khá tốt! Mức độ phù hợp của bạn là {score}%. Hãy bổ sung các kỹ năng còn thiếu vào Lộ trình học tập.'
+        else:
+            summary = f'Mức độ phù hợp hiện tại là {score}%. Vị trí "{pos["name"]}" đòi hỏi thêm các kỹ năng chuyên sâu mà bạn cần bổ sung.'
+        summary += (
+            f' Kinh nghiệm: bạn có khoảng {user_years} năm, yêu cầu phổ biến là {required_years}+ năm'
+            f' ({"đạt" if experience_met else "chưa đạt"}).'
+        )
+
+        # 6. Tự động gợi ý các môn học đại học CNTT phù hợp (chưa học & bù đắp kỹ năng thiếu)
+        suggested_academic_courses = []
+        for c in ACADEMIC_CURRICULUM:
+            c_code = c["code"].strip().upper()
+            c_name = c["name"].strip().lower()
+            # Bỏ qua nếu sinh viên đã học môn này
+            if c_code in user_course_codes or any(_match(c_name, uc) for uc in user_course_names):
+                continue
+
+            # Tìm các kỹ năng còn thiếu mà môn này đào tạo
+            matched_missing = [
+                s for s in c["skills"]
+                if any(_match(s.lower(), m.lower()) for m in missing)
+            ]
+            is_core_for_target = (pos["id"] in c.get("positions", []))
+
+            if matched_missing or is_core_for_target:
+                reason = (
+                    f"Bổ trợ trực tiếp kỹ năng thiếu: {', '.join(matched_missing)}"
+                    if matched_missing
+                    else f"Học phần chuyên ngành trọng tâm cho vị trí {pos['name']}"
+                )
+                suggested_academic_courses.append({
+                    "code": c["code"],
+                    "name": c["name"],
+                    "credits": c["credits"],
+                    "matched_missing_skills": matched_missing,
+                    "is_core": is_core_for_target,
+                    "description": c["description"],
+                    "reason": reason,
                 })
 
-    # Lưu kết quả vào bảng comparison_history (tránh lưu trùng liên tiếp cùng vị trí + cùng điểm)
-    last_hist = conn.execute(
-        "SELECT position_id, score FROM comparison_history WHERE user_id = ? ORDER BY id DESC LIMIT 1",
-        (user_id,),
-    ).fetchone()
-    if not last_hist or last_hist["position_id"] != pos["id"] or last_hist["score"] != score:
-        conn.execute(
-            """
-            INSERT INTO comparison_history (user_id, position_id, position_name, score, matched_skills, missing_skills)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (
-                user_id,
-                pos["id"],
-                pos["name"],
-                score,
-                dump_json_list(have),
-                dump_json_list(missing),
-            ),
+        # Sắp xếp môn bù đắp nhiều kỹ năng thiếu nhất lên đầu
+        suggested_academic_courses.sort(
+            key=lambda x: (len(x["matched_missing_skills"]), 1 if x["is_core"] else 0),
+            reverse=True,
         )
-        conn.commit()
+        suggested_academic_courses = suggested_academic_courses[:6]
 
-    history_rows = conn.execute(
-        "SELECT id, position_id, position_name, score, matched_skills, missing_skills, created_at FROM comparison_history WHERE user_id = ? ORDER BY id DESC LIMIT 5",
-        (user_id,),
-    ).fetchall()
-    conn.close()
+        # 7. Gợi ý khóa học trực tuyến & chứng chỉ
+        recommendations = []
+        seen_titles = set()
+        for m_skill in missing:
+            m_lower = m_skill.lower()
+            matched_rec = None
+            for r in all_recs_rows:
+                sk_lower = r["skill_name"].strip().lower()
+                if sk_lower == m_lower or sk_lower in m_lower or m_lower in sk_lower:
+                    matched_rec = dict(r)
+                    break
+            if matched_rec and matched_rec["title"] not in seen_titles:
+                seen_titles.add(matched_rec["title"])
+                recommendations.append(matched_rec)
+            elif not matched_rec:
+                fallback_title = f"Khóa học thực chiến {m_skill} cho vị trí {pos['name']}"
+                if fallback_title not in seen_titles:
+                    seen_titles.add(fallback_title)
+                    recommendations.append({
+                        "id": 0,
+                        "skill_name": m_skill,
+                        "title": fallback_title,
+                        "provider": "Coursera / Udemy",
+                        "rec_type": "course",
+                        "duration": "4 tuần",
+                        "url": "https://www.coursera.org",
+                        "description": f"Bổ sung kiến thức nền tảng và dự án thực hành về {m_skill} đáp ứng yêu cầu doanh nghiệp.",
+                    })
 
-    history_list = [
-        {
-            "id": h["id"],
-            "position_id": h["position_id"],
-            "position_name": h["position_name"],
-            "score": h["score"],
-            "matched_count": len(parse_json_list(h["matched_skills"])),
-            "missing_count": len(parse_json_list(h["missing_skills"])),
-            "created_at": h["created_at"],
-        }
-        for h in history_rows
-    ]
+        # 8. Lưu lịch sử đối sánh nếu được yêu cầu
+        history_list = []
+        if save_history:
+            last_hist = conn.execute(
+                "SELECT position_id, score FROM comparison_history WHERE user_id = ? ORDER BY id DESC LIMIT 1",
+                (user_id,),
+            ).fetchone()
+            if not last_hist or last_hist["position_id"] != pos["id"] or last_hist["score"] != score:
+                conn.execute(
+                    """
+                    INSERT INTO comparison_history (user_id, position_id, position_name, score, matched_skills, missing_skills)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        user_id,
+                        pos["id"],
+                        pos["name"],
+                        score,
+                        dump_json_list(have),
+                        dump_json_list(missing),
+                    ),
+                )
+                conn.commit()
 
-    return api_response(
-        True,
-        {
+        history_rows = conn.execute(
+            "SELECT id, position_id, position_name, score, matched_skills, missing_skills, created_at FROM comparison_history WHERE user_id = ? ORDER BY id DESC LIMIT 5",
+            (user_id,),
+        ).fetchall()
+        history_list = [
+            {
+                "id": h["id"],
+                "position_id": h["position_id"],
+                "position_name": h["position_name"],
+                "score": h["score"],
+                "matched_count": len(parse_json_list(h["matched_skills"])),
+                "missing_count": len(parse_json_list(h["missing_skills"])),
+                "created_at": h["created_at"],
+            }
+            for h in history_rows
+        ]
+
+        return {
+            "target_position": {
+                "id": pos["id"],
+                "name": pos["name"],
+                "code": pos["code"],
+                "demand_level": pos["demand_level"],
+            },
             "position_id": pos["id"],
             "position_name": pos["name"],
             "score": score,
@@ -1509,11 +1710,32 @@ def api_compare():
                 "met": experience_met,
             },
             "summary": summary,
+            "suggested_academic_courses": suggested_academic_courses,
             "recommended_certs": rec_certs,
             "recommendations": recommendations,
             "history": history_list,
-        },
-    )
+        }
+    finally:
+        if close_conn:
+            conn.close()
+
+
+@app.route("/api/compare", methods=["POST"])
+def api_compare():
+    user_id = get_current_user_id()
+    payload = request.get_json(silent=True) or {}
+    position_id = int(payload.get("position_id") or 1)
+    eval_data = evaluate_profile_fit_and_suggest_courses(user_id, position_id=position_id, save_history=True)
+    return api_response(True, eval_data)
+
+
+@app.route("/api/profile/evaluation", methods=["GET"])
+def api_profile_evaluation():
+    user_id = get_current_user_id()
+    pos_id = request.args.get("position_id")
+    pos_id = int(pos_id) if pos_id and pos_id.isdigit() else None
+    eval_data = evaluate_profile_fit_and_suggest_courses(user_id, position_id=pos_id, save_history=False)
+    return api_response(True, eval_data)
 
 
 @app.route("/api/compare/history", methods=["GET"])

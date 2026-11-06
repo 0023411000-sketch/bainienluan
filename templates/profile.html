@@ -62,9 +62,96 @@
         </div>
     </div>
 
-    <!-- CỘT PHẢI: 4 PHẦN QUẢN LÝ (TAB HOẶC KHỐI ACCORDION/CARDS) -->
+    <!-- CỘT PHẢI: ĐÁNH GIÁ ĐỘ PHÙ HỢP VỚI NGHỀ MỤC TIÊU & CÁC PHẦN NĂNG LỰC -->
     <div class="col-lg-8 col-xl-8">
-        <!-- TAB ĐIỀU HƯỚNG 4 PHẦN -->
+        <!-- CARD ĐÁNH GIÁ ĐỘ PHÙ HỢP VỚI VỊ TRÍ NGHỀ NGHIỆP MỤC TIÊU -->
+        <div class="card border-0 shadow-sm mb-4 bg-white overflow-hidden" id="profileEvaluationCard">
+            <div class="card-body p-4">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+                    <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                                <i class="bi bi-bullseye me-1"></i>Vị trí nghề nghiệp mục tiêu
+                            </span>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" id="evalTargetDemand">Nhu cầu cao</span>
+                        </div>
+                        <h4 class="fw-bold text-dark mt-2 mb-0" id="evalTargetPositionName">Lập trình viên Backend</h4>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="text-end">
+                            <div class="fs-1 fw-bold lh-1 text-primary" id="evalScorePercent">0%</div>
+                            <div class="small fw-semibold mt-1" id="evalScoreBadge">Đang đánh giá</div>
+                        </div>
+                        <div style="width: 64px; height: 64px; position: relative;">
+                            <svg viewBox="0 0 36 36" style="width: 64px; height: 64px; transform: rotate(-90deg);">
+                                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e9ecef" stroke-width="3.5" />
+                                <path id="evalCircleProgress" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#0d6efd" stroke-width="3.5" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Thanh progress bar -->
+                <div class="progress mb-3" style="height: 8px;">
+                    <div id="evalProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 0%;"></div>
+                </div>
+
+                <!-- Nhận xét chi tiết từ hệ thống -->
+                <div class="p-3 rounded-3 bg-light-subtle border mb-3">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-lightbulb-fill text-warning fs-5 mt-n1"></i>
+                        <p class="mb-0 text-secondary small" id="evalSummaryText" style="line-height: 1.6;">
+                            Hệ thống đang đối chiếu hồ sơ cá nhân với các tin tuyển dụng để đưa ra đánh giá...
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Thống kê nhanh: Kỹ năng có, Kỹ năng thiếu, Kinh nghiệm, Môn học gợi ý -->
+                <div class="row g-2 text-center small mb-3">
+                    <div class="col-sm-3 col-6">
+                        <div class="p-2 border rounded-3 bg-white">
+                            <div class="text-success fw-bold fs-6" id="evalCountHave">0</div>
+                            <div class="text-muted" style="font-size: 0.8rem;">Kỹ năng đạt yêu cầu</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-3 col-6">
+                        <div class="p-2 border rounded-3 bg-white">
+                            <div class="text-danger fw-bold fs-6" id="evalCountMissing">0</div>
+                            <div class="text-muted" style="font-size: 0.8rem;">Kỹ năng còn thiếu</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-3 col-6">
+                        <div class="p-2 border rounded-3 bg-white">
+                            <div class="text-info fw-bold fs-6" id="evalExperienceStatus">--</div>
+                            <div class="text-muted" style="font-size: 0.8rem;">Kinh nghiệm thực tế</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-3 col-6">
+                        <div class="p-2 border rounded-3 bg-white">
+                            <div class="text-primary fw-bold fs-6" id="evalCountSuggested">0 môn</div>
+                            <div class="text-muted" style="font-size: 0.8rem;">Môn học nên đăng ký</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Thao tác nhanh -->
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-2 border-top">
+                    <div class="text-muted" style="font-size: 0.8rem;">
+                        <i class="bi bi-magic me-1 text-primary"></i>Tự động tính lại ngay khi bạn thêm/sửa bất kỳ kỹ năng, học phần, chứng chỉ hay dự án nào.
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="btnGoToSuggestionsTab">
+                            <i class="bi bi-mortarboard me-1"></i>Xem môn học gợi ý
+                        </button>
+                        <a href="/compare" class="btn btn-primary btn-sm">
+                            <i class="bi bi-speedometer2 me-1"></i>Đối sánh chuyên sâu
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB ĐIỀU HƯỚNG 5 PHẦN -->
         <ul class="nav nav-pills mb-3 bg-white p-2 rounded-3 shadow-sm border" id="profileTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active fw-medium py-2 px-3" id="skills-tab" data-bs-toggle="tab" data-bs-target="#tabSkills" type="button" role="tab">
@@ -84,6 +171,11 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link fw-medium py-2 px-3" id="exp-tab" data-bs-toggle="tab" data-bs-target="#tabExp" type="button" role="tab">
                     <i class="bi bi-briefcase me-1"></i>Kinh nghiệm & Dự án (<span id="countExp">0</span>)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-medium py-2 px-3 text-primary" id="suggestions-tab" data-bs-toggle="tab" data-bs-target="#tabSuggestions" type="button" role="tab">
+                    <i class="bi bi-mortarboard-fill me-1"></i>Gợi ý môn học cho nghề (<span id="countSuggestedCourses">0</span>)
                 </button>
             </li>
         </ul>
@@ -193,6 +285,58 @@
                     <div class="card-body p-3">
                         <div class="row g-3" id="experiencesContainer">
                             <!-- Render dạng thẻ hoặc dòng từ JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. PHẦN GỢI Ý MÔN HỌC & KHÓA HỌC CHO NGHỀ MỤC TIÊU -->
+            <div class="tab-pane fade" id="tabSuggestions" role="tabpanel">
+                <!-- Danh sách môn học Đại học CNTT đề xuất -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <div>
+                                <h6 class="fw-bold text-dark mb-1">
+                                    <i class="bi bi-mortarboard-fill text-primary me-2"></i>Môn Học Đại Học CNTT Được Gợi Ý Cho Nghề Này
+                                </h6>
+                                <p class="text-secondary small mb-0">
+                                    Các môn học trong chương trình đào tạo giúp bạn tích lũy trực tiếp kỹ năng cốt lõi cho vị trí <strong class="text-primary" id="suggestionsPositionTitle">Lập trình viên Backend</strong>:
+                                </p>
+                            </div>
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" id="badgeSuggestedCount">0 môn đề xuất</span>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th scope="col" style="width: 12%;">Mã HP</th>
+                                        <th scope="col" style="width: 25%;">Tên học phần</th>
+                                        <th scope="col" class="text-center" style="width: 8%;">Tín chỉ</th>
+                                        <th scope="col" style="width: 30%;">Bổ trợ kỹ năng còn thiếu</th>
+                                        <th scope="col" class="text-end" style="width: 25%;">Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="suggestedCoursesTableBody">
+                                    <!-- Render từ JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Khóa học trực tuyến & Chứng chỉ khuyến nghị -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="fw-bold text-dark mb-0">
+                            <i class="bi bi-laptop text-info me-2"></i>Khóa Học Trực Tuyến & Chứng Chỉ Chuyên Môn Bổ Trợ
+                        </h6>
+                    </div>
+                    <div class="card-body p-3">
+                        <div class="row g-3" id="suggestedOnlineCoursesContainer">
+                            <!-- Render từ JS -->
                         </div>
                     </div>
                 </div>

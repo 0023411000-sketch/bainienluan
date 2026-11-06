@@ -35,6 +35,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnOpenAddCertModal')?.addEventListener('click', openAddCertModal);
     document.getElementById('btnOpenAddExpModal')?.addEventListener('click', openAddExpModal);
 
+    // Chuyển nhanh sang tab gợi ý môn học
+    document.getElementById('btnGoToSuggestionsTab')?.addEventListener('click', () => {
+        const tabBtn = document.getElementById('suggestions-tab');
+        if (tabBtn) {
+            const tab = new bootstrap.Tab(tabBtn);
+            tab.show();
+            tabBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    });
+
     // Gắn sự kiện Submit Forms
     document.getElementById('formPersonalInfo')?.addEventListener('submit', handleSavePersonalInfo);
     document.getElementById('formSkill')?.addEventListener('submit', handleSaveSkill);
@@ -71,6 +81,9 @@ async function loadProfileData() {
             renderCourses(res.data.courses || []);
             renderCertificates(res.data.certificates || []);
             renderExperiences(res.data.experiences || []);
+            if (res.data.evaluation) {
+                renderProfileEvaluation(res.data.evaluation);
+            }
         } else {
             Utils.showToast(res.message || 'Không thể tải hồ sơ!', 'danger');
         }
@@ -142,11 +155,14 @@ async function handleSavePersonalInfo(e) {
     try {
         const res = await API.profile.updatePersonal(payload);
         if (res.success) {
-            Utils.showToast('Đã lưu thông tin cá nhân!', 'success');
             const currentUser = Utils.auth.getUser() || {};
             Utils.auth.setUser({ ...currentUser, full_name: payload.full_name, email: payload.email });
             renderPersonalInfo(payload);
             personalInfoModal?.hide();
+            await loadProfileData();
+            const score = currentProfile?.evaluation?.score ?? 0;
+            const posName = currentProfile?.evaluation?.target_position?.name || '';
+            Utils.showToast(`Đã lưu thông tin cá nhân! Mức độ phù hợp với vị trí "${posName}" hiện tại là ${score}%.`, 'success');
         } else {
             Utils.showToast(res.message || 'Cập nhật thất bại!', 'danger');
         }
@@ -239,9 +255,10 @@ async function handleSaveSkill(e) {
         }
 
         if (res.success) {
-            Utils.showToast(id ? 'Cập nhật kỹ năng thành công!' : 'Thêm kỹ năng thành công!', 'success');
             skillModal?.hide();
             await loadProfileData();
+            const score = currentProfile?.evaluation?.score ?? 0;
+            Utils.showToast(`${id ? 'Cập nhật' : 'Thêm'} kỹ năng thành công! Mức độ phù hợp với nghề nghiệp hiện tại là ${score}%.`, 'success');
         } else {
             Utils.showToast(res.message || 'Lỗi lưu kỹ năng!', 'danger');
         }
@@ -354,9 +371,10 @@ async function handleSaveCourse(e) {
         }
 
         if (res.success) {
-            Utils.showToast(id ? 'Cập nhật học phần thành công!' : 'Thêm học phần thành công!', 'success');
             courseModal?.hide();
             await loadProfileData();
+            const score = currentProfile?.evaluation?.score ?? 0;
+            Utils.showToast(`${id ? 'Cập nhật' : 'Thêm'} học phần thành công! Mức độ phù hợp với nghề nghiệp hiện tại là ${score}%.`, 'success');
         } else {
             Utils.showToast(res.message || 'Lỗi lưu học phần!', 'danger');
         }
@@ -473,9 +491,10 @@ async function handleSaveCert(e) {
         }
 
         if (res.success) {
-            Utils.showToast(id ? 'Cập nhật chứng chỉ thành công!' : 'Thêm chứng chỉ thành công!', 'success');
             certModal?.hide();
             await loadProfileData();
+            const score = currentProfile?.evaluation?.score ?? 0;
+            Utils.showToast(`${id ? 'Cập nhật' : 'Thêm'} chứng chỉ thành công! Mức độ phù hợp với nghề nghiệp hiện tại là ${score}%.`, 'success');
         } else {
             Utils.showToast(res.message || 'Lỗi lưu chứng chỉ!', 'danger');
         }
@@ -606,9 +625,10 @@ async function handleSaveExp(e) {
         }
 
         if (res.success) {
-            Utils.showToast(id ? 'Cập nhật kinh nghiệm thành công!' : 'Thêm kinh nghiệm thành công!', 'success');
             expModal?.hide();
             await loadProfileData();
+            const score = currentProfile?.evaluation?.score ?? 0;
+            Utils.showToast(`${id ? 'Cập nhật' : 'Thêm'} kinh nghiệm thành công! Mức độ phù hợp với nghề nghiệp hiện tại là ${score}%.`, 'success');
         } else {
             Utils.showToast(res.message || 'Lỗi lưu kinh nghiệm!', 'danger');
         }
@@ -635,4 +655,267 @@ function deleteExp(id) {
             }
         }
     });
+}
+
+// ==========================================
+// 6. ĐÁNH GIÁ ĐỘ PHÙ HỢP VỚI NGHỀ VÀ GỢI Ý MÔN HỌC
+// ==========================================
+function renderProfileEvaluation(evaluation) {
+    if (!evaluation) return;
+
+    const score = evaluation.score ?? 0;
+    const posName = evaluation.target_position?.name || evaluation.position_name || 'Lập trình viên Backend';
+    const demandLevel = evaluation.target_position?.demand_level || 'Nhu cầu cao';
+    const haveSkills = evaluation.have || [];
+    const missingSkills = evaluation.missing || [];
+    const suggestedCourses = evaluation.suggested_academic_courses || [];
+    const recommendations = evaluation.recommendations || [];
+    const recommendedCerts = evaluation.recommended_certs || [];
+
+    // 1. Cập nhật Tiêu đề và Điểm số trên Card
+    const targetNameEl = document.getElementById('evalTargetPositionName');
+    if (targetNameEl) targetNameEl.textContent = posName;
+
+    const demandEl = document.getElementById('evalTargetDemand');
+    if (demandEl) demandEl.textContent = demandLevel;
+
+    const scoreEl = document.getElementById('evalScorePercent');
+    if (scoreEl) scoreEl.textContent = `${score}%`;
+
+    const progBar = document.getElementById('evalProgressBar');
+    const circleProg = document.getElementById('evalCircleProgress');
+    const badgeEl = document.getElementById('evalScoreBadge');
+
+    let colorClass = 'primary';
+    let gradeText = 'Mức độ phù hợp: Khá Tốt';
+    let strokeColor = '#0d6efd';
+
+    if (score >= 75) {
+        colorClass = 'success';
+        gradeText = 'Mức độ phù hợp: Rất Cao';
+        strokeColor = '#198754';
+    } else if (score >= 50) {
+        colorClass = 'primary';
+        gradeText = 'Mức độ phù hợp: Khá Tốt';
+        strokeColor = '#0d6efd';
+    } else {
+        colorClass = 'warning';
+        gradeText = 'Cần bổ sung thêm kỹ năng';
+        strokeColor = '#ffc107';
+    }
+
+    if (scoreEl) {
+        scoreEl.className = `fs-1 fw-bold lh-1 text-${colorClass}`;
+    }
+    if (badgeEl) {
+        badgeEl.textContent = gradeText;
+        badgeEl.className = `small fw-bold text-${colorClass}`;
+    }
+    if (progBar) {
+        progBar.style.width = `${score}%`;
+        progBar.className = `progress-bar progress-bar-striped progress-bar-animated bg-${colorClass}`;
+    }
+    if (circleProg) {
+        circleProg.setAttribute('stroke-dasharray', `${score}, 100`);
+        circleProg.setAttribute('stroke', strokeColor);
+    }
+
+    // Nhận xét tóm tắt từ hệ thống
+    const summaryEl = document.getElementById('evalSummaryText');
+    if (summaryEl) {
+        summaryEl.textContent = evaluation.summary || 'Hệ thống đã hoàn tất phân tích hồ sơ của bạn với dữ liệu tuyển dụng thực tế.';
+    }
+
+    // Các thẻ thống kê nhanh
+    const countHaveEl = document.getElementById('evalCountHave');
+    if (countHaveEl) countHaveEl.textContent = `${haveSkills.length} kỹ năng`;
+
+    const countMissingEl = document.getElementById('evalCountMissing');
+    if (countMissingEl) countMissingEl.textContent = `${missingSkills.length} kỹ năng`;
+
+    const expStatusEl = document.getElementById('evalExperienceStatus');
+    if (expStatusEl) {
+        const exp = evaluation.experience || {};
+        if (exp.met) {
+            expStatusEl.textContent = 'Đã đáp ứng';
+            expStatusEl.className = 'text-success fw-bold fs-6';
+        } else {
+            expStatusEl.textContent = `Cần ${exp.required_years || 1} năm`;
+            expStatusEl.className = 'text-warning fw-bold fs-6';
+        }
+    }
+
+    const countSugEl = document.getElementById('evalCountSuggested');
+    if (countSugEl) countSugEl.textContent = `${suggestedCourses.length} môn`;
+
+    const tabBadge = document.getElementById('countSuggestedCourses');
+    if (tabBadge) tabBadge.textContent = suggestedCourses.length;
+
+    const pageBadge = document.getElementById('badgeSuggestedCount');
+    if (pageBadge) pageBadge.textContent = `${suggestedCourses.length} môn đề xuất`;
+
+    const posTitleEl = document.getElementById('suggestionsPositionTitle');
+    if (posTitleEl) posTitleEl.textContent = posName;
+
+    // 2. Render bảng danh sách Môn học Đại học CNTT gợi ý
+    renderSuggestedCourses(suggestedCourses);
+
+    // 3. Render các khóa học trực tuyến & chứng chỉ bổ trợ
+    renderSuggestedOnlineCourses(recommendations, recommendedCerts);
+}
+
+function renderSuggestedCourses(courses) {
+    const tbody = document.getElementById('suggestedCoursesTableBody');
+    if (!tbody) return;
+
+    if (!courses || courses.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center py-4 text-success">
+                    <i class="bi bi-patch-check-fill fs-3 me-2 align-middle"></i>
+                    <strong>Tuyệt vời! Bạn đã hoàn thành các môn học trọng tâm hoặc đã đáp ứng đầy đủ kỹ năng cốt lõi cho vị trí này!</strong>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    let html = '';
+    courses.forEach(c => {
+        const missingBadges = (c.matched_missing_skills || []).map(sk => 
+            `<span class="badge badge-soft-danger me-1 mb-1 small"><i class="bi bi-tag me-1"></i>${Utils.escapeHtml(sk)}</span>`
+        ).join('');
+
+        const coreBadge = c.is_core ? `<span class="badge badge-soft-primary me-1 mb-1 small"><i class="bi bi-star-fill me-1"></i>Môn chuyên ngành cốt lõi</span>` : '';
+
+        const reasonNote = c.reason ? `<div class="text-muted small mt-1"><i class="bi bi-info-circle me-1"></i>${Utils.escapeHtml(c.reason)}</div>` : '';
+
+        const escapedCode = Utils.escapeHtml(c.code);
+        const escapedName = Utils.escapeHtml(c.name);
+        const escapedDesc = Utils.escapeHtml(c.description || '');
+
+        html += `
+            <tr>
+                <td>
+                    <span class="badge bg-secondary-subtle text-dark border font-monospace px-2 py-1">${escapedCode}</span>
+                </td>
+                <td>
+                    <div class="fw-bold text-dark">${escapedName}</div>
+                    <div class="text-secondary small text-truncate" style="max-width: 280px;" title="${escapedDesc}">${escapedDesc}</div>
+                </td>
+                <td class="text-center">
+                    <span class="badge bg-light text-dark border px-2 py-1 fw-bold">${c.credits || 3} TC</span>
+                </td>
+                <td>
+                    <div>${missingBadges || coreBadge}</div>
+                    ${reasonNote}
+                </td>
+                <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-primary" title="Thêm môn này vào kế hoạch học tập" onclick="addSuggestedCourseToPlan('${escapedCode}', '${escapedName}', '${escapedDesc}')">
+                            <i class="bi bi-calendar-plus me-1"></i>Vào Kế hoạch
+                        </button>
+                        <button type="button" class="btn btn-outline-success" title="Đánh dấu đã hoàn thành và lưu điểm" onclick="markCourseAsLearned('${escapedCode}', '${escapedName}', ${c.credits || 3})">
+                            <i class="bi bi-check2 me-1"></i>Đã học
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = html;
+}
+
+function renderSuggestedOnlineCourses(recs, certs) {
+    const container = document.getElementById('suggestedOnlineCoursesContainer');
+    if (!container) return;
+
+    let certsHtml = '';
+    if (certs && certs.length > 0) {
+        certsHtml = `
+            <div class="col-12 mb-2">
+                <div class="p-3 bg-light-subtle border rounded-3">
+                    <div class="small fw-semibold text-dark mb-2">
+                        <i class="bi bi-award-fill text-warning me-1"></i>Chứng chỉ nghề nghiệp được nhà tuyển dụng đánh giá cao:
+                    </div>
+                    <div>
+                        ${certs.map(crt => `<span class="badge bg-warning-subtle text-dark border border-warning-subtle me-2 mb-1 p-2"><i class="bi bi-patch-check text-warning me-1"></i>${Utils.escapeHtml(crt)}</span>`).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    if (!recs || recs.length === 0) {
+        container.innerHTML = certsHtml + `<div class="col-12 text-muted small p-2">Không có khóa học trực tuyến bổ trợ nào thêm.</div>`;
+        return;
+    }
+
+    let recsHtml = recs.map(r => {
+        const titleEscaped = Utils.escapeHtml(r.title);
+        const skillEscaped = Utils.escapeHtml(r.skill_name || 'Kỹ năng CNTT');
+        return `
+            <div class="col-md-6">
+                <div class="border rounded-3 p-3 bg-white h-100 d-flex flex-column justify-content-between shadow-sm">
+                    <div>
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="badge badge-soft-danger"><i class="bi bi-tag-fill me-1"></i>${skillEscaped}</span>
+                            <span class="badge bg-secondary-subtle text-secondary border small">${Utils.escapeHtml(r.provider || 'Coursera / Udemy')}</span>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-1">${titleEscaped}</h6>
+                        <p class="text-secondary small mb-3">${Utils.escapeHtml(r.description || 'Khóa học bồi dưỡng kỹ năng thực tế theo yêu cầu tuyển dụng.')}</p>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                        <span class="text-muted small"><i class="bi bi-clock me-1"></i>${Utils.escapeHtml(r.duration || '4 tuần')}</span>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-primary" onclick="addSuggestedCourseToPlan('${skillEscaped}', '${titleEscaped}', '${Utils.escapeHtml(r.description || '')}')">
+                                <i class="bi bi-calendar-plus me-1"></i>Lên kế hoạch
+                            </button>
+                            <a href="${Utils.escapeHtml(r.url || 'https://www.coursera.org')}" target="_blank" class="btn btn-light border">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = certsHtml + recsHtml;
+}
+
+async function addSuggestedCourseToPlan(code, name, description) {
+    try {
+        Utils.showLoading(true, 'Đang thêm vào kế hoạch học tập...');
+        const payload = {
+            title: `Học phần: ${name} (${code})`,
+            category: 'Học phần đại học',
+            type: 'course',
+            status: 'todo',
+            target_date: '',
+            note: description || `Môn học đề xuất cho vị trí mục tiêu.`
+        };
+        const res = await API.plan.create(payload);
+        if (res.success) {
+            Utils.showToast(`Đã thêm môn "${name}" vào Kế hoạch học tập!`, 'success');
+        } else {
+            Utils.showToast(res.message || 'Không thể thêm vào kế hoạch!', 'danger');
+        }
+    } catch (e) {
+        console.error(e);
+        Utils.showToast('Lỗi khi thêm môn học vào kế hoạch!', 'danger');
+    } finally {
+        Utils.showLoading(false);
+    }
+}
+
+function markCourseAsLearned(code, name, credits) {
+    document.getElementById('courseModalTitle').innerHTML = '<i class="bi bi-book text-success me-2"></i>Ghi nhận hoàn thành học phần';
+    document.getElementById('courseId').value = '';
+    document.getElementById('courseCode').value = code;
+    document.getElementById('courseName').value = name;
+    document.getElementById('courseCredits').value = credits || 3;
+    document.getElementById('courseGrade').value = 'A';
+    document.getElementById('courseTerm').value = '';
+    courseModal?.show();
 }

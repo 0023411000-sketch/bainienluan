@@ -137,7 +137,7 @@ const API = {
             if (CONFIG.USE_MOCK) {
                 const totalSkills = MockData.profile.skills.length;
                 const totalCerts = MockData.profile.certificates.length;
-                
+
                 // Tính điểm phù hợp cao nhất dựa trên các vị trí
                 const matchScores = MockData.positions.map(pos => {
                     const mySkillNames = MockData.profile.skills.map(s => s.name.toLowerCase());
@@ -178,6 +178,11 @@ const API = {
                 return mockResponse(MockData.profile);
             }
             return await httpFetch('/profile');
+        },
+
+        async getEvaluation(positionId = null) {
+            const query = positionId ? `?position_id=${positionId}` : '';
+            return await httpFetch(`/profile/evaluation${query}`);
         },
 
         async updatePersonal(infoData) {
@@ -310,8 +315,8 @@ const API = {
                 let items = MockData.positions;
                 if (q.trim()) {
                     const term = q.toLowerCase().trim();
-                    items = items.filter(p => 
-                        p.name.toLowerCase().includes(term) || 
+                    items = items.filter(p =>
+                        p.name.toLowerCase().includes(term) ||
                         p.description.toLowerCase().includes(term) ||
                         p.core_skills.some(s => s.toLowerCase().includes(term))
                     );
@@ -389,7 +394,7 @@ const API = {
                 }
                 if (q.trim()) {
                     const term = q.toLowerCase().trim();
-                    items = items.filter(j => 
+                    items = items.filter(j =>
                         j.title.toLowerCase().includes(term) ||
                         j.company.toLowerCase().includes(term) ||
                         j.skills.some(s => s.toLowerCase().includes(term)) ||
@@ -516,7 +521,7 @@ const API = {
             if (CONFIG.USE_MOCK) {
                 const pos = MockData.positions.find(p => p.id == position_id) || MockData.positions[0];
                 const jobsOfPos = MockData.jobs.filter(j => j.position_id == position_id);
-                
+
                 // Tập hợp các kỹ năng & công nghệ yêu cầu trong các tin tuyển dụng
                 const reqSkillSet = new Set();
                 pos.core_skills.forEach(s => reqSkillSet.add(s));
@@ -526,13 +531,13 @@ const API = {
                 const allRequirements = Array.from(reqSkillSet);
 
                 const userSkills = MockData.profile.skills.map(s => s.name.trim().toLowerCase());
-                
+
                 const have = [];
                 const missing = [];
 
                 allRequirements.forEach(req => {
                     const reqLower = req.toLowerCase();
-                    const isMatched = userSkills.some(userSkill => 
+                    const isMatched = userSkills.some(userSkill =>
                         userSkill === reqLower ||
                         userSkill.includes(reqLower) ||
                         reqLower.includes(userSkill)
