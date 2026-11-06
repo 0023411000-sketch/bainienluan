@@ -6,7 +6,7 @@
 const CONFIG = {
     // CỜ CẤU HÌNH QUAN TRỌNG:
     // Đổi sang false để ngắt Mock và kết nối trực tiếp đến Backend Flask thật
-    USE_MOCK: true,
+    USE_MOCK: false,
 
     // Địa chỉ gốc của API backend
     API_BASE_URL: '/api',

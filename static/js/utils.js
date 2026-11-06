@@ -312,7 +312,7 @@ const Utils = {
         },
         setUser(user) {
             localStorage.setItem(CONFIG.STORAGE_KEYS.USER_INFO, JSON.stringify(user));
-            localStorage.setItem(CONFIG.STORAGE_KEYS.AUTH_TOKEN, 'mock_token_' + Date.now());
+            localStorage.setItem(CONFIG.STORAGE_KEYS.AUTH_TOKEN, user.token || ('user_' + (user.id || 1)));
         },
         clearSession() {
             localStorage.removeItem(CONFIG.STORAGE_KEYS.USER_INFO);

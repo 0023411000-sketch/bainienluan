@@ -1,11 +1,21 @@
 """
-models.py - Thiết kế Cơ sở dữ liệu SQLite (Phân hệ Thành viên 2: Phân tích, Đối sánh & Kế hoạch)
-Đề tài: NLCNPM23CS-38
+models.py - Thiết kế Cơ sở dữ liệu SQLite (Phân hệ Thành viên 1 & Thành viên 2)
+Đề tài: NLCNPM23CS-38 - Xây dựng ứng dụng hỗ trợ định hướng kỹ năng nghề nghiệp cho sinh viên CNTT dựa trên tin tuyển dụng
 
-Các bảng dữ liệu của Thành viên 2:
-1. learning_plans         : Lộ trình học tập & chứng chỉ mục tiêu cá nhân
-2. course_recommendations : Kho gợi ý nội dung học tập / chứng chỉ theo kỹ năng
-3. comparison_history     : Lịch sử đánh giá mức độ phù hợp hồ sơ
+Các bảng dữ liệu:
+- Nhóm Core Data & CRUD (Người dùng, Hồ sơ sinh viên, Vị trí & Tin tuyển dụng):
+  1. users                  : Tài khoản người dùng (sinh viên)
+  2. student_profiles       : Thông tin cá nhân của sinh viên
+  3. courses                : Học phần đã học (mục 1 hồ sơ)
+  4. skills                 : Kỹ năng chuyên môn & mức độ 1-5 (mục 2 hồ sơ)
+  5. certificates           : Chứng chỉ nghề nghiệp/ngoại ngữ (mục 3 hồ sơ)
+  6. experiences            : Kinh nghiệm thực tế & dự án (mục 4 hồ sơ)
+  7. positions              : Danh mục vị trí nghề nghiệp CNTT
+  8. jobs                   : Danh sách tin tuyển dụng liên quan
+- Nhóm Analytics & Recommendation (Phân tích, Đối sánh, Gợi ý & Kế hoạch):
+  9. learning_plans         : Kế hoạch phát triển năng lực cá nhân
+  10. course_recommendations: Kho gợi ý khóa học / chứng chỉ theo kỹ năng còn thiếu
+  11. comparison_history    : Lịch sử đánh giá & đối sánh độ phù hợp hồ sơ
 """
 
 import os
@@ -17,6 +27,7 @@ DB_PATH = os.path.join(BASE_DIR, "database.db")
 
 
 def get_db_connection():
+    """Tạo kết nối đến SQLite database với row_factory trả về kiểu dict-like."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
@@ -24,6 +35,7 @@ def get_db_connection():
 
 
 def parse_json_list(val):
+    """Chuyển chuỗi JSON hoặc chuỗi phân tách dấu phẩy từ DB thành list Python."""
     if not val:
         return []
     if isinstance(val, list):
@@ -37,71 +49,198 @@ def parse_json_list(val):
     return [s.strip() for s in str(val).split(",") if s.strip()]
 
 
-def init_analytics_db():
-    """Khởi tạo các bảng phân tích & kế hoạch học tập của Thành viên 2."""
+def dump_json_list(val, delimiter=","):
+    """Chuẩn hóa list hoặc chuỗi phân tách thành chuỗi JSON lưu vào SQLite."""
+    if val is None:
+        return json.dumps([], ensure_ascii=False)
+    if isinstance(val, list):
+        cleaned = [str(x).strip() for x in val if str(x).strip()]
+        return json.dumps(cleaned, ensure_ascii=False)
+    text = str(val).strip()
+    if not text:
+        return json.dumps([], ensure_ascii=False)
+    # Hỗ trợ tách theo dấu chấm phẩy (CSV) hoặc dấu phẩy (Form)
+    if ";" in text and delimiter == ";":
+        cleaned = [s.strip() for s in text.split(";") if s.strip()]
+    else:
+        cleaned = [s.strip() for s in text.replace(";", ",").split(",") if s.strip()]
+    return json.dumps(cleaned, ensure_ascii=False)
+
+
+def init_db():
+    """Khởi tạo cấu trúc các bảng trong cơ sở dữ liệu SQLite."""
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # 1. Bảng learning_plans (Kế hoạch phát triển năng lực)
+    # 1. Bảng users (Xác thực & Quản lý tài khoản)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            full_name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            role TEXT DEFAULT 'student',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+
+    # 2. Bảng student_profiles (Thông tin cá nhân sinh viên)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS student_profiles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL UNIQUE,
+            full_name TEXT NOT NULL,
+            student_code TEXT DEFAULT '',
+            email TEXT NOT NULL,
+            phone TEXT DEFAULT '',
+            university TEXT DEFAULT '',
+            faculty TEXT DEFAULT '',
+            major TEXT DEFAULT '',
+            academic_year TEXT DEFAULT '',
+            gpa TEXT DEFAULT '0.0',
+            target_position_id INTEGER DEFAULT 1,
+            bio TEXT DEFAULT '',
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+    """)
+
+    # 3. Bảng courses (Học phần đã học)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS courses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            code TEXT NOT NULL,
+            name TEXT NOT NULL,
+            credits INTEGER DEFAULT 3,
+            grade TEXT DEFAULT 'A',
+            term TEXT DEFAULT '',
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+    """)
+
+    # 4. Bảng skills (Kỹ năng cá nhân)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS skills (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            category TEXT DEFAULT 'Ngôn ngữ lập trình',
+            level INTEGER DEFAULT 3,
+            note TEXT DEFAULT '',
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+    """)
+
+    # 5. Bảng certificates (Chứng chỉ)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS certificates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            organization TEXT NOT NULL,
+            issue_date TEXT DEFAULT '',
+            expiry_date TEXT DEFAULT '',
+            credential_url TEXT DEFAULT '',
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+    """)
+
+    # 6. Bảng experiences (Kinh nghiệm thực tế & Dự án)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS experiences (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            company TEXT NOT NULL,
+            role_type TEXT DEFAULT 'Thực tập sinh',
+            start_date TEXT DEFAULT '',
+            end_date TEXT DEFAULT '',
+            description TEXT DEFAULT '',
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+    """)
+
+    # 7. Bảng positions (Danh mục vị trí nghề nghiệp CNTT)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS positions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            code TEXT DEFAULT '',
+            description TEXT DEFAULT '',
+            core_skills TEXT DEFAULT '[]',
+            demand_level TEXT DEFAULT 'Cao'
+        );
+    """)
+
+    # 8. Bảng jobs (Danh sách tin tuyển dụng)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            company TEXT NOT NULL,
+            position_id INTEGER NOT NULL,
+            location TEXT DEFAULT 'Toàn quốc',
+            salary TEXT DEFAULT 'Thỏa thuận',
+            experience_required TEXT DEFAULT 'Không yêu cầu',
+            skills TEXT DEFAULT '[]',
+            technologies TEXT DEFAULT '[]',
+            certificates TEXT DEFAULT '[]',
+            deadline TEXT DEFAULT '',
+            description TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (position_id) REFERENCES positions (id) ON DELETE CASCADE
+        );
+    """)
+
+    # 9. Bảng learning_plans (Kế hoạch phát triển năng lực)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS learning_plans (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL DEFAULT 1,
+            user_id INTEGER NOT NULL,
             title TEXT NOT NULL,
             category TEXT DEFAULT 'Kỹ năng bổ sung',
             type TEXT DEFAULT 'skill',
             status TEXT DEFAULT 'todo',
             target_date TEXT DEFAULT '',
-            note TEXT DEFAULT ''
+            note TEXT DEFAULT '',
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         );
     """)
 
-    # 2. Bảng course_recommendations (Kho gợi ý khóa học/chứng chỉ theo kỹ năng)
+    # 10. Bảng course_recommendations (Kho gợi ý khóa học / chứng chỉ theo kỹ năng)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS course_recommendations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             skill_name TEXT NOT NULL,
-            recommended_title TEXT NOT NULL,
+            title TEXT NOT NULL,
+            provider TEXT DEFAULT 'Coursera / Udemy',
             rec_type TEXT DEFAULT 'course',
-            provider TEXT DEFAULT ''
+            duration TEXT DEFAULT '4 tuần',
+            url TEXT DEFAULT '',
+            description TEXT DEFAULT ''
         );
     """)
 
-    # 3. Bảng comparison_history (Lịch sử đối sánh hồ sơ)
+    # 11. Bảng comparison_history (Lịch sử đánh giá & đối sánh hồ sơ)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS comparison_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL DEFAULT 1,
+            user_id INTEGER NOT NULL,
             position_id INTEGER NOT NULL,
+            position_name TEXT NOT NULL,
             score INTEGER DEFAULT 0,
             matched_skills TEXT DEFAULT '[]',
             missing_skills TEXT DEFAULT '[]',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+            FOREIGN KEY (position_id) REFERENCES positions (id) ON DELETE CASCADE
         );
     """)
-
-    # Nạp dữ liệu mẫu cho learning_plans nếu trống
-    cursor.execute("SELECT COUNT(*) AS cnt FROM learning_plans")
-    if cursor.fetchone()["cnt"] == 0:
-        plans_data = [
-            (1, "Học và thực hành chuyên sâu Docker & Containerization", "Kỹ năng thiếu (Backend)", "skill", "doing", "2026-11-30", "Làm chủ viết Multi-stage Dockerfile, Docker Compose và kết nối mạng giữa các container."),
-            (1, "Ôn thi chứng chỉ AWS Certified Cloud Practitioner (CLF-C02)", "Chứng chỉ nghề nghiệp", "certificate", "doing", "2026-12-25", "Học qua khóa học Stephane Maarek trên Udemy, luyện 6 đề thi thử."),
-            (1, "Nghiên cứu kiến trúc Microservices và gRPC với Go", "Nâng cao kỹ năng", "skill", "todo", "2027-01-15", "Đọc sách Designing Data-Intensive Applications của Martin Kleppmann."),
-            (1, "Xây dựng đồ án cá nhân: RESTful API mạng xã hội thu nhỏ", "Kinh nghiệm / Portfolio", "project", "done", "2026-09-15", "Hoàn thành API với Flask, Redis caching, Celery background worker và PostgreSQL."),
-            (1, "Thực hành cấu hình CI/CD Pipeline bằng GitHub Actions", "Kỹ năng thiếu (DevOps)", "skill", "todo", "2026-12-10", "Tự động chạy pytest và deploy container lên AWS EC2 khi push code."),
-        ]
-        cursor.executemany(
-            """
-            INSERT INTO learning_plans (user_id, title, category, type, status, target_date, note)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            plans_data,
-        )
 
     conn.commit()
     conn.close()
 
 
 if __name__ == "__main__":
-    init_analytics_db()
-    print(f"Đã khởi tạo các bảng Phân tích & Kế hoạch (Thành viên 2) tại: {DB_PATH}")
+    init_db()
+    print(f"Da khoi tao co so du lieu SQLite tai: {DB_PATH}")

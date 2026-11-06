@@ -148,6 +148,119 @@ function renderComparisonResult(data) {
 
     // Vẽ biểu đồ Doughnut
     renderScoreDoughnutChart(score);
+
+    // Hiển thị chứng chỉ khuyến nghị & gợi ý khóa học
+    renderRecommendations(data.recommended_certs || [], data.missing_certs || [], data.recommendations || []);
+
+    // Hiển thị lịch sử đối sánh
+    renderComparisonHistory(data.history || []);
+}
+
+/**
+ * Hiển thị danh sách chứng chỉ ưu tiên và khóa học gợi ý cho kỹ năng còn thiếu
+ */
+function renderRecommendations(recCerts, missingCerts, recommendations) {
+    const certsContainer = document.getElementById('recommendedCertsContainer');
+    if (certsContainer) {
+        if (!recCerts || recCerts.length === 0) {
+            certsContainer.innerHTML = `<span class="text-muted small">Không yêu cầu chứng chỉ bắt buộc.</span>`;
+        } else {
+            certsContainer.innerHTML = recCerts.map(c => {
+                const isMissing = !missingCerts || missingCerts.length === 0 || missingCerts.includes(c);
+                const badgeClass = isMissing
+                    ? 'bg-warning-subtle text-dark border border-warning-subtle'
+                    : 'bg-success-subtle text-success border border-success-subtle';
+                const icon = isMissing ? 'bi-award text-warning' : 'bi-check-circle-fill text-success';
+                return `<span class="badge ${badgeClass} me-1 mb-1 p-2"><i class="bi ${icon} me-1"></i>${Utils.escapeHtml(c)}</span>`;
+            }).join('');
+        }
+    }
+
+    const recsContainer = document.getElementById('courseRecommendationsContainer');
+    const badgeRecsCount = document.getElementById('badgeRecsCount');
+    if (badgeRecsCount) {
+        badgeRecsCount.textContent = `${recommendations.length} gợi ý`;
+    }
+    if (!recsContainer) return;
+
+    if (!recommendations || recommendations.length === 0) {
+        recsContainer.innerHTML = `<div class="col-12 text-muted small">Bạn đã đáp ứng đầy đủ kỹ năng cốt lõi của vị trí này!</div>`;
+        return;
+    }
+
+    recsContainer.innerHTML = recommendations.map((rec, idx) => `
+        <div class="col-12">
+            <div class="border rounded-3 p-2 px-3 bg-light-subtle d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="badge badge-soft-danger">${Utils.escapeHtml(rec.skill_name)}</span>
+                        <span class="fw-bold text-dark small">${Utils.escapeHtml(rec.title)}</span>
+                    </div>
+                    <div class="text-muted small">
+                        <i class="bi bi-building me-1"></i>${Utils.escapeHtml(rec.provider || 'Coursera / Udemy')}
+                        <span class="mx-1">•</span>
+                        <i class="bi bi-clock me-1"></i>${Utils.escapeHtml(rec.duration || '4 tuần')}
+                    </div>
+                </div>
+                <div class="text-md-end flex-shrink-0">
+                    <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2" onclick="addSingleRecToPlan(${idx})">
+                        <i class="bi bi-plus-lg me-1"></i>Thêm lộ trình
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+/**
+ * Thêm 1 khóa học / chứng chỉ gợi ý vào Kế hoạch học tập
+ */
+async function addSingleRecToPlan(index) {
+    if (!lastComparisonResult || !lastComparisonResult.recommendations) return;
+    const rec = lastComparisonResult.recommendations[index];
+    if (!rec) return;
+
+    try {
+        const res = await API.plan.create({
+            title: `${rec.title} (Bổ sung ${rec.skill_name})`,
+            category: `Thiếu cho vị trí ${lastComparisonResult.position_name}`,
+            type: rec.rec_type === 'certificate' ? 'certificate' : 'course',
+            status: 'todo',
+            target_date: '2026-12-31',
+            note: `${rec.provider || ''} - Thời lượng: ${rec.duration || '4 tuần'}. ${rec.description || ''}`.trim()
+        });
+        if (res.success) {
+            Utils.showToast(`Đã thêm "${rec.skill_name}" vào Kế hoạch học tập!`, 'success');
+        }
+    } catch (e) {
+        Utils.showToast('Lỗi khi thêm vào kế hoạch học tập!', 'danger');
+    }
+}
+
+/**
+ * Hiển thị lịch sử đánh giá gần đây
+ */
+function renderComparisonHistory(historyList) {
+    const container = document.getElementById('comparisonHistoryContainer');
+    if (!container) return;
+
+    if (!historyList || historyList.length === 0) {
+        container.innerHTML = `<div class="p-3 text-center text-muted small">Chưa có lịch sử đánh giá.</div>`;
+        return;
+    }
+
+    container.innerHTML = historyList.map(h => {
+        const badgeColor = h.score >= 75 ? 'bg-success' : (h.score >= 50 ? 'bg-primary' : 'bg-warning text-dark');
+        return `
+            <div class="list-group-item px-3 py-2 d-flex align-items-center justify-content-between border-0 border-bottom">
+                <div class="text-truncate me-2">
+                    <div class="fw-semibold text-dark small text-truncate">${Utils.escapeHtml(h.position_name)}</div>
+                    <small class="text-muted">Đạt ${h.matched_count || 0} • Thiếu ${h.missing_count || 0} kỹ năng</small>
+                </div>
+                <span class="badge ${badgeColor} rounded-pill">${h.score}%</span>
+            </div>
+        `;
+    }).join('');
 }
 
 /**

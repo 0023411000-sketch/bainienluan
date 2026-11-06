@@ -105,7 +105,11 @@ const API = {
                 Utils.auth.setUser(newUser);
                 return mockResponse(newUser, true, "Đăng ký tài khoản thành công!");
             }
-            return await httpFetch('/auth/register', 'POST', userData);
+            const res = await httpFetch('/auth/register', 'POST', userData);
+            if (res.success && res.data) {
+                Utils.auth.setUser(res.data);
+            }
+            return res;
         },
 
         async logout() {
@@ -544,14 +548,39 @@ const API = {
                     summary = `Mức độ phù hợp hiện tại là ${score}%. Vị trí "${pos.name}" đòi hỏi nhiều kiến thức chuyên sâu mà bạn chưa cập nhật trong hồ sơ. Khuyến nghị bạn bổ sung các kỹ năng: ${missing.slice(0, 5).join(', ')} vào Lộ trình học tập.`;
                 }
 
+                const recCerts = (MockData.statistics[position_id]?.certificates || []).map(c => c.name);
+                const recommendations = missing.map((sk, idx) => ({
+                    id: idx + 1,
+                    skill_name: sk,
+                    title: `Khóa học thực chiến ${sk} cho ${pos.name}`,
+                    provider: 'Coursera / Udemy',
+                    rec_type: 'course',
+                    duration: '4 tuần',
+                    url: 'https://www.coursera.org',
+                    description: `Bổ sung kiến thức và kỹ năng thực hành về ${sk}.`
+                }));
+
                 const result = {
                     position_id: pos.id,
                     position_name: pos.name,
                     score: score,
                     have: have,
                     missing: missing,
+                    missing_certs: recCerts,
                     summary: summary,
-                    recommended_certs: (MockData.statistics[position_id]?.certificates || []).map(c => c.name)
+                    recommended_certs: recCerts,
+                    recommendations: recommendations,
+                    history: [
+                        {
+                            id: 1,
+                            position_id: pos.id,
+                            position_name: pos.name,
+                            score: score,
+                            matched_count: have.length,
+                            missing_count: missing.length,
+                            created_at: new Date().toISOString()
+                        }
+                    ]
                 };
 
                 return mockResponse(result);
