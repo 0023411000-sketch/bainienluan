@@ -8,6 +8,7 @@ Cách chạy:
 
 from models import init_db, DB_PATH
 from seed_data import seed_database
+from tao_csdl_tieng_viet import build_vietnamese_database, DB_VN_PATH
 
 
 def main():
@@ -16,7 +17,9 @@ def main():
     print("=" * 65)
     init_db()
     seed_database()
-    print(f"  [OK] Co so du lieu da san sang tai: {DB_PATH}")
+    build_vietnamese_database()
+    print(f"  [OK] Co so du lieu chinh: {DB_PATH}")
+    print(f"  [OK] Co so du lieu 11 bang tieng Viet: {DB_VN_PATH}")
     print("=" * 65)
 
 

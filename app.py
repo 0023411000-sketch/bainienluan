@@ -16,7 +16,9 @@ Chức năng hệ thống:
 
 import math
 from collections import Counter
+# pyrefly: ignore[missing-import]
 from flask import Flask, render_template, redirect, url_for, request, jsonify, session
+# pyrefly: ignore[missing-import]
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from models import get_db_connection, parse_json_list, dump_json_list

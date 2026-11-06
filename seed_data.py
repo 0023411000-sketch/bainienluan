@@ -4,6 +4,7 @@ seed_data.py - Khởi tạo cơ sở dữ liệu SQLite và nạp dữ liệu m�
 """
 
 try:
+    # pyrefly: ignore[missing-import]
     from werkzeug.security import generate_password_hash
 except ImportError:
     import hashlib
