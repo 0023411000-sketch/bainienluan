@@ -1,9 +1,16 @@
 """
-seed_data.py - Khởi tạo cơ sở dữ liệu SQLite và nạp dữ liệu mẫu thực tế (Thành viên 1)
+seed_data.py - Khởi tạo cơ sở dữ liệu SQLite và nạp dữ liệu mẫu thực tế (Thành viên 1 & Thành viên 2)
 Đề tài: NLCNPM23CS-38
 """
 
-from werkzeug.security import generate_password_hash
+try:
+    from werkzeug.security import generate_password_hash
+except ImportError:
+    import hashlib
+    def generate_password_hash(password):
+        salt = "nlcnpm23cs38"
+        dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 600000)
+        return f"pbkdf2:sha256:600000${salt}${dk.hex()}"
 from models import init_db, get_db_connection, dump_json_list, DB_PATH
 
 
@@ -13,9 +20,11 @@ def seed_database():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Kiểm tra nếu đã có user thì không nạp trùng
+    # Kiểm tra nếu đã có user thì chỉ bổ sung dữ liệu bảng mới (nếu trống) rồi thoát
     cursor.execute("SELECT COUNT(*) AS cnt FROM users")
     if cursor.fetchone()["cnt"] > 0:
+        _seed_analytics_tables_if_empty(cursor)
+        conn.commit()
         conn.close()
         return
 
@@ -278,9 +287,76 @@ def seed_database():
         plans_data,
     )
 
+    # 10 & 11. Nạp dữ liệu mẫu cho course_recommendations và comparison_history
+    _seed_analytics_tables_if_empty(cursor)
+
     conn.commit()
     conn.close()
-    print(f"Đã nạp dữ liệu mẫu thành công vào: {DB_PATH}")
+    print(f"Da nap du lieu mau thanh cong vao: {DB_PATH}")
+
+
+def _seed_analytics_tables_if_empty(cursor):
+    """Nạp dữ liệu mẫu cho bảng course_recommendations và comparison_history nếu đang trống."""
+    cursor.execute("SELECT COUNT(*) AS cnt FROM course_recommendations")
+    if cursor.fetchone()["cnt"] == 0:
+        recs_data = [
+            ("Java", "Java Programming and Software Engineering Fundamentals", "Coursera (Duke University)", "course", "6 tuần", "https://www.coursera.org", "Nắm vững lập trình hướng đối tượng OOP, cấu trúc dữ liệu và thiết kế phần mềm với Java."),
+            ("Spring Boot", "Master Microservices with Spring Boot and Spring Cloud", "Udemy", "course", "8 tuần", "https://www.udemy.com", "Xây dựng RESTful API, bảo mật Spring Security, JPA/Hibernate và kiến trúc Microservices."),
+            ("Node.js", "The Complete Node.js Developer Course", "Udemy", "course", "5 tuần", "https://www.udemy.com", "Phát triển ứng dụng Backend thời gian thực với Node.js, ExpressJS, MongoDB và Socket.io."),
+            ("RESTful API", "Thiết kế và Bảo mật RESTful API chuẩn Doanh nghiệp", "F8 / Coursera", "course", "3 tuần", "https://www.coursera.org", "Chuẩn hóa HTTP Methods, Status Codes, xác thực JWT/OAuth2 và tài liệu hóa bằng Swagger/OpenAPI."),
+            ("Redis", "Redis University - RU101: Introduction to Redis Data Structures", "Redis University", "certificate", "3 tuần", "https://university.redis.com", "Ứng dụng In-Memory Caching, Pub/Sub, Session Store và tối ưu độ trễ truy vấn Backend."),
+            ("Docker", "Docker & Kubernetes: The Practical Guide", "Udemy", "course", "4 tuần", "https://www.udemy.com", "Thực hành đóng gói ứng dụng với Multi-stage Dockerfile, Docker Compose và triển khai Container."),
+            ("Golang", "Programming with Google Go Specialization", "Coursera (UC Irvine)", "course", "6 tuần", "https://www.coursera.org", "Làm chủ Concurrency (Goroutines, Channels) và xây dựng dịch vụ hiệu năng cao với Golang."),
+            ("Microservices", "Microservices Architecture & System Design", "edX / Udemy", "course", "6 tuần", "https://www.edx.org", "Thiết kế hệ thống phân tán, API Gateway, Message Queue (Kafka/RabbitMQ) và Circuit Breaker."),
+            ("ReactJS", "Meta Front-End Developer Professional Certificate", "Coursera (Meta)", "certificate", "8 tuần", "https://www.coursera.org", "Xây dựng giao diện Single Page Application hiện đại với React Hooks, State Management và Testing."),
+            ("TypeScript", "Understanding TypeScript - 2026 Edition", "Udemy", "course", "4 tuần", "https://www.udemy.com", "Kiểm soát kiểu dữ liệu tĩnh, Generics, Decorators và tích hợp TypeScript vào dự án React/Node.js."),
+            ("VueJS", "Vue - The Complete Guide (incl. Router & Composition API)", "Udemy", "course", "5 tuần", "https://www.udemy.com", "Phát triển Frontend với Vue 3 Composition API, Pinia và Vite."),
+            ("Power BI", "PL-300: Microsoft Power BI Data Analyst", "Microsoft Learn", "certificate", "6 tuần", "https://learn.microsoft.com", "Xử lý dữ liệu với Power Query, ngôn ngữ DAX và thiết kế báo cáo BI trực quan."),
+            ("Tableau", "Data Visualization with Tableau Specialization", "Coursera (UC Davis)", "certificate", "5 tuần", "https://www.coursera.org", "Trực quan hóa dữ liệu chuyên nghiệp và xây dựng Interactive Storytelling Dashboard."),
+            ("Linux", "Introduction to Linux (LFS101)", "The Linux Foundation", "certificate", "4 tuần", "https://training.linuxfoundation.org", "Quản trị hệ điều hành Linux, phân quyền, tiến trình và viết kịch bản Bash Shell."),
+            ("Kubernetes", "Certified Kubernetes Administrator (CKA) Prep Course", "KodeKloud / Linux Foundation", "certificate", "8 tuần", "https://kodekloud.com", "Quản trị cụm Kubernetes, Pods, Deployments, Services, Ingress và Helm Charts."),
+            ("AWS", "AWS Certified Cloud Practitioner (CLF-C02)", "AWS Skill Builder", "certificate", "6 tuần", "https://explore.skillbuilder.aws", "Kiến thức nền tảng về điện toán đám mây AWS: EC2, S3, RDS, IAM, VPC và Lambda."),
+            ("CI/CD", "CI/CD Pipelines with GitHub Actions & GitLab CI", "Udemy", "course", "3 tuần", "https://www.udemy.com", "Tự động hóa kiểm thử, đóng gói Docker và triển khai liên tục lên máy chủ Cloud."),
+            ("Selenium", "Selenium WebDriver with Java/Python - Automation Testing", "Udemy", "course", "5 tuần", "https://www.udemy.com", "Xây dựng Page Object Model (POM) và kịch bản kiểm thử tự động cho ứng dụng Web."),
+            ("Postman", "Postman API Fundamentals Student Expert", "Postman Academy", "certificate", "2 tuần", "https://academy.postman.com", "Kiểm thử tự động RESTful API, viết test script và chạy Collection bằng Newman."),
+            ("Flutter", "Flutter & Dart - The Complete Guide", "Udemy", "course", "6 tuần", "https://www.udemy.com", "Phát triển ứng dụng di động đa nền tảng iOS & Android với Flutter và Bloc/Provider."),
+            ("PyTorch", "Deep Learning Specialization", "Coursera (DeepLearning.AI)", "certificate", "8 tuần", "https://www.coursera.org", "Huấn luyện mạng nơ-ron sâu CNN, RNN, Transformers với PyTorch và ứng dụng thực tế."),
+        ]
+        cursor.executemany(
+            """
+            INSERT INTO course_recommendations (skill_name, title, provider, rec_type, duration, url, description)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            recs_data,
+        )
+
+    cursor.execute("SELECT COUNT(*) AS cnt FROM comparison_history")
+    if cursor.fetchone()["cnt"] == 0:
+        history_data = [
+            (
+                1,
+                1,
+                "Lập trình viên Backend (Backend Developer)",
+                50,
+                dump_json_list(["Python", "SQL", "Docker", "Git", "Flask", "JavaScript"]),
+                dump_json_list(["Java", "Node.js", "RESTful API", "Redis", "Spring Boot", "Golang"]),
+            ),
+            (
+                1,
+                4,
+                "Chuyên viên Phân tích Dữ liệu (Data Analyst)",
+                38,
+                dump_json_list(["Python", "SQL", "Phân tích dữ liệu"]),
+                dump_json_list(["Power BI", "Tableau", "Excel nâng cao", "Xác suất thống kê", "Pandas"]),
+            ),
+        ]
+        cursor.executemany(
+            """
+            INSERT INTO comparison_history (user_id, position_id, position_name, score, matched_skills, missing_skills)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            history_data,
+        )
 
 
 if __name__ == "__main__":

@@ -52,6 +52,17 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadProfileData() {
     try {
         Utils.showLoading(true, 'Đang tải hồ sơ sinh viên...');
+        try {
+            const posRes = await API.positions.getAll({ limit: 100 });
+            if (posRes.success && posRes.data && posRes.data.items) {
+                const targetSelect = document.getElementById('infoTargetPosition');
+                if (targetSelect && posRes.data.items.length > 0) {
+                    targetSelect.innerHTML = posRes.data.items
+                        .map(p => `<option value="${p.id}">${Utils.escapeHtml(p.name)}</option>`)
+                        .join('');
+                }
+            }
+        } catch (_) {}
         const res = await API.profile.get();
         if (res.success && res.data) {
             currentProfile = res.data;
@@ -86,6 +97,15 @@ function renderPersonalInfo(info) {
     document.getElementById('profileSideEmail').textContent = info.email || 'Chưa cập nhật email';
     document.getElementById('profileSidePhone').textContent = info.phone || 'Chưa cập nhật số điện thoại';
     document.getElementById('profileSideBio').textContent = info.bio || 'Chưa có thông tin mục tiêu nghề nghiệp.';
+    const targetPosEl = document.getElementById('infoTargetPosition');
+    if (targetPosEl && info.target_position_id) {
+        targetPosEl.value = String(info.target_position_id);
+        const selectedOpt = targetPosEl.options[targetPosEl.selectedIndex];
+        const sideTargetEl = document.getElementById('profileSideTargetPos');
+        if (sideTargetEl && selectedOpt) sideTargetEl.textContent = selectedOpt.textContent;
+    }
+    const navNameEl = document.getElementById('navUserFullName');
+    if (navNameEl && info.full_name) navNameEl.textContent = info.full_name;
 
     // Điền vào form Modal chỉnh sửa
     document.getElementById('infoFullName').value = info.full_name || '';
@@ -115,6 +135,7 @@ async function handleSavePersonalInfo(e) {
         major: document.getElementById('infoMajor').value.trim(),
         academic_year: document.getElementById('infoAcademicYear').value.trim(),
         gpa: document.getElementById('infoGpa').value.trim(),
+        target_position_id: parseInt(document.getElementById('infoTargetPosition')?.value) || 1,
         bio: document.getElementById('infoBio').value.trim()
     };
 
@@ -122,6 +143,8 @@ async function handleSavePersonalInfo(e) {
         const res = await API.profile.updatePersonal(payload);
         if (res.success) {
             Utils.showToast('Đã lưu thông tin cá nhân!', 'success');
+            const currentUser = Utils.auth.getUser() || {};
+            Utils.auth.setUser({ ...currentUser, full_name: payload.full_name, email: payload.email });
             renderPersonalInfo(payload);
             personalInfoModal?.hide();
         } else {

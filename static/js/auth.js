@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.success) {
                     Utils.showToast(response.message || 'Đăng nhập thành công! Đang chuyển hướng...', 'success');
                     setTimeout(() => {
-                        window.location.href = '/dashboard';
+                        window.location.href = '/profile';
                     }, 800);
                 } else {
                     Utils.showToast(response.message || 'Email hoặc mật khẩu không chính xác', 'danger');
@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.success) {
                     Utils.showToast('Tài khoản đã tạo thành công! Đang chuyển đến trang chủ...', 'success');
                     setTimeout(() => {
-                        window.location.href = '/dashboard';
+                        window.location.href = '/profile';
                     }, 1000);
                 } else {
                     Utils.showToast(response.message || 'Đăng ký thất bại, vui lòng thử lại.', 'danger');
