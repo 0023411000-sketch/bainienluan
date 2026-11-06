@@ -53,6 +53,11 @@
                         <i class="bi bi-calendar2-check-fill me-1"></i>Kế hoạch học tập
                     </a>
                 </li>
+                <li class="nav-item d-none" id="navAdminItem">
+                    <a class="nav-link px-2 fw-bold text-warning {% if request.endpoint == 'admin_users' or request.path == '/admin/users' %}active{% endif %}" href="/admin/users">
+                        <i class="bi bi-shield-lock-fill me-1"></i>Quản trị & Phân quyền
+                    </a>
+                </li>
             </ul>
 
             <!-- Khu vực tài khoản người dùng -->
@@ -63,10 +68,19 @@
                             type="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-person-circle fs-6"></i>
                         <span id="navUserFullName" class="fw-semibold">Nguyễn Văn An</span>
+                        <span id="navUserRoleBadge" class="badge bg-light text-primary rounded-pill" style="font-size: 0.7rem;">Sinh viên</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-2 mt-2">
                         <li>
-                            <h6 class="dropdown-header text-muted small">Sinh viên CNTT K65</h6>
+                            <h6 class="dropdown-header text-muted small" id="navUserRoleHeader">Vai trò: Sinh viên CNTT</h6>
+                        </li>
+                        <li id="dropdownAdminLink" class="d-none">
+                            <a class="dropdown-item py-2 fw-semibold text-primary" href="/admin/users">
+                                <i class="bi bi-shield-lock-fill me-2 text-warning"></i>Quản trị & Phân quyền
+                            </a>
+                            <a class="dropdown-item py-2 fw-semibold text-dark" href="/db-viewer">
+                                <i class="bi bi-database-fill-gear me-2 text-info"></i>Xem CSDL SQLite
+                            </a>
                         </li>
                         <li><a class="dropdown-item py-2" href="/profile"><i class="bi bi-person-gear me-2 text-primary"></i>Quản lý hồ sơ</a></li>
                         <li><a class="dropdown-item py-2" href="/plan"><i class="bi bi-card-checklist me-2 text-success"></i>Kế hoạch cá nhân</a></li>

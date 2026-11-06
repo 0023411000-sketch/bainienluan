@@ -40,24 +40,52 @@ def api_response(success=True, data=None, message="Thành công", status_code=20
     }), status_code
 
 
+def get_current_user():
+    """Lấy người dùng đang đăng nhập từ session (cookie đã ký bởi secret_key).
+
+    Không tin chuỗi token gửi từ client vì token dạng "user_<id>" có thể bị giả mạo.
+    Trả về None nếu chưa đăng nhập.
+    """
+    uid = session.get("user_id")
+    if not uid:
+        return None
+    conn = get_db_connection()
+    user = conn.execute(
+        "SELECT id, full_name, email, role, created_at FROM users WHERE id = ?",
+        (uid,),
+    ).fetchone()
+    conn.close()
+    return dict(user) if user else None
+
+
 def get_current_user_id():
-    """Lấy user_id từ Bearer token, session hoặc mặc định là 1 (tài khoản mẫu)."""
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer "):
-        token = auth_header.replace("Bearer ", "").strip()
-        if token.startswith("user_"):
-            try:
-                uid = int(token.split("_")[1])
-                conn = get_db_connection()
-                user = conn.execute("SELECT id FROM users WHERE id = ?", (uid,)).fetchone()
-                conn.close()
-                if user:
-                    return uid
-            except Exception:
-                pass
-    if "user_id" in session:
-        return session["user_id"]
-    return 1
+    """Lấy user_id của người dùng hiện tại (đã được require_login đảm bảo tồn tại)."""
+    user = get_current_user()
+    return user["id"] if user else None
+
+
+def is_current_user_admin():
+    """Kiểm tra người dùng hiện tại có quyền Quản trị viên (admin) hay không."""
+    user = get_current_user()
+    return bool(user and user.get("role") == "admin")
+
+
+# Các đường dẫn không yêu cầu đăng nhập
+PUBLIC_PAGES = {"/login", "/register"}
+PUBLIC_APIS = {"/api/auth/login", "/api/auth/register", "/api/auth/logout"}
+
+
+@app.before_request
+def require_login():
+    """Bắt buộc đăng nhập: API trả 401, trang giao diện chuyển về /login."""
+    path = request.path
+    if path.startswith("/static/") or path in PUBLIC_PAGES or path in PUBLIC_APIS:
+        return None
+    if get_current_user():
+        return None
+    if path.startswith("/api/"):
+        return api_response(False, None, "Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn!", 401)
+    return redirect(url_for("login"))
 
 
 # ==============================================================================
@@ -114,6 +142,48 @@ def compare():
 @app.route("/roadmap")
 def plan():
     return render_template("plan.html")
+
+
+@app.route("/admin/users")
+def admin_users():
+    return render_template("admin_users.html")
+
+
+@app.route("/db-viewer")
+def db_viewer():
+    return render_template("db_viewer.html")
+
+
+@app.route("/api/db-viewer", methods=["GET"])
+def api_db_viewer():
+    """API đọc trực tiếp danh sách bảng, cột và dữ liệu trong database.db (chỉ Admin)."""
+    if not is_current_user_admin():
+        return api_response(False, None, "Chỉ Quản trị viên (Admin) mới được xem cơ sở dữ liệu!", 403)
+    hidden_cols = {"password_hash", "mat_khau_bam"}
+    conn = get_db_connection()
+    tables_rows = conn.execute(
+        "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC"
+    ).fetchall()
+    result = []
+    for t in tables_rows:
+        tname = t["name"]
+        cols = [c["name"] for c in conn.execute(f"PRAGMA table_info({tname})").fetchall()]
+        rows = []
+        for r in conn.execute(f"SELECT * FROM {tname} LIMIT 100").fetchall():
+            row = dict(r)
+            for hc in hidden_cols & row.keys():
+                row[hc] = "******"
+            rows.append(row)
+        total = conn.execute(f"SELECT COUNT(*) AS cnt FROM {tname}").fetchone()["cnt"]
+        result.append({
+            "table_name": tname,
+            "create_sql": t["sql"],
+            "columns": cols,
+            "total_rows": total,
+            "rows": rows,
+        })
+    conn.close()
+    return api_response(True, result)
 
 
 @app.errorhandler(404)
@@ -703,6 +773,8 @@ def api_get_position_by_id(pos_id):
 
 @app.route("/api/positions", methods=["POST"])
 def api_create_position():
+    if not is_current_user_admin():
+        return api_response(False, None, "Chỉ Quản trị viên (Admin) mới có quyền thêm vị trí nghề nghiệp!", 403)
     payload = request.get_json(silent=True) or {}
     name = (payload.get("name") or "").strip()
     if not name:
@@ -729,6 +801,8 @@ def api_create_position():
 
 @app.route("/api/positions/<int:pos_id>", methods=["PUT"])
 def api_update_position(pos_id):
+    if not is_current_user_admin():
+        return api_response(False, None, "Chỉ Quản trị viên (Admin) mới có quyền chỉnh sửa vị trí nghề nghiệp!", 403)
     payload = request.get_json(silent=True) or {}
     name = (payload.get("name") or "").strip()
     code = (payload.get("code") or "").strip()
@@ -755,6 +829,8 @@ def api_update_position(pos_id):
 
 @app.route("/api/positions/<int:pos_id>", methods=["DELETE"])
 def api_delete_position(pos_id):
+    if not is_current_user_admin():
+        return api_response(False, None, "Chỉ Quản trị viên (Admin) mới có quyền xóa vị trí nghề nghiệp!", 403)
     conn = get_db_connection()
     conn.execute("DELETE FROM positions WHERE id = ?", (pos_id,))
     conn.commit()
@@ -839,6 +915,8 @@ def api_get_job_by_id(job_id):
 
 @app.route("/api/jobs", methods=["POST"])
 def api_create_job():
+    if not is_current_user_admin():
+        return api_response(False, None, "Chỉ Quản trị viên (Admin) mới có quyền đăng tin tuyển dụng!", 403)
     payload = request.get_json(silent=True) or {}
     title = (payload.get("title") or "").strip()
     company = (payload.get("company") or "").strip()
@@ -888,6 +966,8 @@ def api_create_job():
 
 @app.route("/api/jobs/<int:job_id>", methods=["PUT"])
 def api_update_job(job_id):
+    if not is_current_user_admin():
+        return api_response(False, None, "Chỉ Quản trị viên (Admin) mới có quyền chỉnh sửa tin tuyển dụng!", 403)
     payload = request.get_json(silent=True) or {}
     title = (payload.get("title") or "").strip()
     company = (payload.get("company") or "").strip()
@@ -935,6 +1015,8 @@ def api_update_job(job_id):
 
 @app.route("/api/jobs/<int:job_id>", methods=["DELETE"])
 def api_delete_job(job_id):
+    if not is_current_user_admin():
+        return api_response(False, None, "Chỉ Quản trị viên (Admin) mới có quyền xóa tin tuyển dụng!", 403)
     conn = get_db_connection()
     conn.execute("DELETE FROM jobs WHERE id = ?", (job_id,))
     conn.commit()
@@ -944,6 +1026,8 @@ def api_delete_job(job_id):
 
 @app.route("/api/jobs/import-csv", methods=["POST"])
 def api_import_jobs_csv():
+    if not is_current_user_admin():
+        return api_response(False, None, "Chỉ Quản trị viên (Admin) mới có quyền nhập dữ liệu CSV!", 403)
     payload = request.get_json(silent=True) or {}
     records = payload.get("records") or []
     if not isinstance(records, list) or len(records) == 0:
@@ -1000,6 +1084,118 @@ def api_import_jobs_csv():
         f"Đã nhập thành công {imported_count} tin tuyển dụng từ CSV vào cơ sở dữ liệu!",
         201,
     )
+
+
+# ==============================================================================
+# PHẦN QUẢN TRỊ NGƯỜI DÙNG & PHÂN QUYỀN (ADMIN RBAC - /api/admin/users/*)
+# ==============================================================================
+
+@app.route("/api/admin/users", methods=["GET"])
+def api_admin_get_users():
+    if not is_current_user_admin():
+        return api_response(False, None, "Truy cập bị từ chối: Yêu cầu quyền Quản trị viên (Admin)!", 403)
+    conn = get_db_connection()
+    rows = conn.execute(
+        "SELECT id, full_name, email, role, created_at FROM users ORDER BY id ASC"
+    ).fetchall()
+    conn.close()
+    return api_response(True, [dict(r) for r in rows])
+
+
+@app.route("/api/admin/users", methods=["POST"])
+def api_admin_create_user():
+    if not is_current_user_admin():
+        return api_response(False, None, "Chỉ Quản trị viên (Admin) mới có quyền tạo tài khoản!", 403)
+    payload = request.get_json(silent=True) or {}
+    full_name = (payload.get("full_name") or "").strip()
+    email = (payload.get("email") or "").strip().lower()
+    password = payload.get("password") or "123456"
+    role = (payload.get("role") or "student").strip().lower()
+    if role not in ("student", "admin"):
+        role = "student"
+
+    if not full_name or not email or len(password) < 6:
+        return api_response(False, None, "Họ tên, email và mật khẩu (tối thiểu 6 ký tự) không hợp lệ!", 400)
+
+    conn = get_db_connection()
+    existing = conn.execute("SELECT id FROM users WHERE LOWER(email) = ?", (email,)).fetchone()
+    if existing:
+        conn.close()
+        return api_response(False, None, "Email này đã tồn tại trong hệ thống!", 400)
+
+    pwd_hash = generate_password_hash(password)
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO users (full_name, email, password_hash, role) VALUES (?, ?, ?, ?)",
+        (full_name, email, pwd_hash, role),
+    )
+    new_uid = cur.lastrowid
+    if role == "student":
+        cur.execute(
+            """
+            INSERT INTO student_profiles (
+                user_id, full_name, student_code, email, phone,
+                university, faculty, major, academic_year, gpa, target_position_id, bio
+            ) VALUES (?, ?, ?, ?, '', 'Đại học Bách Khoa Hà Nội', 'Trường CNTT & Truyền thông', 'Công nghệ Thông tin', 'K66 (2021 - 2026)', '3.20', 1, 'Sinh viên CNTT định hướng phát triển phần mềm.')
+            """,
+            (new_uid, full_name, f"SV{new_uid:05d}", email),
+        )
+    conn.commit()
+    row = conn.execute(
+        "SELECT id, full_name, email, role, created_at FROM users WHERE id = ?", (new_uid,)
+    ).fetchone()
+    conn.close()
+    return api_response(True, dict(row), "Tạo tài khoản người dùng thành công!", 201)
+
+
+@app.route("/api/admin/users/<int:target_id>", methods=["PUT"])
+def api_admin_update_user(target_id):
+    if not is_current_user_admin():
+        return api_response(False, None, "Chỉ Quản trị viên (Admin) mới có quyền phân quyền tài khoản!", 403)
+    payload = request.get_json(silent=True) or {}
+    conn = get_db_connection()
+    existing = conn.execute("SELECT * FROM users WHERE id = ?", (target_id,)).fetchone()
+    if not existing:
+        conn.close()
+        return api_response(False, None, "Không tìm thấy tài khoản người dùng!", 404)
+
+    full_name = (payload.get("full_name") or existing["full_name"]).strip()
+    role = (payload.get("role") or existing["role"]).strip().lower()
+    if role not in ("student", "admin"):
+        role = existing["role"]
+    new_password = (payload.get("password") or "").strip()
+
+    if new_password and len(new_password) >= 6:
+        pwd_hash = generate_password_hash(new_password)
+        conn.execute(
+            "UPDATE users SET full_name = ?, role = ?, password_hash = ? WHERE id = ?",
+            (full_name, role, pwd_hash, target_id),
+        )
+    else:
+        conn.execute(
+            "UPDATE users SET full_name = ?, role = ? WHERE id = ?",
+            (full_name, role, target_id),
+        )
+    conn.commit()
+    updated = conn.execute(
+        "SELECT id, full_name, email, role, created_at FROM users WHERE id = ?", (target_id,)
+    ).fetchone()
+    conn.close()
+    return api_response(True, dict(updated), "Cập nhật thông tin & phân quyền thành công!")
+
+
+@app.route("/api/admin/users/<int:target_id>", methods=["DELETE"])
+def api_admin_delete_user(target_id):
+    if not is_current_user_admin():
+        return api_response(False, None, "Chỉ Quản trị viên (Admin) mới có quyền xóa tài khoản!", 403)
+    current_uid = get_current_user_id()
+    if target_id == current_uid:
+        return api_response(False, None, "Không thể tự xóa tài khoản Quản trị viên đang đăng nhập!", 400)
+    conn = get_db_connection()
+    conn.execute("DELETE FROM users WHERE id = ?", (target_id,))
+    conn.commit()
+    conn.close()
+    return api_response(True, None, "Đã xóa tài khoản người dùng thành công!")
 
 
 # ==============================================================================
@@ -1070,35 +1266,41 @@ def api_statistics(position_id):
     cert_counter = Counter()
     exp_counter = Counter()
 
-    for cs in parse_json_list(pos["core_skills"]):
-        skill_counter[cs] += 1
-
+    # Đếm số TIN TUYỂN DỤNG có nhắc tới mỗi yêu cầu (mỗi tin chỉ tính 1 lần cho 1 yêu cầu)
     for j in jobs_rows:
-        for s in parse_json_list(j["skills"]):
-            skill_counter[s] += 2
-        for t in parse_json_list(j["technologies"]):
-            tech_counter[t] += 2
-        for c in parse_json_list(j["certificates"]):
+        for s in set(parse_json_list(j["skills"])):
+            skill_counter[s] += 1
+        for t in set(parse_json_list(j["technologies"])):
+            tech_counter[t] += 1
+        for c in set(parse_json_list(j["certificates"])):
             cert_counter[c] += 1
         exp_req = (j["experience_required"] or "Không yêu cầu").strip()
-        if exp_req:
-            exp_counter[exp_req] += 1
+        exp_counter[exp_req] += 1
 
-    denom = max(total_jobs * 2 + 1, 1)
+    def pct(v):
+        # Tỷ lệ % = số tin yêu cầu / tổng số tin của vị trí
+        return round(v / total_jobs * 100) if total_jobs else 0
+
     top_skills = [
-        {"name": k, "count": v * 4, "percentage": min(round((v / denom) * 100) + 25, 96)}
+        {"name": k, "count": v, "percentage": pct(v)}
         for k, v in skill_counter.most_common(8)
     ]
+    # Vị trí chưa có tin tuyển dụng: hiển thị bộ kỹ năng cốt lõi với tỷ lệ 0%
+    if not top_skills:
+        top_skills = [
+            {"name": cs, "count": 0, "percentage": 0}
+            for cs in parse_json_list(pos["core_skills"])[:8]
+        ]
     technologies = [
-        {"name": k, "count": v * 3, "percentage": min(round((v / denom) * 100) + 15, 88)}
+        {"name": k, "count": v, "percentage": pct(v)}
         for k, v in tech_counter.most_common(6)
     ]
     certificates = [
-        {"name": k, "count": v * 3, "level": "Khuyến nghị"}
+        {"name": k, "count": v, "percentage": pct(v), "level": "Khuyến nghị"}
         for k, v in cert_counter.most_common(4)
     ]
     experience_stats = [
-        {"level": k, "count": v}
+        {"level": k, "count": v, "percentage": pct(v)}
         for k, v in exp_counter.most_common(4)
     ]
 
@@ -1134,7 +1336,17 @@ def api_compare():
         r["name"].strip().lower()
         for r in conn.execute("SELECT name FROM certificates WHERE user_id = ?", (user_id,)).fetchall()
     ]
+    user_courses = [
+        r["name"].strip().lower()
+        for r in conn.execute("SELECT name FROM courses WHERE user_id = ?", (user_id,)).fetchall()
+    ]
+    user_exps = conn.execute(
+        "SELECT start_date, end_date FROM experiences WHERE user_id = ?", (user_id,)
+    ).fetchall()
     all_recs_rows = conn.execute("SELECT * FROM course_recommendations").fetchall()
+
+    def _match(a, b):
+        return a == b or a in b or b in a
 
     req_skills = []
     for s in parse_json_list(pos["core_skills"]):
@@ -1145,25 +1357,21 @@ def api_compare():
             if s not in req_skills:
                 req_skills.append(s)
 
+    # Tiêu chí 1: Kỹ năng / kiến thức (đối chiếu với Kỹ năng hoặc Học phần đã học)
     have = []
+    have_by_courses = []
     missing = []
     for req in req_skills:
         req_lower = req.lower()
-        if any(us == req_lower or us in req_lower or req_lower in us for us in user_skills):
+        if any(_match(us, req_lower) for us in user_skills):
             have.append(req)
+        elif any(_match(uc, req_lower) for uc in user_courses):
+            have.append(req)
+            have_by_courses.append(req)
         else:
             missing.append(req)
 
-    total = len(have) + len(missing)
-    score = round((len(have) / total) * 100) if total > 0 else 0
-
-    if score >= 75:
-        summary = f'Tuyệt vời! Hồ sơ của bạn đạt mức độ phù hợp rất cao ({score}%) đối với vị trí "{pos["name"]}".'
-    elif score >= 50:
-        summary = f'Khá tốt! Mức độ phù hợp của bạn là {score}%. Hãy bổ sung các kỹ năng còn thiếu vào Lộ trình học tập.'
-    else:
-        summary = f'Mức độ phù hợp hiện tại là {score}%. Vị trí "{pos["name"]}" đòi hỏi thêm các kỹ năng chuyên sâu mà bạn cần bổ sung.'
-
+    # Tiêu chí 2: Chứng chỉ được yêu cầu/ưu tiên trong các tin tuyển dụng
     rec_certs = []
     missing_certs = []
     for j in jobs_rows:
@@ -1171,8 +1379,49 @@ def api_compare():
             if c not in rec_certs:
                 rec_certs.append(c)
                 c_lower = c.lower()
-                if not any(uc == c_lower or uc in c_lower or c_lower in uc for uc in user_certs):
+                if not any(_match(uc, c_lower) for uc in user_certs):
                     missing_certs.append(c)
+
+    # Tiêu chí 3: Số năm kinh nghiệm (yêu cầu tối thiểu phổ biến nhất trong các tin)
+    import re
+    from datetime import date
+
+    def _min_years(text):
+        m = re.search(r"\d+", text or "")
+        return int(m.group()) if m else 0
+
+    def _to_date(s):
+        try:
+            y, mth = [int(x) for x in (s or "").split("-")[:2]]
+            return date(y, mth, 1)
+        except Exception:
+            return None
+
+    req_years_list = [_min_years(j["experience_required"]) for j in jobs_rows]
+    required_years = Counter(req_years_list).most_common(1)[0][0] if req_years_list else 0
+    user_months = 0
+    for e in user_exps:
+        sd = _to_date(e["start_date"])
+        ed = _to_date(e["end_date"]) or date.today()
+        if sd and ed >= sd:
+            user_months += (ed.year - sd.year) * 12 + (ed.month - sd.month)
+    user_years = round(user_months / 12, 1)
+    experience_met = user_years >= required_years
+
+    matched_count = len(have) + (len(rec_certs) - len(missing_certs)) + (1 if experience_met else 0)
+    total = len(req_skills) + len(rec_certs) + 1
+    score = round(matched_count / total * 100) if total > 0 else 0
+
+    if score >= 75:
+        summary = f'Tuyệt vời! Hồ sơ của bạn đạt mức độ phù hợp rất cao ({score}%) đối với vị trí "{pos["name"]}".'
+    elif score >= 50:
+        summary = f'Khá tốt! Mức độ phù hợp của bạn là {score}%. Hãy bổ sung các kỹ năng còn thiếu vào Lộ trình học tập.'
+    else:
+        summary = f'Mức độ phù hợp hiện tại là {score}%. Vị trí "{pos["name"]}" đòi hỏi thêm các kỹ năng chuyên sâu mà bạn cần bổ sung.'
+    summary += (
+        f' Kinh nghiệm: bạn có khoảng {user_years} năm, yêu cầu phổ biến là {required_years}+ năm'
+        f' ({"đạt" if experience_met else "chưa đạt"}).'
+    )
 
     # Đối chiếu kho gợi ý khóa học / chứng chỉ (course_recommendations) theo kỹ năng còn thiếu
     recommendations = []
@@ -1251,8 +1500,14 @@ def api_compare():
             "position_name": pos["name"],
             "score": score,
             "have": have,
+            "have_by_courses": have_by_courses,
             "missing": missing,
             "missing_certs": missing_certs,
+            "experience": {
+                "required_years": required_years,
+                "user_years": user_years,
+                "met": experience_met,
+            },
             "summary": summary,
             "recommended_certs": rec_certs,
             "recommendations": recommendations,

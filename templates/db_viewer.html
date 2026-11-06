@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block title %}Trình Xem Cơ Sở Dữ Liệu SQLite (Database Viewer){% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-8">
+        <h2 class="h3 fw-bold text-dark mb-1">
+            <i class="bi bi-database-fill-gear text-primary me-2"></i>Trình Xem Cơ Sở Dữ Liệu SQLite Trực Tuyến
+        </h2>
+        <p class="text-secondary mb-0 small">
+            Xem trực tiếp cấu trúc lệnh <code>CREATE TABLE</code>, danh sách cột và toàn bộ dữ liệu thực tế trong file <code>database.db</code> & <code>csdl_nien_luan.db</code>.
+        </p>
+    </div>
+    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <button class="btn btn-outline-primary btn-sm" onclick="loadDbTables()">
+            <i class="bi bi-arrow-clockwise me-1"></i>Làm mới dữ liệu
+        </button>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Cột trái: Danh sách các bảng trong SQLite -->
+    <div class="col-lg-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-table text-primary me-2"></i>Danh Sách Bảng (<span id="totalTablesBadge">0</span>)
+                </h6>
+            </div>
+            <div class="list-group list-group-flush" id="tableListGroup" style="max-height: 620px; overflow-y: auto;">
+                <!-- Render bằng JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Cột phải: Nội dung bảng & Lệnh SQL CREATE TABLE -->
+    <div class="col-lg-9">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+                <div>
+                    <span class="badge bg-primary me-2">TABLE</span>
+                    <strong class="fs-5 text-dark" id="activeTableName">Đang tải...</strong>
+                    <span class="badge bg-secondary-subtle text-secondary ms-2" id="activeTableCount">0 bản ghi</span>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#sqlCreateCollapse">
+                    <i class="bi bi-code-slash me-1"></i>Xem lệnh SQL (DDL)
+                </button>
+            </div>
+            <div class="collapse" id="sqlCreateCollapse">
+                <div class="card-body bg-dark text-light p-3 font-monospace small">
+                    <pre class="mb-0 text-info" id="activeTableSql" style="white-space: pre-wrap;"></pre>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 540px; overflow-y: auto;">
+                    <table class="table table-hover table-bordered table-sm align-middle mb-0 small">
+                        <thead class="table-light sticky-top" id="dbViewerThead"></thead>
+                        <tbody id="dbViewerTbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allDbTables = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadDbTables();
+});
+
+async function loadDbTables() {
+    try {
+        Utils.showLoading(true, 'Đang đọc dữ liệu từ SQLite (database.db)...');
+        const res = await fetch('/api/db-viewer').then(r => r.json());
+        if (res.success && Array.isArray(res.data)) {
+            allDbTables = res.data;
+            document.getElementById('totalTablesBadge').textContent = allDbTables.length;
+            renderTableList();
+            if (allDbTables.length > 0) {
+                // Ưu tiên chọn bảng NGUOI_DUNG hoặc users đầu tiên
+                const defaultIdx = allDbTables.findIndex(t => t.table_name === 'NGUOI_DUNG');
+                selectTable(defaultIdx >= 0 ? defaultIdx : 0);
+            }
+        }
+    } catch (e) {
+        console.error(e);
+        Utils.showToast('Không thể đọc dữ liệu SQLite!', 'danger');
+    } finally {
+        Utils.showLoading(false);
+    }
+}
+
+function renderTableList() {
+    const listEl = document.getElementById('tableListGroup');
+    listEl.innerHTML = allDbTables.map((t, idx) => {
+        const isVn = t.table_name === t.table_name.toUpperCase();
+        const badgeClass = isVn ? 'bg-success-subtle text-success' : 'bg-primary-subtle text-primary';
+        return `
+            <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2 px-3"
+                    id="tblBtn_${idx}" onclick="selectTable(${idx})">
+                <span class="fw-semibold text-truncate"><i class="bi bi-table me-2 text-muted"></i>${Utils.escapeHtml(t.table_name)}</span>
+                <span class="badge ${badgeClass} rounded-pill">${t.total_rows}</span>
+            </button>
+        `;
+    }).join('');
+}
+
+function selectTable(idx) {
+    const tbl = allDbTables[idx];
+    if (!tbl) return;
+
+    document.querySelectorAll('#tableListGroup .list-group-item').forEach(el => el.classList.remove('active'));
+    document.getElementById(`tblBtn_${idx}`)?.classList.add('active');
+
+    document.getElementById('activeTableName').textContent = tbl.table_name;
+    document.getElementById('activeTableCount').textContent = `${tbl.total_rows} bản ghi`;
+    document.getElementById('activeTableSql').textContent = tbl.create_sql || '';
+
+    const thead = document.getElementById('dbViewerThead');
+    const tbody = document.getElementById('dbViewerTbody');
+
+    thead.innerHTML = `<tr>${tbl.columns.map(c => `<th class="px-2 py-2 text-nowrap">${Utils.escapeHtml(c)}</th>`).join('')}</tr>`;
+
+    if (!tbl.rows || tbl.rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${tbl.columns.length}" class="text-center py-4 text-muted">Bảng chưa có dữ liệu.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = tbl.rows.map(row => {
+        return `<tr>${tbl.columns.map(col => {
+            const val = row[col] !== null && row[col] !== undefined ? String(row[col]) : '<em class="text-muted">NULL</em>';
+            const display = val.length > 90 ? Utils.escapeHtml(val.substring(0, 90)) + '...' : (row[col] === null ? val : Utils.escapeHtml(val));
+            return `<td class="px-2 py-1">${display}</td>`;
+        }).join('')}</tr>`;
+    }).join('');
+}
+</script>
+{% endblock %}
+

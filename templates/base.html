@@ -51,7 +51,7 @@
                 </div>
                 <div class="col-md-6 text-md-end">
                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle me-1">Bootstrap 5 + Chart.js</span>
-                    <span class="badge bg-secondary-subtle text-secondary border">Mock / Real API Ready</span>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-database-check me-1"></i>Flask + SQLite DB Connected</span>
                 </div>
             </div>
         </div>
@@ -63,10 +63,10 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 
     <!-- Các tập tin mã nguồn JavaScript cốt lõi -->
-    <script src="{{ url_for('static', filename='js/config.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/mock-data.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/api.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/config.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='js/mock-data.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='js/utils.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='js/api.js') }}?v=2"></script>
 
     <!-- Logic chung (Khởi tạo phiên người dùng, nút đăng xuất) -->
     <script>
@@ -76,6 +76,32 @@
                 const navNameEl = document.getElementById('navUserFullName');
                 if (navNameEl && user.full_name) {
                     navNameEl.textContent = user.full_name;
+                }
+                const roleBadgeEl = document.getElementById('navUserRoleBadge');
+                const roleHeaderEl = document.getElementById('navUserRoleHeader');
+                const navAdminItem = document.getElementById('navAdminItem');
+                const dropdownAdminLink = document.getElementById('dropdownAdminLink');
+
+                if (user.role === 'admin') {
+                    if (roleBadgeEl) {
+                        roleBadgeEl.textContent = 'Admin';
+                        roleBadgeEl.className = 'badge bg-warning text-dark rounded-pill fw-bold';
+                    }
+                    if (roleHeaderEl) {
+                        roleHeaderEl.textContent = 'Vai trò: Quản trị viên (Admin)';
+                    }
+                    navAdminItem?.classList.remove('d-none');
+                    dropdownAdminLink?.classList.remove('d-none');
+                } else {
+                    if (roleBadgeEl) {
+                        roleBadgeEl.textContent = 'Sinh viên';
+                        roleBadgeEl.className = 'badge bg-light text-primary rounded-pill';
+                    }
+                    if (roleHeaderEl) {
+                        roleHeaderEl.textContent = 'Vai trò: Sinh viên CNTT';
+                    }
+                    navAdminItem?.classList.add('d-none');
+                    dropdownAdminLink?.classList.add('d-none');
                 }
             }
 

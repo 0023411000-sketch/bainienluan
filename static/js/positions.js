@@ -14,8 +14,15 @@ document.addEventListener('DOMContentLoaded', () => {
         positionModal = new bootstrap.Modal(modalEl);
     }
 
-    // Nút mở Modal thêm mới
-    document.getElementById('btnOpenAddPositionModal')?.addEventListener('click', openAddPositionModal);
+    // Phân quyền hiển thị nút Thêm vị trí mới (chỉ Admin)
+    const addBtn = document.getElementById('btnOpenAddPositionModal');
+    if (addBtn) {
+        if (Utils.auth.isAdmin()) {
+            addBtn.addEventListener('click', openAddPositionModal);
+        } else {
+            addBtn.classList.add('d-none');
+        }
+    }
 
     // Form submit
     document.getElementById('positionForm')?.addEventListener('submit', handleSavePosition);
@@ -99,12 +106,14 @@ function renderPositionsTable(items) {
                     <a href="/statistics?position_id=${p.id}" class="btn btn-sm btn-outline-info py-1 px-2 me-1" title="Xem thống kê">
                         <i class="bi bi-bar-chart"></i>
                     </a>
+                    ${Utils.auth.isAdmin() ? `
                     <button class="btn btn-sm btn-outline-secondary py-1 px-2 me-1" title="Sửa" onclick="openEditPositionModal(${p.id})">
                         <i class="bi bi-pencil"></i>
                     </button>
                     <button class="btn btn-sm btn-outline-danger py-1 px-2" title="Xóa" onclick="deletePosition(${p.id})">
                         <i class="bi bi-trash"></i>
                     </button>
+                    ` : ''}
                 </td>
             </tr>
         `;

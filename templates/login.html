@@ -71,10 +71,43 @@
             </div>
         </div>
 
-        <!-- Hộp gợi ý tài khoản mẫu -->
-        <div class="card mt-3 border-0 bg-white shadow-sm p-3 rounded-3 text-center small text-muted">
-            <i class="bi bi-lightbulb text-warning me-1"></i>
-            Tài khoản dùng thử có sẵn: <strong>an.nguyen20@sis.hust.edu.vn</strong> / Mật khẩu: <strong>123456</strong>
+        <!-- Hộp gợi ý tài khoản mẫu (1-Click chọn nhanh Sinh viên hoặc Admin) -->
+        <div class="card mt-3 border-0 bg-white shadow-sm p-3 rounded-3 small">
+            <div class="text-center fw-semibold text-dark mb-2">
+                <i class="bi bi-lightbulb-fill text-warning me-1"></i>Chọn nhanh tài khoản dùng thử (Mật khẩu chung: <code>123456</code>):
+            </div>
+            <div class="d-grid gap-2">
+                <button type="button" class="btn btn-outline-danger btn-sm text-start d-flex justify-content-between align-items-center"
+                        onclick="document.getElementById('loginEmail').value='admin@hust.edu.vn'; document.getElementById('loginPassword').value='123456';">
+                    <span><i class="bi bi-shield-lock-fill me-1"></i><strong>Admin 1:</strong> admin@hust.edu.vn</span>
+                    <span class="badge bg-danger-subtle text-danger">Quản trị viên</span>
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm text-start d-flex justify-content-between align-items-center"
+                        onclick="document.getElementById('loginEmail').value='long.admin@hust.edu.vn'; document.getElementById('loginPassword').value='123456';">
+                    <span><i class="bi bi-shield-check me-1"></i><strong>Admin 2:</strong> long.admin@hust.edu.vn</span>
+                    <span class="badge bg-danger-subtle text-danger">Quản trị viên</span>
+                </button>
+                <button type="button" class="btn btn-outline-primary btn-sm text-start d-flex justify-content-between align-items-center"
+                        onclick="document.getElementById('loginEmail').value='an.nguyen20@sis.hust.edu.vn'; document.getElementById('loginPassword').value='123456';">
+                    <span><i class="bi bi-mortarboard-fill me-1"></i><strong>Nguyễn Văn An:</strong> an.nguyen20@sis.hust.edu.vn</span>
+                    <span class="badge bg-primary-subtle text-primary">SV Backend</span>
+                </button>
+                <button type="button" class="btn btn-outline-primary btn-sm text-start d-flex justify-content-between align-items-center"
+                        onclick="document.getElementById('loginEmail').value='ngoc.tran21@student.edu.vn'; document.getElementById('loginPassword').value='123456';">
+                    <span><i class="bi bi-mortarboard-fill me-1"></i><strong>Trần Thị Bích Ngọc:</strong> ngoc.tran21@student.edu.vn</span>
+                    <span class="badge bg-info-subtle text-info">SV Frontend</span>
+                </button>
+                <button type="button" class="btn btn-outline-primary btn-sm text-start d-flex justify-content-between align-items-center"
+                        onclick="document.getElementById('loginEmail').value='nam.le21@student.edu.vn'; document.getElementById('loginPassword').value='123456';">
+                    <span><i class="bi bi-mortarboard-fill me-1"></i><strong>Lê Hoàng Nam:</strong> nam.le21@student.edu.vn</span>
+                    <span class="badge bg-success-subtle text-success">SV Data Analyst</span>
+                </button>
+                <button type="button" class="btn btn-outline-primary btn-sm text-start d-flex justify-content-between align-items-center"
+                        onclick="document.getElementById('loginEmail').value='tuan.pham22@student.edu.vn'; document.getElementById('loginPassword').value='123456';">
+                    <span><i class="bi bi-mortarboard-fill me-1"></i><strong>Phạm Minh Tuấn:</strong> tuan.pham22@student.edu.vn</span>
+                    <span class="badge bg-warning-subtle text-dark">SV AI / ML</span>
+                </button>
+            </div>
         </div>
     </div>
 </div>

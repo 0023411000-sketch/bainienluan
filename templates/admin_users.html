@@ -1,0 +1,303 @@
+{% extends 'base.html' %}
+
+{% block title %}Quản trị Tài khoản & Phân quyền Hệ thống{% endblock %}
+
+{% block content %}
+<!-- Tiêu đề trang -->
+<div class="row align-items-center mb-4">
+    <div class="col-md-7">
+        <h2 class="h3 fw-bold text-dark mb-1">
+            <i class="bi bi-shield-lock-fill text-danger me-2"></i>Quản Trị Tài Khoản & Phân Quyền (RBAC)
+        </h2>
+        <p class="text-secondary mb-0 small">
+            Quản lý danh sách tài khoản người dùng, cấp quyền Quản trị viên (Admin) hoặc Sinh viên (Student) trong hệ thống.
+        </p>
+    </div>
+    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+        <button type="button" class="btn btn-primary btn-sm shadow-sm" id="btnOpenAddUserModal">
+            <i class="bi bi-person-plus-fill me-1"></i>Tạo tài khoản mới
+        </button>
+    </div>
+</div>
+
+<!-- Khối Ma trận Phân quyền Hệ thống -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom">
+        <h6 class="fw-bold mb-0 text-dark">
+            <i class="bi bi-key-fill text-warning me-2"></i>Ma Trận Phân Quyền Chức Năng (Role-Based Access Control)
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-0 small text-center">
+                <thead class="table-light">
+                    <tr>
+                        <th class="text-start ps-3" style="width: 45%;">Nhóm chức năng / Module</th>
+                        <th style="width: 27%;"><span class="badge bg-primary">Sinh viên (student)</span></th>
+                        <th style="width: 28%;"><span class="badge bg-danger">Quản trị viên (admin)</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="text-start ps-3 fw-medium">Quản lý Hồ sơ cá nhân (Học phần, Kỹ năng, Chứng chỉ, Kinh nghiệm)</td>
+                        <td class="text-success fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>Toàn quyền (Hồ sơ cá nhân)</td>
+                        <td class="text-success fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>Toàn quyền</td>
+                    </tr>
+                    <tr>
+                        <td class="text-start ps-3 fw-medium">Đối sánh độ phù hợp, Xem gợi ý khóa học & Lộ trình học tập</td>
+                        <td class="text-success fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>Toàn quyền</td>
+                        <td class="text-success fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>Toàn quyền</td>
+                    </tr>
+                    <tr>
+                        <td class="text-start ps-3 fw-medium">Danh mục Vị trí nghề nghiệp & Tin tuyển dụng (Tra cứu, Lọc, Thống kê)</td>
+                        <td class="text-info fw-semibold"><i class="bi bi-eye-fill me-1"></i>Chỉ xem & Tra cứu</td>
+                        <td class="text-success fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>Xem & Tra cứu</td>
+                    </tr>
+                    <tr>
+                        <td class="text-start ps-3 fw-medium">Thêm / Sửa / Xóa Vị trí nghề nghiệp, Đăng tin tuyển dụng & Nhập CSV</td>
+                        <td class="text-danger"><i class="bi bi-x-circle-fill me-1"></i>Không có quyền (403)</td>
+                        <td class="text-success fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>Toàn quyền Quản trị</td>
+                    </tr>
+                    <tr>
+                        <td class="text-start ps-3 fw-medium">Quản lý Tài khoản người dùng & Cấp quyền (Admin / Student)</td>
+                        <td class="text-danger"><i class="bi bi-x-circle-fill me-1"></i>Không có quyền (403)</td>
+                        <td class="text-success fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>Toàn quyền Quản trị</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Bảng danh sách Tài khoản Người dùng -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0 text-dark">
+            <i class="bi bi-people-fill text-primary me-2"></i>Danh Sách Tài Khoản Trong Hệ Thống (<span id="totalUsersCount">0</span>)
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col" style="width: 8%;">ID</th>
+                        <th scope="col" style="width: 26%;">Họ và tên</th>
+                        <th scope="col" style="width: 28%;">Địa chỉ Email</th>
+                        <th scope="col" style="width: 15%;">Vai trò (Role)</th>
+                        <th scope="col" style="width: 13%;">Ngày tạo</th>
+                        <th scope="col" class="text-end" style="width: 10%;">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="adminUsersTableBody">
+                    <!-- Nạp động bằng JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Thêm / Sửa Tài khoản & Phân quyền -->
+<div class="modal fade" id="adminUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold text-dark" id="adminUserModalTitle">
+                    <i class="bi bi-person-gear text-primary me-2"></i>Tạo tài khoản mới
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <form id="adminUserForm">
+                <input type="hidden" id="editUserId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Họ và tên <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="editUserFullName" placeholder="Nhập họ và tên..." required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Địa chỉ Email <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" id="editUserEmail" placeholder="example@hust.edu.vn" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Vai trò phân quyền (Role) <span class="text-danger">*</span></label>
+                        <select class="form-select" id="editUserRole" required>
+                            <option value="student">Sinh viên (student) - Quản lý hồ sơ & Đối sánh năng lực</option>
+                            <option value="admin">Quản trị viên (admin) - Toàn quyền Quản trị hệ thống</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold" id="editUserPasswordLabel">Mật khẩu khởi tạo <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="editUserPassword" placeholder="Tối thiểu 6 ký tự (mặc định: 123456)">
+                        <div class="form-text small" id="editUserPasswordHint">Khi sửa tài khoản, để trống nếu không muốn đổi mật khẩu.</div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-3" id="btnSaveUser">
+                        <i class="bi bi-check2-circle me-1"></i>Lưu thông tin
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let adminUserModal = null;
+let cachedAdminUsers = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (!Utils.auth.isAdmin()) {
+        Utils.showToast('Trang này chỉ dành cho Quản trị viên (Admin)!', 'warning');
+        setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
+        return;
+    }
+
+    const modalEl = document.getElementById('adminUserModal');
+    if (modalEl) adminUserModal = new bootstrap.Modal(modalEl);
+
+    document.getElementById('btnOpenAddUserModal')?.addEventListener('click', openAddUserModal);
+    document.getElementById('adminUserForm')?.addEventListener('submit', handleSaveUser);
+
+    loadAdminUsers();
+});
+
+async function loadAdminUsers() {
+    try {
+        Utils.showLoading(true, 'Đang tải danh sách tài khoản...');
+        const res = await API.adminUsers.getAll();
+        if (res.success && Array.isArray(res.data)) {
+            cachedAdminUsers = res.data;
+            document.getElementById('totalUsersCount').textContent = cachedAdminUsers.length;
+            renderAdminUsersTable(cachedAdminUsers);
+        } else {
+            Utils.showToast(res.message || 'Không thể tải danh sách người dùng!', 'danger');
+        }
+    } catch (e) {
+        console.error(e);
+        Utils.showToast('Lỗi kết nối máy chủ!', 'danger');
+    } finally {
+        Utils.showLoading(false);
+    }
+}
+
+function renderAdminUsersTable(users) {
+    const tbody = document.getElementById('adminUsersTableBody');
+    if (!tbody) return;
+    const currentUser = Utils.auth.getUser() || {};
+
+    tbody.innerHTML = users.map(u => {
+        const isAdminRole = u.role === 'admin';
+        const roleBadge = isAdminRole
+            ? '<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="bi bi-shield-lock-fill me-1"></i>Quản trị viên (admin)</span>'
+            : '<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="bi bi-mortarboard-fill me-1"></i>Sinh viên (student)</span>';
+
+        const isSelf = currentUser.id == u.id;
+        return `
+            <tr>
+                <td class="text-muted fw-semibold">#${u.id}</td>
+                <td>
+                    <div class="fw-bold text-dark">${Utils.escapeHtml(u.full_name)} ${isSelf ? '<span class="badge bg-warning text-dark ms-1">Bạn</span>' : ''}</div>
+                </td>
+                <td><code>${Utils.escapeHtml(u.email)}</code></td>
+                <td>${roleBadge}</td>
+                <td class="text-muted small">${Utils.escapeHtml((u.created_at || '').split(' ')[0] || '2026-11-06')}</td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary py-1 px-2 me-1" title="Phân quyền / Sửa" onclick="openEditUserModal(${u.id})">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                    ${!isSelf ? `
+                    <button class="btn btn-sm btn-outline-danger py-1 px-2" title="Xóa tài khoản" onclick="deleteUserAccount(${u.id})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                    ` : ''}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function openAddUserModal() {
+    document.getElementById('adminUserModalTitle').innerHTML = '<i class="bi bi-person-plus-fill text-primary me-2"></i>Tạo tài khoản mới';
+    document.getElementById('editUserId').value = '';
+    document.getElementById('editUserFullName').value = '';
+    const emailEl = document.getElementById('editUserEmail');
+    emailEl.value = '';
+    emailEl.disabled = false;
+    document.getElementById('editUserRole').value = 'student';
+    document.getElementById('editUserPassword').value = '123456';
+    document.getElementById('editUserPassword').required = true;
+    adminUserModal.show();
+}
+
+function openEditUserModal(id) {
+    const u = cachedAdminUsers.find(item => item.id == id);
+    if (!u) return;
+    document.getElementById('adminUserModalTitle').innerHTML = '<i class="bi bi-shield-check text-primary me-2"></i>Cập nhật & Phân quyền tài khoản';
+    document.getElementById('editUserId').value = u.id;
+    document.getElementById('editUserFullName').value = u.full_name;
+    const emailEl = document.getElementById('editUserEmail');
+    emailEl.value = u.email;
+    emailEl.disabled = true;
+    document.getElementById('editUserRole').value = u.role || 'student';
+    document.getElementById('editUserPassword').value = '';
+    document.getElementById('editUserPassword').required = false;
+    adminUserModal.show();
+}
+
+async function handleSaveUser(e) {
+    e.preventDefault();
+    const id = document.getElementById('editUserId').value;
+    const payload = {
+        full_name: document.getElementById('editUserFullName').value.trim(),
+        email: document.getElementById('editUserEmail').value.trim(),
+        role: document.getElementById('editUserRole').value,
+        password: document.getElementById('editUserPassword').value.trim()
+    };
+
+    const btn = document.getElementById('btnSaveUser');
+    Utils.setButtonLoading(btn, true);
+    try {
+        const res = id
+            ? await API.adminUsers.update(id, payload)
+            : await API.adminUsers.create(payload);
+
+        if (res.success) {
+            Utils.showToast(res.message || 'Lưu thành công!', 'success');
+            adminUserModal.hide();
+            await loadAdminUsers();
+        } else {
+            Utils.showToast(res.message || 'Có lỗi xảy ra!', 'danger');
+        }
+    } catch (err) {
+        console.error(err);
+        Utils.showToast('Lỗi khi lưu tài khoản!', 'danger');
+    } finally {
+        Utils.setButtonLoading(btn, false);
+    }
+}
+
+function deleteUserAccount(id) {
+    const u = cachedAdminUsers.find(item => item.id == id);
+    if (!u) return;
+    Utils.confirmModal({
+        title: 'Xóa tài khoản người dùng',
+        message: `Bạn có chắc chắn muốn xóa tài khoản "${u.full_name}" (${u.email}) không?`,
+        confirmText: 'Xóa tài khoản',
+        confirmClass: 'btn-danger',
+        onConfirm: async () => {
+            const res = await API.adminUsers.delete(id);
+            if (res.success) {
+                Utils.showToast(res.message || 'Đã xóa tài khoản!', 'success');
+                await loadAdminUsers();
+            } else {
+                Utils.showToast(res.message || 'Không thể xóa tài khoản!', 'danger');
+            }
+        }
+    });
+}
+</script>
+{% endblock %}
+

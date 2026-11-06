@@ -128,8 +128,10 @@ function renderComparisonResult(data) {
         if (have.length === 0) {
             haveContainer.innerHTML = `<span class="text-muted small">Chưa đáp ứng kỹ năng đặc thù nào.</span>`;
         } else {
-            haveContainer.innerHTML = have.map(s => 
-                `<span class="badge badge-soft-success me-1 mb-2 p-2 fs-7 fw-medium"><i class="bi bi-check2 me-1"></i>${Utils.escapeHtml(s)}</span>`
+            const byCourses = data.have_by_courses || [];
+            haveContainer.innerHTML = have.map(s => byCourses.includes(s)
+                ? `<span class="badge badge-soft-primary me-1 mb-2 p-2 fs-7 fw-medium" title="Đáp ứng nhờ học phần đã học"><i class="bi bi-book me-1"></i>${Utils.escapeHtml(s)}</span>`
+                : `<span class="badge badge-soft-success me-1 mb-2 p-2 fs-7 fw-medium"><i class="bi bi-check2 me-1"></i>${Utils.escapeHtml(s)}</span>`
             ).join('');
         }
     }

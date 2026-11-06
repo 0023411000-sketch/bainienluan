@@ -15,21 +15,214 @@ except ImportError:
 from models import init_db, get_db_connection, dump_json_list, DB_PATH
 
 
+def _ensure_admin_account(cursor):
+    """Đảm bảo các tài khoản Quản trị viên và các tài khoản Sinh viên test luôn tồn tại."""
+    pwd_hash = generate_password_hash("123456")
+
+    # 1. Danh sách tài khoản bổ sung để test (Admin & Sinh viên các chuyên ngành)
+    extra_users = [
+        ("Quản trị viên Hệ thống", "admin@hust.edu.vn", "admin"),
+        ("Nguyễn Phi Long (Admin)", "long.admin@hust.edu.vn", "admin"),
+        ("Trần Thị Bích Ngọc", "ngoc.tran21@student.edu.vn", "student"),
+        ("Lê Hoàng Nam", "nam.le21@student.edu.vn", "student"),
+        ("Phạm Minh Tuấn", "tuan.pham22@student.edu.vn", "student"),
+    ]
+
+    for full_name, email, role in extra_users:
+        cursor.execute("SELECT id FROM users WHERE LOWER(email) = ?", (email.lower(),))
+        row = cursor.fetchone()
+        if not row:
+            cursor.execute(
+                """
+                INSERT INTO users (full_name, email, password_hash, role)
+                VALUES (?, ?, ?, ?)
+                """,
+                (full_name, email, pwd_hash, role),
+            )
+
+    # 2. Bổ sung hồ sơ chi tiết cho 3 sinh viên test nếu chưa có
+    extra_profiles = [
+        {
+            "email": "ngoc.tran21@student.edu.vn",
+            "full_name": "Trần Thị Bích Ngọc",
+            "student_code": "20216045",
+            "phone": "0912345678",
+            "university": "Đại học Công nghệ - ĐHQGHN",
+            "faculty": "Khoa Công nghệ Thông tin",
+            "major": "Kỹ thuật Phần mềm",
+            "academic_year": "K66 (2021 - 2025)",
+            "gpa": "3.58",
+            "target_position_id": 2,
+            "bio": "Sinh viên năm cuối yêu thích thiết kế UI/UX và phát triển giao diện Frontend hiện đại với ReactJS, TypeScript và Tailwind CSS.",
+            "courses": [
+                ("INT2204", "Lập trình hướng đối tượng", 3, "A", "2022.2"),
+                ("INT3306", "Phát triển ứng dụng Web", 3, "A+", "2023.1"),
+                ("INT3110", "Giao diện người - máy (UI/UX)", 3, "A", "2023.2"),
+            ],
+            "skills": [
+                ("HTML5/CSS3", "Frontend cơ bản", 5, "Responsive, Flexbox, CSS Grid"),
+                ("JavaScript", "Ngôn ngữ lập trình", 4, "ES6+, Fetch API, DOM"),
+                ("ReactJS", "Framework / Thư viện", 4, "React Hooks, Redux Toolkit, React Router"),
+                ("Tailwind CSS", "Framework / Thư viện", 4, "Thiết kế giao diện nhanh chuẩn Design System"),
+                ("Git", "Công cụ phát triển", 3, "Quản lý mã nguồn nhóm"),
+            ],
+            "certs": [
+                ("Meta Front-End Developer Professional", "Coursera (Meta)", "2024-01-15", "", "https://coursera.org"),
+                ("IELTS Academic 6.5", "British Council", "2023-09-10", "2025-09-10", "https://britishcouncil.vn"),
+            ],
+            "exps": [
+                ("Frontend Developer Intern", "VNG Corporation", "Thực tập sinh", "2024-06-01", "2024-09-30", "Xây dựng các component giao diện bằng ReactJS và tối ưu hiệu năng tải trang."),
+            ],
+            "plans": [
+                ("Hoàn thành khóa học TypeScript nâng cao", "Kỹ năng Frontend", "skill", "in_progress", "2026-12-01", "Áp dụng TypeScript vào dự án tốt nghiệp"),
+                ("Tìm hiểu VueJS 3 & NuxtJS", "Framework mở rộng", "skill", "todo", "2026-12-20", "Mở rộng cơ hội ứng tuyển Frontend"),
+            ],
+        },
+        {
+            "email": "nam.le21@student.edu.vn",
+            "full_name": "Lê Hoàng Nam",
+            "student_code": "20218102",
+            "phone": "0934567890",
+            "university": "Đại học Kinh tế Quốc dân",
+            "faculty": "Viện Công nghệ Thông tin & Kinh tế số",
+            "major": "Hệ thống Thông tin Quản lý",
+            "academic_year": "K63 (2021 - 2025)",
+            "gpa": "3.35",
+            "target_position_id": 4,
+            "bio": "Định hướng trở thành Chuyên viên Phân tích Dữ liệu (Data Analyst) trong lĩnh vực Fintech & E-commerce.",
+            "courses": [
+                ("IT1102", "Cơ sở dữ liệu & Quản trị dữ liệu", 3, "A", "2022.2"),
+                ("DS2010", "Xác suất thống kê ứng dụng", 3, "A", "2023.1"),
+                ("DA3050", "Trực quan hóa dữ liệu kinh doanh (BI)", 3, "B+", "2023.2"),
+            ],
+            "skills": [
+                ("SQL", "Cơ sở dữ liệu", 4, "Truy vấn phức tạp, Window Functions, CTE"),
+                ("Python", "Ngôn ngữ lập trình", 4, "Phân tích dữ liệu với Pandas, NumPy"),
+                ("Excel nâng cao", "Công cụ phân tích", 5, "Pivot Table, Power Query, VBA cơ bản"),
+                ("Power BI", "Công cụ BI", 3, "Xây dựng Dashboard báo cáo DAX"),
+                ("Pandas", "Thư viện dữ liệu", 4, "Làm sạch và biến đổi dữ liệu"),
+            ],
+            "certs": [
+                ("Google Data Analytics Professional Certificate", "Coursera (Google)", "2024-03-12", "", "https://coursera.org"),
+                ("TOEIC 750", "IIG Việt Nam", "2023-10-05", "2025-10-05", "https://iigvietnam.com"),
+            ],
+            "exps": [
+                ("Data Analyst Collaborator", "Shopee Việt Nam", "Cộng tác viên", "2024-04-01", "2024-08-30", "Xây dựng báo cáo theo dõi hành vi mua sắm và phân tích phễu chuyển đổi bằng SQL & Power BI."),
+            ],
+            "plans": [
+                ("Luyện tập Tableau Desktop Specialist", "Chứng chỉ BI", "certificate", "in_progress", "2026-12-10", "Bổ sung kỹ năng trực quan hóa dữ liệu"),
+            ],
+        },
+        {
+            "email": "tuan.pham22@student.edu.vn",
+            "full_name": "Phạm Minh Tuấn",
+            "student_code": "20225109",
+            "phone": "0978123456",
+            "university": "Đại học Bách Khoa Hà Nội",
+            "faculty": "Trường Công nghệ Thông tin & Truyền thông",
+            "major": "Trí tuệ Nhân tạo (AI)",
+            "academic_year": "K67 (2022 - 2026)",
+            "gpa": "3.65",
+            "target_position_id": 8,
+            "bio": "Đam mê nghiên cứu Học sâu (Deep Learning), Thị giác máy tính (Computer Vision) và xử lý ngôn ngữ tự nhiên (NLP).",
+            "courses": [
+                ("MI2020", "Toán rời rạc & Đại số tuyến tính", 4, "A", "2022.2"),
+                ("IT3160", "Nhập môn Trí tuệ nhân tạo", 3, "A+", "2023.2"),
+                ("IT4172", "Xử lý ảnh và Thị giác máy tính", 3, "A", "2024.1"),
+            ],
+            "skills": [
+                ("Python", "Ngôn ngữ lập trình", 5, "Thành thạo lập trình AI/ML"),
+                ("PyTorch", "Framework / Thư viện", 4, "Huấn luyện mô hình CNN, Transformer"),
+                ("Scikit-Learn", "Framework / Thư viện", 4, "Các thuật toán Machine Learning cổ điển"),
+                ("Computer Vision", "Chuyên ngành AI", 3, "Nhận diện vật thể YOLO, OpenCV"),
+                ("Toán rời rạc & Đại số tuyến tính", "Nền tảng toán", 4, "Ma trận, tối ưu hóa Gradient"),
+            ],
+            "certs": [
+                ("DeepLearning.AI TensorFlow Developer", "Coursera", "2024-04-20", "", "https://deeplearning.ai"),
+            ],
+            "exps": [
+                ("Nghiên cứu viên Sinh viên (AI Lab)", "BKAI Research Center", "Dự án nghiên cứu", "2023-10-01", "2024-09-01", "Nghiên cứu mô hình nhận diện văn bản tiếng Việt OCR bằng PyTorch."),
+            ],
+            "plans": [
+                ("Triển khai mô hình AI với Docker & FastAPI", "MLOps", "skill", "in_progress", "2026-12-15", "Đóng gói model phục vụ inference thực tế"),
+            ],
+        },
+    ]
+
+    for p in extra_profiles:
+        cursor.execute("SELECT id FROM users WHERE LOWER(email) = ?", (p["email"].lower(),))
+        u_row = cursor.fetchone()
+        if not u_row:
+            continue
+        uid = u_row["id"]
+
+        cursor.execute("SELECT id FROM student_profiles WHERE user_id = ?", (uid,))
+        if not cursor.fetchone():
+            cursor.execute(
+                """
+                INSERT INTO student_profiles (
+                    user_id, full_name, student_code, email, phone,
+                    university, faculty, major, academic_year, gpa, target_position_id, bio
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    uid,
+                    p["full_name"],
+                    p["student_code"],
+                    p["email"],
+                    p["phone"],
+                    p["university"],
+                    p["faculty"],
+                    p["major"],
+                    p["academic_year"],
+                    p["gpa"],
+                    p["target_position_id"],
+                    p["bio"],
+                ),
+            )
+            for code, name, credits, grade, term in p["courses"]:
+                cursor.execute(
+                    "INSERT INTO courses (user_id, code, name, credits, grade, term) VALUES (?, ?, ?, ?, ?, ?)",
+                    (uid, code, name, credits, grade, term),
+                )
+            for name, category, level, note in p["skills"]:
+                cursor.execute(
+                    "INSERT INTO skills (user_id, name, category, level, note) VALUES (?, ?, ?, ?, ?)",
+                    (uid, name, category, level, note),
+                )
+            for name, org, issue_date, exp_date, url in p["certs"]:
+                cursor.execute(
+                    "INSERT INTO certificates (user_id, name, organization, issue_date, expiry_date, credential_url) VALUES (?, ?, ?, ?, ?, ?)",
+                    (uid, name, org, issue_date, exp_date, url),
+                )
+            for title, comp, rtype, sdate, edate, desc in p["exps"]:
+                cursor.execute(
+                    "INSERT INTO experiences (user_id, title, company, role_type, start_date, end_date, description) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (uid, title, comp, rtype, sdate, edate, desc),
+                )
+            for title, cat, ptype, status, tdate, note in p["plans"]:
+                cursor.execute(
+                    "INSERT INTO learning_plans (user_id, title, category, type, status, target_date, note) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (uid, title, cat, ptype, status, tdate, note),
+                )
+
+
 def seed_database():
     """Khởi tạo các bảng và nạp dữ liệu mẫu nếu CSDL đang trống."""
     init_db()
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Kiểm tra nếu đã có user thì chỉ bổ sung dữ liệu bảng mới (nếu trống) rồi thoát
+    # Kiểm tra nếu đã có user thì bổ sung tài khoản admin & bảng mới (nếu trống) rồi thoát
     cursor.execute("SELECT COUNT(*) AS cnt FROM users")
     if cursor.fetchone()["cnt"] > 0:
+        _ensure_admin_account(cursor)
         _seed_analytics_tables_if_empty(cursor)
         conn.commit()
         conn.close()
         return
 
-    # 1. Tạo tài khoản sinh viên mẫu
+    # 1. Tạo tài khoản sinh viên mẫu & tài khoản Quản trị viên (Admin)
     pwd_hash = generate_password_hash("123456")
     cursor.execute(
         """
@@ -38,6 +231,7 @@ def seed_database():
         """,
         ("Nguyễn Văn An", "an.nguyen20@sis.hust.edu.vn", pwd_hash),
     )
+    _ensure_admin_account(cursor)
 
     # 2. Tạo thông tin cá nhân (student_profiles)
     cursor.execute(

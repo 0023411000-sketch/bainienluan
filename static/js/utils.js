@@ -300,12 +300,7 @@ const Utils = {
         getUser() {
             try {
                 const data = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_INFO);
-                return data ? JSON.parse(data) : {
-                    id: 1,
-                    email: "an.nguyen20@sis.hust.edu.vn",
-                    full_name: "Nguyễn Văn An",
-                    role: "student"
-                };
+                return data ? JSON.parse(data) : null;
             } catch (e) {
                 return null;
             }
@@ -320,6 +315,10 @@ const Utils = {
         },
         isAuthenticated() {
             return !!localStorage.getItem(CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+        },
+        isAdmin() {
+            const user = this.getUser();
+            return !!(user && user.role === 'admin');
         }
     }
 };

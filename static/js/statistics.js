@@ -74,11 +74,12 @@ async function loadStatisticsForPosition(positionId) {
 
         if (res.success && res.data) {
             const data = res.data;
-            document.getElementById('totalJobsAnalyzedCount').textContent = `${data.total_jobs_analyzed || 5} tin`;
+            document.getElementById('totalJobsAnalyzedCount').textContent = `${data.total_jobs_analyzed ?? 0} tin`;
 
             renderSkillsHorizontalBarChart(data.top_skills || []);
             renderTechnologiesPieChart(data.technologies || []);
             renderCertificatesList(data.certificates || []);
+            renderExperienceStats(data.experience_stats || []);
         } else {
             Utils.showToast(res.message || 'Không có dữ liệu thống kê!', 'warning');
         }
@@ -104,7 +105,7 @@ function renderSkillsHorizontalBarChart(skills) {
 
     const ctx = canvas.getContext('2d');
     const labels = skills.map(s => s.name);
-    const dataValues = skills.map(s => s.percentage || s.count);
+    const dataValues = skills.map(s => s.percentage ?? 0);
 
     skillsBarChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -232,9 +233,34 @@ function renderCertificatesList(certificates) {
                     <div class="fw-semibold text-dark small"><i class="bi bi-award-fill text-warning me-2"></i>${Utils.escapeHtml(c.name)}</div>
                     <small class="text-muted">${Utils.escapeHtml(c.level || 'Khuyến nghị')}</small>
                 </div>
-                <span class="badge bg-light text-secondary border">${c.count} lượt nhắc</span>
+                <span class="badge bg-light text-secondary border">${c.count} tin (${c.percentage ?? 0}%)</span>
             </div>
         `;
     });
     container.innerHTML = html;
+}
+
+/**
+ * Hiển thị thống kê yêu cầu kinh nghiệm (số tin & tỷ lệ %)
+ */
+function renderExperienceStats(stats) {
+    const container = document.getElementById('experienceStatsList');
+    if (!container) return;
+
+    if (stats.length === 0) {
+        container.innerHTML = `<div class="p-3 text-center text-muted small">Chưa có dữ liệu yêu cầu kinh nghiệm.</div>`;
+        return;
+    }
+
+    container.innerHTML = stats.map(e => `
+        <div class="list-group-item px-3 py-2 border-0 border-bottom">
+            <div class="d-flex justify-content-between small mb-1">
+                <span class="fw-semibold text-dark">${Utils.escapeHtml(e.level)}</span>
+                <span class="text-muted">${e.count} tin (${e.percentage ?? 0}%)</span>
+            </div>
+            <div class="progress" style="height: 6px;">
+                <div class="progress-bar bg-info" style="width: ${e.percentage ?? 0}%"></div>
+            </div>
+        </div>
+    `).join('');
 }

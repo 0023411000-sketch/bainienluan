@@ -22,9 +22,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const cModalEl = document.getElementById('csvImportModal');
     if (cModalEl) csvModal = new bootstrap.Modal(cModalEl);
 
-    // Gắn sự kiện nút
-    document.getElementById('btnOpenAddJobModal')?.addEventListener('click', openAddJobModal);
-    document.getElementById('btnOpenCsvModal')?.addEventListener('click', openCsvModal);
+    // Gắn sự kiện nút (Phân quyền chỉ Admin mới được Đăng tin mới & Nhập CSV)
+    const addJobBtn = document.getElementById('btnOpenAddJobModal');
+    const csvBtn = document.getElementById('btnOpenCsvModal');
+    if (Utils.auth.isAdmin()) {
+        addJobBtn?.addEventListener('click', openAddJobModal);
+        csvBtn?.addEventListener('click', openCsvModal);
+    } else {
+        addJobBtn?.classList.add('d-none');
+        csvBtn?.classList.add('d-none');
+    }
     document.getElementById('jobForm')?.addEventListener('submit', handleSaveJob);
 
     // Bắt sự kiện tìm kiếm & lọc
@@ -169,12 +176,14 @@ function renderJobsTable(jobs) {
                     <button class="btn btn-sm btn-outline-info py-1 px-2 me-1" title="Xem chi tiết" onclick="openViewJobModal(${job.id})">
                         <i class="bi bi-eye"></i>
                     </button>
+                    ${Utils.auth.isAdmin() ? `
                     <button class="btn btn-sm btn-outline-secondary py-1 px-2 me-1" title="Sửa" onclick="openEditJobModal(${job.id})">
                         <i class="bi bi-pencil"></i>
                     </button>
                     <button class="btn btn-sm btn-outline-danger py-1 px-2" title="Xóa" onclick="deleteJob(${job.id})">
                         <i class="bi bi-trash"></i>
                     </button>
+                    ` : ''}
                 </td>
             </tr>
         `;

@@ -41,6 +41,14 @@ async function httpFetch(endpoint, method = 'GET', data = null) {
         }));
 
         if (!response.ok) {
+            if (response.status === 401) {
+                // Phiên làm việc hết hạn hoặc chưa đăng nhập
+                if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+                    localStorage.removeItem(CONFIG.STORAGE_KEYS.USER_INFO);
+                    localStorage.removeItem(CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+                    window.location.href = '/login';
+                }
+            }
             throw new Error(result.message || `Lỗi máy chủ: mã HTTP ${response.status}`);
         }
         return result;
@@ -643,6 +651,24 @@ const API = {
                 return mockResponse(null, true, "Xóa mục kế hoạch thành công!");
             }
             return await httpFetch(`/plan/${id}`, 'DELETE');
+        }
+    },
+
+    // ==========================================
+    // 9. QUẢN TRỊ NGƯỜI DÙNG & PHÂN QUYỀN (ADMIN)
+    // ==========================================
+    adminUsers: {
+        async getAll() {
+            return await httpFetch('/admin/users');
+        },
+        async create(data) {
+            return await httpFetch('/admin/users', 'POST', data);
+        },
+        async update(id, data) {
+            return await httpFetch(`/admin/users/${id}`, 'PUT', data);
+        },
+        async delete(id) {
+            return await httpFetch(`/admin/users/${id}`, 'DELETE');
         }
     }
 };

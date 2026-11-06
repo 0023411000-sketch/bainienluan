@@ -91,10 +91,24 @@
                 </div>
             </div>
         </div>
+
+        <!-- Thẻ thống kê yêu cầu kinh nghiệm -->
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title fw-bold text-dark mb-0 fs-6">
+                    <i class="bi bi-hourglass-split text-info me-2"></i>Yêu Cầu Kinh Nghiệm
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="experienceStatsList">
+                    <!-- Nạp động từ JS -->
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/statistics.js') }}"></script>
+<script src="{{ url_for('static', filename='js/statistics.js') }}?v=3"></script>
 {% endblock %}
