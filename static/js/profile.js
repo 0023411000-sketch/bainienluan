@@ -781,7 +781,7 @@ function renderSuggestedCourses(courses) {
     }
 
     let html = '';
-    courses.forEach(c => {
+    courses.forEach((c, idx) => {
         const missingBadges = (c.matched_missing_skills || []).map(sk => 
             `<span class="badge badge-soft-danger me-1 mb-1 small"><i class="bi bi-tag me-1"></i>${Utils.escapeHtml(sk)}</span>`
         ).join('');
@@ -812,10 +812,10 @@ function renderSuggestedCourses(courses) {
                 </td>
                 <td class="text-end">
                     <div class="btn-group btn-group-sm">
-                        <button type="button" class="btn btn-outline-primary" title="Thêm môn này vào kế hoạch học tập" onclick="addSuggestedCourseToPlan('${escapedCode}', '${escapedName}', '${escapedDesc}')">
+                        <button type="button" class="btn btn-outline-primary" title="Thêm môn này vào kế hoạch học tập" onclick="addSuggestedAcademicByIdx(${idx})">
                             <i class="bi bi-calendar-plus me-1"></i>Vào Kế hoạch
                         </button>
-                        <button type="button" class="btn btn-outline-success" title="Đánh dấu đã hoàn thành và lưu điểm" onclick="markCourseAsLearned('${escapedCode}', '${escapedName}', ${c.credits || 3})">
+                        <button type="button" class="btn btn-outline-success" title="Đánh dấu đã hoàn thành và lưu điểm" onclick="markCourseLearnedByIdx(${idx})">
                             <i class="bi bi-check2 me-1"></i>Đã học
                         </button>
                     </div>
@@ -851,7 +851,7 @@ function renderSuggestedOnlineCourses(recs, certs) {
         return;
     }
 
-    let recsHtml = recs.map(r => {
+    let recsHtml = recs.map((r, idx) => {
         const titleEscaped = Utils.escapeHtml(r.title);
         const skillEscaped = Utils.escapeHtml(r.skill_name || 'Kỹ năng CNTT');
         return `
@@ -868,7 +868,7 @@ function renderSuggestedOnlineCourses(recs, certs) {
                     <div class="d-flex justify-content-between align-items-center pt-2 border-top">
                         <span class="text-muted small"><i class="bi bi-clock me-1"></i>${Utils.escapeHtml(r.duration || '4 tuần')}</span>
                         <div class="btn-group btn-group-sm">
-                            <button type="button" class="btn btn-outline-primary" onclick="addSuggestedCourseToPlan('${skillEscaped}', '${titleEscaped}', '${Utils.escapeHtml(r.description || '')}')">
+                            <button type="button" class="btn btn-outline-primary" onclick="addSuggestedOnlineByIdx(${idx})">
                                 <i class="bi bi-calendar-plus me-1"></i>Lên kế hoạch
                             </button>
                             <a href="${Utils.escapeHtml(r.url || 'https://www.coursera.org')}" target="_blank" class="btn btn-light border">
@@ -884,6 +884,24 @@ function renderSuggestedOnlineCourses(recs, certs) {
     container.innerHTML = certsHtml + recsHtml;
 }
 
+function addSuggestedAcademicByIdx(idx) {
+    const c = currentProfile?.evaluation?.suggested_academic_courses?.[idx];
+    if (!c) return;
+    addSuggestedCourseToPlan(c.code, c.name, c.description || c.reason || '');
+}
+
+function markCourseLearnedByIdx(idx) {
+    const c = currentProfile?.evaluation?.suggested_academic_courses?.[idx];
+    if (!c) return;
+    markCourseAsLearned(c.code, c.name, c.credits || 3);
+}
+
+function addSuggestedOnlineByIdx(idx) {
+    const r = currentProfile?.evaluation?.recommendations?.[idx];
+    if (!r) return;
+    addSuggestedCourseToPlan(r.skill_name || 'Khóa học', r.title, r.description || '');
+}
+
 async function addSuggestedCourseToPlan(code, name, description) {
     try {
         Utils.showLoading(true, 'Đang thêm vào kế hoạch học tập...');
@@ -892,7 +910,7 @@ async function addSuggestedCourseToPlan(code, name, description) {
             category: 'Học phần đại học',
             type: 'course',
             status: 'todo',
-            target_date: '',
+            target_date: '2026-12-31',
             note: description || `Môn học đề xuất cho vị trí mục tiêu.`
         };
         const res = await API.plan.create(payload);

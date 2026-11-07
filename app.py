@@ -1224,16 +1224,10 @@ def api_dashboard():
     positions_rows = conn.execute("SELECT * FROM positions ORDER BY id ASC").fetchall()
     match_scores = []
     for p in positions_rows:
-        core_skills = parse_json_list(p["core_skills"])
-        if core_skills:
-            matched = [
-                cs for cs in core_skills
-                if any(ms in cs.lower() or cs.lower() in ms for ms in user_skills)
-            ]
-            score = round((len(matched) / len(core_skills)) * 100)
-        else:
-            score = 0
-        match_scores.append({"id": p["id"], "name": p["name"], "score": score})
+        eval_res = evaluate_profile_fit_and_suggest_courses(
+            user_id, position_id=p["id"], save_history=False, conn=conn
+        )
+        match_scores.append({"id": p["id"], "name": p["name"], "score": eval_res.get("score", 0)})
 
     highest = max(match_scores, key=lambda x: x["score"]) if match_scores else {"id": 1, "name": "Chưa có", "score": 0}
 
@@ -1508,6 +1502,15 @@ def evaluate_profile_fit_and_suggest_courses(user_id, position_id=None, save_his
         def _match(a, b):
             return a == b or a in b or b in a
 
+        # Ánh xạ thêm các kỹ năng được trang bị từ các học phần sinh viên đã hoàn thành
+        course_taught_skills = set(user_course_names)
+        for c in ACADEMIC_CURRICULUM:
+            c_code = c["code"].strip().upper()
+            c_name = c["name"].strip().lower()
+            if c_code in user_course_codes or any(_match(c_name, uc) for uc in user_course_names):
+                for sk in c.get("skills", []):
+                    course_taught_skills.add(sk.strip().lower())
+
         # 2. Tổng hợp kỹ năng yêu cầu từ vị trí & tin tuyển dụng
         req_skills = []
         for s in parse_json_list(pos["core_skills"]):
@@ -1526,7 +1529,7 @@ def evaluate_profile_fit_and_suggest_courses(user_id, position_id=None, save_his
             req_lower = req.lower()
             if any(_match(us, req_lower) for us in user_skills):
                 have.append(req)
-            elif any(_match(uc, req_lower) for uc in user_course_names):
+            elif any(_match(cs, req_lower) for cs in course_taught_skills):
                 have.append(req)
                 have_by_courses.append(req)
             else:

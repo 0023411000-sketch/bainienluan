@@ -16,11 +16,19 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initComparePage() {
     await loadComparePositions();
 
+    const selectEl = document.getElementById('comparePositionSelect');
     const btnRun = document.getElementById('btnRunCompare');
     if (btnRun) {
         btnRun.addEventListener('click', () => {
-            const selectEl = document.getElementById('comparePositionSelect');
             if (selectEl && selectEl.value) {
+                runComparison(selectEl.value);
+            }
+        });
+    }
+
+    if (selectEl) {
+        selectEl.addEventListener('change', () => {
+            if (selectEl.value) {
                 runComparison(selectEl.value);
             }
         });
@@ -29,18 +37,28 @@ async function initComparePage() {
     // Nút thêm kỹ năng thiếu vào Kế hoạch học tập
     document.getElementById('btnAddMissingToPlan')?.addEventListener('click', handleAddMissingSkillsToPlan);
 
-    // Tự động chạy so sánh vị trí đầu tiên
-    const selectEl = document.getElementById('comparePositionSelect');
+    // Tự động chạy so sánh vị trí đang chọn
     if (selectEl && selectEl.value) {
         runComparison(selectEl.value);
     }
 }
 
 /**
- * Tải danh mục vị trí vào dropdown
+ * Tải danh mục vị trí vào dropdown và ưu tiên chọn vị trí mục tiêu của sinh viên
  */
 async function loadComparePositions() {
     try {
+        const urlParams = new URLSearchParams(window.location.search);
+        let preferredPosId = urlParams.get('position_id');
+        if (!preferredPosId) {
+            try {
+                const profRes = await API.profile.get();
+                if (profRes.success && profRes.data?.personal_info?.target_position_id) {
+                    preferredPosId = String(profRes.data.personal_info.target_position_id);
+                }
+            } catch (_) {}
+        }
+
         const res = await API.positions.getAll({ limit: 100 });
         if (res.success && res.data) {
             const selectEl = document.getElementById('comparePositionSelect');
@@ -52,7 +70,9 @@ async function loadComparePositions() {
                 const opt = document.createElement('option');
                 opt.value = p.id;
                 opt.textContent = p.name;
-                if (idx === 0) opt.selected = true;
+                if (preferredPosId ? String(p.id) === String(preferredPosId) : idx === 0) {
+                    opt.selected = true;
+                }
                 selectEl.appendChild(opt);
             });
         }
@@ -257,7 +277,7 @@ async function addAcademicCourseToPlan(index) {
             category: `Học phần cho vị trí ${lastComparisonResult.position_name}`,
             type: 'course',
             status: 'todo',
-            target_date: '',
+            target_date: '2026-12-31',
             note: c.description || c.reason || 'Môn học CNTT trọng tâm.'
         });
         if (res.success) {

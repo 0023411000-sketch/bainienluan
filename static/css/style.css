@@ -47,6 +47,10 @@ body {
     font-weight: 600;
 }
 
+.nav-pills .nav-link.active {
+    color: #ffffff !important;
+}
+
 /* 2. Thẻ Card & Khung giao diện */
 .card {
     border: 1px solid var(--card-border);
