@@ -57,16 +57,20 @@
         </div>
     </footer>
 
+    <!-- 6. Tiện ích Chatbot nổi góc phải dưới cùng -->
+    {% include 'partials/chatbot.html' %}
+
     <!-- Bootstrap 5 Bundle JS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Chart.js 4.x CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 
     <!-- Các tập tin mã nguồn JavaScript cốt lõi -->
-    <script src="{{ url_for('static', filename='js/config.js') }}?v=2"></script>
-    <script src="{{ url_for('static', filename='js/mock-data.js') }}?v=2"></script>
-    <script src="{{ url_for('static', filename='js/utils.js') }}?v=2"></script>
-    <script src="{{ url_for('static', filename='js/api.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='js/config.js') }}?v=3"></script>
+    <script src="{{ url_for('static', filename='js/mock-data.js') }}?v=3"></script>
+    <script src="{{ url_for('static', filename='js/utils.js') }}?v=3"></script>
+    <script src="{{ url_for('static', filename='js/api.js') }}?v=3"></script>
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}?v=5"></script>
 
     <!-- Logic chung (Khởi tạo phiên người dùng, nút đăng xuất) -->
     <script>

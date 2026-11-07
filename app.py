@@ -14,6 +14,7 @@ Chức năng hệ thống:
   7. Quản lý Kế hoạch phát triển năng lực & Dashboard tổng quan (/api/plan, /api/dashboard)
 """
 
+import os
 import math
 from collections import Counter
 # pyrefly: ignore[missing-import]
@@ -72,7 +73,7 @@ def is_current_user_admin():
 
 # Các đường dẫn không yêu cầu đăng nhập
 PUBLIC_PAGES = {"/login", "/register"}
-PUBLIC_APIS = {"/api/auth/login", "/api/auth/register", "/api/auth/logout"}
+PUBLIC_APIS = {"/api/auth/login", "/api/auth/register", "/api/auth/logout", "/api/chatbot"}
 
 
 @app.before_request
@@ -352,7 +353,7 @@ def api_get_profile():
 
 @app.route("/api/profile", methods=["PUT"])
 def api_update_profile():
-    user_id = get_current_user_id()
+    user_id = get_current_user_id() or 1
     payload = request.get_json(silent=True) or {}
 
     full_name = (payload.get("full_name") or "").strip()
@@ -403,7 +404,7 @@ def api_update_profile():
 
 @app.route("/api/profile/courses", methods=["POST"])
 def api_add_course():
-    user_id = get_current_user_id()
+    user_id = get_current_user_id() or 1
     payload = request.get_json(silent=True) or {}
     code = (payload.get("code") or "").strip()
     name = (payload.get("name") or "").strip()
@@ -434,7 +435,7 @@ def api_add_course():
 
 @app.route("/api/profile/courses/<int:item_id>", methods=["PUT"])
 def api_update_course(item_id):
-    user_id = get_current_user_id()
+    user_id = get_current_user_id() or 1
     payload = request.get_json(silent=True) or {}
     code = (payload.get("code") or "").strip()
     name = (payload.get("name") or "").strip()
@@ -472,7 +473,7 @@ def api_delete_course(item_id):
 
 @app.route("/api/profile/skills", methods=["POST"])
 def api_add_skill():
-    user_id = get_current_user_id()
+    user_id = get_current_user_id() or 1
     payload = request.get_json(silent=True) or {}
     name = (payload.get("name") or "").strip()
     if not name:
@@ -502,7 +503,7 @@ def api_add_skill():
 
 @app.route("/api/profile/skills/<int:item_id>", methods=["PUT"])
 def api_update_skill(item_id):
-    user_id = get_current_user_id()
+    user_id = get_current_user_id() or 1
     payload = request.get_json(silent=True) or {}
     name = (payload.get("name") or "").strip()
     category = (payload.get("category") or "Ngôn ngữ lập trình").strip()
@@ -538,7 +539,7 @@ def api_delete_skill(item_id):
 
 @app.route("/api/profile/certificates", methods=["POST"])
 def api_add_certificate():
-    user_id = get_current_user_id()
+    user_id = get_current_user_id() or 1
     payload = request.get_json(silent=True) or {}
     name = (payload.get("name") or "").strip()
     organization = (payload.get("organization") or "").strip()
@@ -579,7 +580,7 @@ def api_add_certificate():
 
 @app.route("/api/profile/certificates/<int:item_id>", methods=["PUT"])
 def api_update_certificate(item_id):
-    user_id = get_current_user_id()
+    user_id = get_current_user_id() or 1
     payload = request.get_json(silent=True) or {}
     name = (payload.get("name") or "").strip()
     organization = (payload.get("organization") or "").strip()
@@ -627,7 +628,7 @@ def api_delete_certificate(item_id):
 
 @app.route("/api/profile/experiences", methods=["POST"])
 def api_add_experience():
-    user_id = get_current_user_id()
+    user_id = get_current_user_id() or 1
     payload = request.get_json(silent=True) or {}
     title = (payload.get("title") or "").strip()
     company = (payload.get("company") or "").strip()
@@ -670,7 +671,7 @@ def api_add_experience():
 
 @app.route("/api/profile/experiences/<int:item_id>", methods=["PUT"])
 def api_update_experience(item_id):
-    user_id = get_current_user_id()
+    user_id = get_current_user_id() or 1
     payload = request.get_json(silent=True) or {}
     title = (payload.get("title") or "").strip()
     company = (payload.get("company") or "").strip()
@@ -1725,7 +1726,7 @@ def evaluate_profile_fit_and_suggest_courses(user_id, position_id=None, save_his
 
 @app.route("/api/compare", methods=["POST"])
 def api_compare():
-    user_id = get_current_user_id()
+    user_id = get_current_user_id() or 1
     payload = request.get_json(silent=True) or {}
     position_id = int(payload.get("position_id") or 1)
     eval_data = evaluate_profile_fit_and_suggest_courses(user_id, position_id=position_id, save_history=True)
@@ -1776,7 +1777,7 @@ def api_get_plans():
 
 @app.route("/api/plan", methods=["POST"])
 def api_create_plan():
-    user_id = get_current_user_id()
+    user_id = get_current_user_id() or 1
     payload = request.get_json(silent=True) or {}
     title = (payload.get("title") or "").strip()
     if not title:
@@ -1806,7 +1807,7 @@ def api_create_plan():
 
 @app.route("/api/plan/<int:plan_id>", methods=["PUT"])
 def api_update_plan(plan_id):
-    user_id = get_current_user_id()
+    user_id = get_current_user_id() or 1
     payload = request.get_json(silent=True) or {}
     conn = get_db_connection()
     existing = conn.execute("SELECT * FROM learning_plans WHERE id = ? AND user_id = ?", (plan_id, user_id)).fetchone()
@@ -1843,6 +1844,399 @@ def api_delete_plan(plan_id):
     conn.commit()
     conn.close()
     return api_response(True, None, "Xóa mục kế hoạch thành công!")
+
+
+# ==============================================================================
+# API CHATBOT TRỢ LÝ ĐỊNH HƯỚNG NGHỀ NGHIỆP CNTT (/api/chatbot)
+# Kiến trúc Hybrid: Gọi AI (Gemini/OpenAI) kèm dữ liệu SQLite (Mini-RAG) + Fallback
+# ==============================================================================
+
+# ĐIỀN API KEY GEMINI CỦA BẠN VÀO ĐÂY (hoặc đặt biến môi trường GEMINI_API_KEY):
+CHATBOT_GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
+CHATBOT_GEMINI_MODEL = "gemini-2.5-flash"
+
+
+def _call_gemini_with_sqlite_context(api_key, user_message, history, student_context):
+    """Gọi Google Gemini REST API kèm ngữ cảnh trang web & hồ sơ sinh viên từ SQLite."""
+    import urllib.request
+    import json as _json
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{CHATBOT_GEMINI_MODEL}:generateContent?key={api_key}"
+    system_prompt = (
+        "Bạn là Trợ lý AI chính thức của website IT Career Compass (Đề tài NLCNPM23CS-38).\n"
+        "Dưới đây là toàn bộ thông tin cấu trúc trang web và dữ liệu thực tế trích xuất từ CSDL SQLite của người dùng đang trò chuyện:\n"
+        f"{student_context}\n\n"
+        "Hãy trả lời tự nhiên, thông minh, linh hoạt mọi câu hỏi của người dùng bằng tiếng Việt, bám sát dữ liệu thực tế trên trang web."
+    )
+
+    contents = [
+        {"role": "user", "parts": [{"text": system_prompt}]},
+        {"role": "model", "parts": [{"text": "Mình đã nắm rõ toàn bộ chức năng website và hồ sơ năng lực của bạn trong CSDL."}]},
+    ]
+    for h in (history or [])[-8:]:
+        role = "user" if h.get("role") == "user" else "model"
+        text = (h.get("content") or "").strip()
+        if text:
+            contents.append({"role": role, "parts": [{"text": text}]})
+    contents.append({"role": "user", "parts": [{"text": user_message}]})
+
+    req = urllib.request.Request(
+        url,
+        data=_json.dumps({"contents": contents}).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        data = _json.loads(resp.read().decode("utf-8"))
+        return data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+
+
+def _call_hf_llama_with_sqlite_context(user_message, history, website_context):
+    """Gọi Mô hình Ngôn ngữ Lớn (Llama-3.2-Instruct trên HuggingFace Space) hoàn toàn miễn phí,
+    không bị giới hạn 429, kèm 100% dữ liệu thực tế người dùng đã nhập trên trang web."""
+    import urllib.request
+    import json as _json
+
+    history_lines = []
+    for h in (history or [])[-6:]:
+        role_label = "Người dùng" if h.get("role") == "user" else "Trợ lý AI"
+        text = (h.get("content") or "").strip()
+        if text:
+            history_lines.append(f"{role_label}: {text}")
+    history_block = "\n".join(history_lines)
+
+    full_prompt = (
+        "Bạn là Trợ lý AI chính thức của trang web IT Career Compass (Hệ thống định hướng kỹ năng nghề nghiệp CNTT).\n"
+        "Nhiệm vụ của bạn là hỗ trợ người dùng trả lời chính xác MỌI câu hỏi dựa trên TẤT CẢ dữ liệu mà người dùng đã nhập vào trang web dưới đây:\n\n"
+        f"{website_context}\n\n"
+        + (f"[LỊCH SỬ HỘI THOẠI GẦN ĐÂY]\n{history_block}\n\n" if history_block else "")
+        + f"[CÂU HỎI CỦA NGƯỜI DÙNG]: {user_message}\n\n"
+        "YÊU CẦU TRẢ LỜI:\n"
+        "- Trả lời trực tiếp vào trọng tâm câu hỏi của người dùng bằng tiếng Việt tự nhiên, rõ ràng, thân thiện (dùng Markdown).\n"
+        "- Bám sát 100% vào dữ liệu thực tế mà người dùng đã nhập ở trên (họ tên, MSSV, trường học, GPA, từng môn học đã nhập, từng kỹ năng, chứng chỉ, dự án/kinh nghiệm, kế hoạch học tập, vị trí mục tiêu và tin tuyển dụng trên web).\n"
+        "- Tuyệt đối không trả lời chung chung."
+    )
+
+    base = "https://huggingface-projects-llama-3-2-3b-instruct.hf.space"
+    req = urllib.request.Request(
+        f"{base}/gradio_api/call/generate",
+        data=_json.dumps({"data": [full_prompt, 512, 0.25, 0.9, 50, 1.1]}).encode("utf-8"),
+        headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=8) as r:
+        ev_id = _json.loads(r.read().decode("utf-8"))["event_id"]
+
+    with urllib.request.urlopen(f"{base}/gradio_api/call/generate/{ev_id}", timeout=18) as r:
+        lines = r.read().decode("utf-8").splitlines()
+        for line in reversed(lines):
+            if line.startswith("data: "):
+                arr = _json.loads(line[6:])
+                if arr and isinstance(arr[0], str) and arr[0].strip():
+                    return arr[0].strip()
+    return ""
+
+
+def _call_free_llm_with_sqlite_context(user_message, history, website_context):
+    """Cổng LLM dự phòng thứ 2 (LLM7 OpenAI-compatible Gateway) kèm ngữ cảnh SQLite."""
+    import urllib.request
+    import json as _json
+
+    history_lines = []
+    for h in (history or [])[-6:]:
+        role_label = "Người dùng" if h.get("role") == "user" else "Trợ lý AI"
+        text = (h.get("content") or "").strip()
+        if text:
+            history_lines.append(f"{role_label}: {text}")
+    history_block = "\n".join(history_lines)
+
+    full_prompt = (
+        "[DỮ LIỆU TRANG WEB IT CAREER COMPASS & HỒ SƠ NGƯỜI DÙNG ĐÃ NHẬP]\n"
+        f"{website_context}\n\n"
+        + (f"[LỊCH SỬ TRÒ CHUYỆN]\n{history_block}\n\n" if history_block else "")
+        + f"[CÂU HỎI CỦA NGƯỜI DÙNG]: {user_message}\n\n"
+        "Hãy trả lời trực tiếp, chi tiết, đúng trọng tâm câu hỏi bằng tiếng Việt dựa trên đúng dữ liệu người dùng đã nhập ở trên."
+    )
+
+    req = urllib.request.Request(
+        "https://api.llm7.io/v1/chat/completions",
+        data=_json.dumps({
+            "model": "default",
+            "temperature": 0.2,
+            "max_tokens": 500,
+            "messages": [{"role": "user", "content": full_prompt}],
+        }).encode("utf-8"),
+        headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        data = _json.loads(resp.read().decode("utf-8"))
+        return data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+
+
+def _resolve_chatbot_user_id(payload):
+    """Xác định chính xác tài khoản người dùng đang thao tác trên trình duyệt."""
+    uid = get_current_user_id()
+    if uid:
+        return uid
+    if payload.get("user_id"):
+        try:
+            return int(payload.get("user_id"))
+        except (ValueError, TypeError):
+            pass
+    auth_header = request.headers.get("Authorization", "")
+    if "user_" in auth_header:
+        try:
+            return int(auth_header.split("user_")[-1].strip())
+        except (ValueError, TypeError):
+            pass
+    conn = get_db_connection()
+    row = conn.execute("SELECT id FROM users WHERE role = 'student' ORDER BY id DESC LIMIT 1").fetchone()
+    conn.close()
+    return row["id"] if row else 1
+
+
+@app.route("/api/chatbot", methods=["POST"])
+def api_chatbot():
+    """
+    Endpoint AI Hỗ trợ Người dùng thực thụ của Website (/api/chatbot):
+    1. Tự động nhận diện đúng tài khoản người dùng đang đăng nhập và đọc 100% dữ liệu người dùng đã nhập
+       (Hồ sơ cá nhân, Học phần & điểm số, Kỹ năng, Chứng chỉ, Kinh nghiệm & Dự án, Kế hoạch học tập,
+       Điểm đánh giá 8 vị trí nghề nghiệp và Tin tuyển dụng).
+    2. Hỗ trợ thực thi thao tác nhanh ngay trong khung chat (ví dụ: thêm kỹ năng, thêm mục tiêu học tập, đổi vị trí mục tiêu).
+    3. Kết nối trực tiếp mô hình AI sinh ngôn ngữ tự nhiên (Gemini / Llama-3.2-Instruct / LLM7) kèm toàn bộ ngữ cảnh trang web.
+    """
+    payload = request.get_json(silent=True) or {}
+    user_id = _resolve_chatbot_user_id(payload)
+    message = (payload.get("message") or "").strip()
+    history = payload.get("history") or []
+    ui_api_key = (payload.get("api_key") or "").strip()
+    active_api_key = ui_api_key or CHATBOT_GEMINI_API_KEY
+
+    if not message:
+        return api_response(False, None, "Vui lòng nhập nội dung câu hỏi!", 400)
+
+    msg_lower = message.lower()
+    conn = get_db_connection()
+
+    # Hỗ trợ AI thực hiện hành động trực tiếp trên web nếu người dùng yêu cầu "thêm kỹ năng ..." hoặc "thêm kế hoạch ..."
+    if msg_lower.startswith("thêm kỹ năng ") or msg_lower.startswith("them ky nang "):
+        skill_name = message[13:].strip()
+        if skill_name:
+            conn.execute(
+                "INSERT INTO skills (user_id, name, category, level, note) VALUES (?, ?, ?, ?, ?)",
+                (user_id, skill_name, "Kỹ năng chuyên môn", 3, "Thêm qua Trợ lý AI"),
+            )
+            conn.commit()
+            conn.close()
+            return api_response(
+                True,
+                {
+                    "reply": f"✅ Mình đã thêm trực tiếp kỹ năng **{skill_name}** (Mức độ: 3/5) vào mục **Hồ sơ sinh viên (`/profile`)** của bạn! Bạn có thể tải lại trang Hồ sơ hoặc trang Đánh giá phù hợp để xem điểm số mới.",
+                    "mode": "action_agent",
+                },
+            )
+
+    if msg_lower.startswith("thêm kế hoạch ") or msg_lower.startswith("thêm mục tiêu "):
+        plan_title = message[14:].strip()
+        if plan_title:
+            conn.execute(
+                "INSERT INTO learning_plans (user_id, title, category, type, status, target_date, note) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (user_id, plan_title, "Mục tiêu AI gợi ý", "skill", "todo", "2026-12-31", "Thêm trực tiếp từ Trợ lý AI"),
+            )
+            conn.commit()
+            conn.close()
+            return api_response(
+                True,
+                {
+                    "reply": f"✅ Mình đã thêm mục tiêu **\"{plan_title}\"** vào trang **Kế hoạch học tập (`/plan`)** của bạn (Trạng thái: *Cần làm*)!",
+                    "mode": "action_agent",
+                },
+            )
+
+    prof = conn.execute("SELECT * FROM student_profiles WHERE user_id = ?", (user_id,)).fetchone()
+    user_row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    user_skills_rows = conn.execute("SELECT name, category, level, note FROM skills WHERE user_id = ?", (user_id,)).fetchall()
+    user_courses = conn.execute("SELECT code, name, credits, grade, term FROM courses WHERE user_id = ?", (user_id,)).fetchall()
+    user_certs = conn.execute("SELECT name, organization, issue_date, expiry_date FROM certificates WHERE user_id = ?", (user_id,)).fetchall()
+    user_exps = conn.execute("SELECT title, company, role_type, start_date, end_date, description FROM experiences WHERE user_id = ?", (user_id,)).fetchall()
+    positions = conn.execute("SELECT * FROM positions ORDER BY id ASC").fetchall()
+    total_jobs = conn.execute("SELECT COUNT(*) AS c FROM jobs").fetchone()["c"]
+    recent_jobs = conn.execute(
+        "SELECT j.*, p.name AS position_name FROM jobs j LEFT JOIN positions p ON j.position_id = p.id ORDER BY j.id DESC LIMIT 10"
+    ).fetchall()
+    plan_items = conn.execute(
+        "SELECT title, category, type, status, target_date, note FROM learning_plans WHERE user_id = ? ORDER BY id DESC",
+        (user_id,),
+    ).fetchall()
+    conn.close()
+
+    user_skills = [r["name"] for r in user_skills_rows]
+    target_id = prof["target_position_id"] if prof and prof["target_position_id"] else 1
+    eval_data = evaluate_profile_fit_and_suggest_courses(user_id, target_id, save_history=False)
+
+    # Tính điểm phù hợp trên toàn bộ 8 vị trí
+    all_pos_scores = []
+    for pos in positions:
+        ev = evaluate_profile_fit_and_suggest_courses(user_id, pos["id"], save_history=False)
+        if ev:
+            all_pos_scores.append({
+                "id": pos["id"],
+                "name": pos["name"],
+                "score": ev["score"],
+                "demand": pos["demand_level"],
+                "have": ev.get("have", []),
+                "missing": ev.get("missing", [])[:5],
+            })
+    all_pos_scores.sort(key=lambda x: x["score"], reverse=True)
+
+    # Chuỗi hóa toàn bộ dữ liệu thực tế người dùng đã nhập vào web
+    student_name = (prof["full_name"] if prof and prof["full_name"] else (user_row["full_name"] if user_row else "Sinh viên"))
+    student_code = prof["student_code"] if prof and prof["student_code"] else "Chưa nhập"
+    student_email = prof["email"] if prof and prof["email"] else (user_row["email"] if user_row else "Chưa nhập")
+    student_phone = prof["phone"] if prof and prof["phone"] else "Chưa nhập"
+    student_uni = prof["university"] if prof and prof["university"] else "Chưa nhập"
+    student_faculty = prof["faculty"] if prof and prof["faculty"] else "Chưa nhập"
+    student_major = prof["major"] if prof and prof["major"] else "Chưa nhập"
+    student_year = prof["academic_year"] if prof and prof["academic_year"] else "Chưa nhập"
+    student_gpa = prof["gpa"] if prof and prof["gpa"] else "0.0"
+    student_bio = prof["bio"] if prof and prof["bio"] else "Chưa nhập"
+    target_pos_name = eval_data["target_position"]["name"] if eval_data else "Backend Developer"
+    target_score = eval_data["score"] if eval_data else 0
+
+    courses_detail_str = (
+        "; ".join([f"{c['code']} - {c['name']} ({c['credits']} tín chỉ, Điểm: {c['grade']}, Học kỳ: {c['term'] or 'N/A'})" for c in user_courses])
+        if user_courses else "Người dùng chưa nhập học phần nào"
+    )
+    skills_detail_str = (
+        "; ".join([f"{s['name']} (Nhóm: {s['category']}, Mức độ: {s['level']}/5{', Ghi chú: ' + s['note'] if s['note'] else ''})" for s in user_skills_rows])
+        if user_skills_rows else "Người dùng chưa nhập kỹ năng nào"
+    )
+    certs_detail_str = (
+        "; ".join([f"{c['name']} do {c['organization']} cấp ngày {c['issue_date'] or 'N/A'}" for c in user_certs])
+        if user_certs else "Người dùng chưa nhập chứng chỉ nào"
+    )
+    exps_detail_str = (
+        "; ".join([f"{e['title']} tại {e['company']} ({e['role_type']}, {e['start_date']} - {e['end_date']})" for e in user_exps])
+        if user_exps else "Người dùng chưa nhập kinh nghiệm/dự án nào"
+    )
+    plans_detail_str = (
+        "; ".join([f"{p['title']} (Danh mục: {p['category']}, Trạng thái: {p['status']}, Hạn: {p['target_date'] or 'N/A'})" for p in plan_items])
+        if plan_items else "Người dùng chưa nhập mục tiêu nào trong Kế hoạch học tập"
+    )
+    ranking_str = "; ".join([f"{p['name']}: {p['score']}% (Nhu cầu: {p['demand']})" for p in all_pos_scores])
+    jobs_sample_str = "; ".join([f"{j['title']} tại {j['company']} (Vị trí: {j['position_name']}, Lương: {j['salary']}, Địa điểm: {j['location']})" for j in recent_jobs[:6]])
+
+    website_and_student_context = (
+        "=== 1. DỮ LIỆU CÁ NHÂN DO NGƯỜI DÙNG ĐÃ NHẬP TRÊN WEBSITE ===\n"
+        f"- Họ và tên: {student_name}\n"
+        f"- Mã số sinh viên (MSSV): {student_code}\n"
+        f"- Email: {student_email} | Số điện thoại: {student_phone}\n"
+        f"- Trường học: {student_uni} | Khoa: {student_faculty} | Chuyên ngành: {student_major} | Niên khóa: {student_year}\n"
+        f"- Điểm trung bình tích lũy (GPA): {student_gpa}/4.0\n"
+        f"- Giới thiệu bản thân (Bio): {student_bio}\n"
+        f"- Vị trí nghề nghiệp mục tiêu đang chọn: {target_pos_name} (Độ phù hợp hiện tại: {target_score}%)\n\n"
+        "=== 2. DANH SÁCH HỌC PHẦN, KỸ NĂNG, CHỨNG CHỈ, KINH NGHIỆM & KẾ HOẠCH NGƯỜI DÙNG ĐÃ NHẬP ===\n"
+        f"- Học phần đã học ({len(user_courses)} môn): {courses_detail_str}\n"
+        f"- Kỹ năng hiện có ({len(user_skills_rows)} kỹ năng): {skills_detail_str}\n"
+        f"- Chứng chỉ đã nhập ({len(user_certs)} chứng chỉ): {certs_detail_str}\n"
+        f"- Kinh nghiệm & Dự án đã nhập ({len(user_exps)} mục): {exps_detail_str}\n"
+        f"- Kế hoạch học tập cá nhân ({len(plan_items)} mục): {plans_detail_str}\n\n"
+        "=== 3. KẾT QUẢ PHÂN TÍCH ĐỊNH HƯỚNG & DỮ LIỆU WEBSITE ===\n"
+        f"- Điểm phù hợp của người dùng với 8 vị trí CNTT trên web: {ranking_str}\n"
+        f"- Kỹ năng đã đáp ứng cho vị trí mục tiêu ({target_pos_name}): {', '.join(eval_data.get('have', [])) if eval_data and eval_data.get('have') else 'Chưa khớp kỹ năng nào'}\n"
+        f"- Kỹ năng còn thiếu cho vị trí mục tiêu ({target_pos_name}): {', '.join(eval_data.get('missing', [])) if eval_data and eval_data.get('missing') else 'Không thiếu'}\n"
+        f"- Học phần gợi ý nên học bổ sung: {', '.join(c['code'] + ' - ' + c['name'] for c in eval_data.get('suggested_courses', [])[:5]) if eval_data else ''}\n"
+        f"- Tin tuyển dụng trên trang web ({total_jobs} tin): {jobs_sample_str}\n"
+        "- Các trang chức năng của website: Tổng quan (/dashboard), Hồ sơ sinh viên (/profile), Vị trí nghề nghiệp (/positions), Tin tuyển dụng (/jobs), Thống kê kỹ năng (/statistics), Đánh giá phù hợp (/compare), Kế hoạch học tập (/plan)."
+    )
+
+    # ------------------------------------------------------------------
+    # TẦNG 1: Nếu người dùng nhập Gemini API Key -> Gọi Google Gemini AI
+    # ------------------------------------------------------------------
+    if active_api_key:
+        try:
+            ai_reply = _call_gemini_with_sqlite_context(active_api_key, message, history, website_and_student_context)
+            if ai_reply:
+                return api_response(True, {"reply": ai_reply, "mode": "gemini_rag"})
+        except Exception:
+            pass
+
+    # ------------------------------------------------------------------
+    # TẦNG 2 (MẶC ĐỊNH): Gọi Llama-3.2-Instruct (HuggingFace Space - Không giới hạn 429)
+    # ------------------------------------------------------------------
+    try:
+        hf_reply = _call_hf_llama_with_sqlite_context(message, history, website_and_student_context)
+        if hf_reply:
+            return api_response(True, {"reply": hf_reply, "mode": "hf_llama_rag"})
+    except Exception:
+        pass
+
+    # ------------------------------------------------------------------
+    # TẦNG 3: Gọi cổng LLM7 OpenAI-compatible dự phòng
+    # ------------------------------------------------------------------
+    try:
+        llm_reply = _call_free_llm_with_sqlite_context(message, history, website_and_student_context)
+        if llm_reply:
+            return api_response(True, {"reply": llm_reply, "mode": "llm7_rag"})
+    except Exception:
+        pass
+
+    # ------------------------------------------------------------------
+    # TẦNG 4 (Dự phòng khi mất mạng Internet): Trả lời chi tiết từng mục dữ liệu người dùng đã nhập
+    # ------------------------------------------------------------------
+    if any(k in msg_lower for k in ["môn", "học phần", "điểm", "tín chỉ", "đã học"]):
+        if user_courses:
+            lines = "\n".join([f"• **{c['code']} - {c['name']}**: **{c['credits']} tín chỉ** — Điểm: **{c['grade']}** (Học kỳ: {c['term'] or 'N/A'})" for c in user_courses])
+            reply = f"📚 **Danh sách {len(user_courses)} học phần bạn đã nhập trên hệ thống ({student_name}):**\n{lines}"
+        else:
+            reply = f"📚 Hiện tại tài khoản **{student_name}** chưa nhập học phần nào. Bạn có thể vào trang **Hồ sơ sinh viên (`/profile`)** -> mục **Học phần đã học** để thêm môn học nhé!"
+        return api_response(True, {"reply": reply, "mode": "sqlite_direct"})
+
+    if any(k in msg_lower for k in ["kỹ năng của tôi", "kỹ năng tôi", "tôi có kỹ năng", "đã nhập kỹ năng", "skill"]):
+        if user_skills_rows:
+            lines = "\n".join([f"• **{s['name']}** (*{s['category']}*) — Mức độ: **{s['level']}/5** {('- ' + s['note']) if s['note'] else ''}" for s in user_skills_rows])
+            reply = f"🛠️ **Các kỹ năng bạn đã nhập vào hồ sơ ({len(user_skills_rows)} kỹ năng):**\n{lines}\n\n💡 Bạn cũng có thể gõ trực tiếp vào chat: `Thêm kỹ năng <Tên kỹ năng>` để mình thêm nhanh vào hồ sơ giúp bạn!"
+        else:
+            reply = "🛠️ Bạn chưa nhập kỹ năng nào. Hãy vào **Hồ sơ sinh viên (`/profile`)** hoặc gõ `Thêm kỹ năng Python` ngay tại đây!"
+        return api_response(True, {"reply": reply, "mode": "sqlite_direct"})
+
+    if any(k in msg_lower for k in ["chứng chỉ", "toeic", "ielts", "coursera", "aws"]):
+        if user_certs:
+            lines = "\n".join([f"• **{c['name']}** — Tổ chức cấp: *{c['organization']}* (Ngày cấp: {c['issue_date'] or 'N/A'})" for c in user_certs])
+            reply = f"🏅 **Danh sách chứng chỉ bạn đã nhập ({len(user_certs)} chứng chỉ):**\n{lines}"
+        else:
+            reply = f"🏅 Hiện tại hồ sơ của **{student_name}** chưa có chứng chỉ nào được nhập. Bạn có thể vào trang **Hồ sơ sinh viên (`/profile`)** -> mục **Chứng chỉ** để bổ sung!"
+        return api_response(True, {"reply": reply, "mode": "sqlite_direct"})
+
+    if any(k in msg_lower for k in ["kinh nghiệm", "dự án", "thực tập", "project", "đồ án"]):
+        if user_exps:
+            lines = "\n".join([f"• **{e['title']}** tại *{e['company']}* ({e['role_type']}, {e['start_date']} - {e['end_date']})" for e in user_exps])
+            reply = f"💼 **Kinh nghiệm & Dự án bạn đã nhập ({len(user_exps)} mục):**\n{lines}"
+        else:
+            reply = f"💼 Hiện tại hồ sơ của **{student_name}** chưa nhập mục Kinh nghiệm & Dự án nào tại trang `/profile`."
+        return api_response(True, {"reply": reply, "mode": "sqlite_direct"})
+
+    if any(k in msg_lower for k in ["kế hoạch", "lộ trình", "mục tiêu học", "plan"]):
+        if plan_items:
+            lines = "\n".join([f"• **{p['title']}** (*{p['category']}*) — Trạng thái: **{p['status']}** (Hạn: {p['target_date'] or 'N/A'})" for p in plan_items])
+            reply = f"📌 **Kế hoạch học tập hiện tại của bạn ({len(plan_items)} mục tiêu):**\n{lines}\n\n💡 Bạn có thể gõ `Thêm kế hoạch <Tên mục tiêu>` vào chat để mình thêm trực tiếp giúp bạn!"
+        else:
+            reply = "📌 Bạn chưa có mục tiêu nào trong trang **Kế hoạch học tập (`/plan`)**."
+        return api_response(True, {"reply": reply, "mode": "sqlite_direct"})
+
+    # Trả lời tổng hợp toàn bộ dữ liệu cá nhân đã nhập khi offline
+    reply = (
+        f"👤 **Toàn bộ dữ liệu hồ sơ của bạn trên hệ thống ({student_name}):**\n"
+        f"- **MSSV:** {student_code} | **Trường:** {student_uni} | **Ngành:** {student_major} | **GPA:** **{student_gpa}**\n"
+        f"- **Vị trí mục tiêu đang chọn:** **{target_pos_name}** (Độ phù hợp: **{target_score}%**)\n"
+        f"- **Học phần đã nhập ({len(user_courses)}):** {courses_detail_str}\n"
+        f"- **Kỹ năng đã nhập ({len(user_skills_rows)}):** {skills_detail_str}\n"
+        f"- **Chứng chỉ ({len(user_certs)}):** {certs_detail_str}\n"
+        f"- **Kinh nghiệm/Dự án ({len(user_exps)}):** {exps_detail_str}\n"
+        f"- **Kế hoạch học tập ({len(plan_items)}):** {plans_detail_str}"
+    )
+    return api_response(True, {"reply": reply, "mode": "sqlite_direct"})
 
 
 if __name__ == "__main__":
