@@ -255,9 +255,17 @@ def api_login():
 
     conn = get_db_connection()
     user = conn.execute(
-        "SELECT id, full_name, email, password_hash, role FROM users WHERE LOWER(email) = ?",
+        "SELECT id, full_name, email, password_hash, role, avatar_url FROM users WHERE LOWER(email) = ?",
         (email,),
     ).fetchone()
+    avatar_url = ""
+    if user:
+        if "avatar_url" in user.keys() and user["avatar_url"]:
+            avatar_url = user["avatar_url"]
+        else:
+            sp = conn.execute("SELECT avatar_url FROM student_profiles WHERE user_id = ?", (user["id"],)).fetchone()
+            if sp and "avatar_url" in sp.keys() and sp["avatar_url"]:
+                avatar_url = sp["avatar_url"]
     conn.close()
 
     if not user or not check_password_hash(user["password_hash"], password):
@@ -269,6 +277,7 @@ def api_login():
         "full_name": user["full_name"],
         "email": user["email"],
         "role": user["role"],
+        "avatar_url": avatar_url,
         "token": f"user_{user['id']}",
     }
     return api_response(True, user_data, "Đăng nhập thành công!")
@@ -341,6 +350,7 @@ def api_get_profile():
             "gpa": prof["gpa"],
             "target_position_id": target_pos_id,
             "bio": prof["bio"],
+            "avatar_url": prof["avatar_url"] if "avatar_url" in prof.keys() and prof["avatar_url"] else "",
         },
         "courses": courses_list,
         "skills": skills_list,
@@ -360,44 +370,125 @@ def api_update_profile():
     if not full_name:
         return api_response(False, None, "Họ và tên không được để trống!", 400)
 
+    avatar_url = (payload.get("avatar_url") or "").strip()
+
     conn = get_db_connection()
-    conn.execute(
-        """
-        UPDATE student_profiles
-        SET full_name = ?,
-            student_code = ?,
-            email = ?,
-            phone = ?,
-            university = ?,
-            faculty = ?,
-            major = ?,
-            academic_year = ?,
-            gpa = ?,
-            target_position_id = ?,
-            bio = ?
-        WHERE user_id = ?
-        """,
-        (
-            full_name,
-            (payload.get("student_code") or "").strip(),
-            (payload.get("email") or "").strip(),
-            (payload.get("phone") or "").strip(),
-            (payload.get("university") or "").strip(),
-            (payload.get("faculty") or "").strip(),
-            (payload.get("major") or "").strip(),
-            (payload.get("academic_year") or "").strip(),
-            str(payload.get("gpa") or "0.0").strip(),
-            int(payload.get("target_position_id") or 1),
-            (payload.get("bio") or "").strip(),
-            user_id,
-        ),
-    )
-    conn.execute("UPDATE users SET full_name = ? WHERE id = ?", (full_name, user_id))
+    if avatar_url:
+        conn.execute(
+            """
+            UPDATE student_profiles
+            SET full_name = ?,
+                student_code = ?,
+                email = ?,
+                phone = ?,
+                university = ?,
+                faculty = ?,
+                major = ?,
+                academic_year = ?,
+                gpa = ?,
+                target_position_id = ?,
+                bio = ?,
+                avatar_url = ?
+            WHERE user_id = ?
+            """,
+            (
+                full_name,
+                (payload.get("student_code") or "").strip(),
+                (payload.get("email") or "").strip(),
+                (payload.get("phone") or "").strip(),
+                (payload.get("university") or "").strip(),
+                (payload.get("faculty") or "").strip(),
+                (payload.get("major") or "").strip(),
+                (payload.get("academic_year") or "").strip(),
+                str(payload.get("gpa") or "0.0").strip(),
+                int(payload.get("target_position_id") or 1),
+                (payload.get("bio") or "").strip(),
+                avatar_url,
+                user_id,
+            ),
+        )
+        conn.execute("UPDATE users SET full_name = ?, avatar_url = ? WHERE id = ?", (full_name, avatar_url, user_id))
+    else:
+        conn.execute(
+            """
+            UPDATE student_profiles
+            SET full_name = ?,
+                student_code = ?,
+                email = ?,
+                phone = ?,
+                university = ?,
+                faculty = ?,
+                major = ?,
+                academic_year = ?,
+                gpa = ?,
+                target_position_id = ?,
+                bio = ?
+            WHERE user_id = ?
+            """,
+            (
+                full_name,
+                (payload.get("student_code") or "").strip(),
+                (payload.get("email") or "").strip(),
+                (payload.get("phone") or "").strip(),
+                (payload.get("university") or "").strip(),
+                (payload.get("faculty") or "").strip(),
+                (payload.get("major") or "").strip(),
+                (payload.get("academic_year") or "").strip(),
+                str(payload.get("gpa") or "0.0").strip(),
+                int(payload.get("target_position_id") or 1),
+                (payload.get("bio") or "").strip(),
+                user_id,
+            ),
+        )
+        conn.execute("UPDATE users SET full_name = ? WHERE id = ?", (full_name, user_id))
     conn.commit()
     updated = conn.execute("SELECT * FROM student_profiles WHERE user_id = ?", (user_id,)).fetchone()
     conn.close()
 
     return api_response(True, dict(updated) if updated else payload, "Cập nhật thông tin cá nhân thành công!")
+
+
+@app.route("/api/profile/avatar", methods=["POST"])
+def api_upload_avatar():
+    user_id = get_current_user_id() or 1
+    avatar_url = ""
+
+    # 1. Trường hợp gửi tệp tải lên (Multipart form-data)
+    if "avatar" in request.files:
+        file = request.files["avatar"]
+        if file and file.filename:
+            filename = file.filename.lower()
+            allowed_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
+            ext = os.path.splitext(filename)[1]
+            if ext not in allowed_exts:
+                return api_response(False, None, "Định dạng ảnh không hợp lệ (hỗ trợ JPG, PNG, WEBP, GIF, SVG)!", 400)
+
+            upload_dir = os.path.join(app.root_path, "static", "uploads", "avatars")
+            os.makedirs(upload_dir, exist_ok=True)
+
+            import time
+            saved_name = f"avatar_{user_id}_{int(time.time())}{ext}"
+            saved_path = os.path.join(upload_dir, saved_name)
+            file.save(saved_path)
+            avatar_url = f"/static/uploads/avatars/{saved_name}"
+
+    # 2. Trường hợp gửi JSON chứa avatar_url (chọn từ mẫu hoặc dán link)
+    if not avatar_url:
+        payload = request.get_json(silent=True) or {}
+        raw_url = (payload.get("avatar_url") or "").strip()
+        if raw_url:
+            avatar_url = raw_url
+
+    if not avatar_url:
+        return api_response(False, None, "Vui lòng chọn tệp ảnh đại diện hoặc chọn ảnh mẫu hợp lệ!", 400)
+
+    conn = get_db_connection()
+    conn.execute("UPDATE student_profiles SET avatar_url = ? WHERE user_id = ?", (avatar_url, user_id))
+    conn.execute("UPDATE users SET avatar_url = ? WHERE id = ?", (avatar_url, user_id))
+    conn.commit()
+    conn.close()
+
+    return api_response(True, {"avatar_url": avatar_url}, "Cập nhật ảnh đại diện thành công!")
 
 
 # --- 2.1. CRUD HỌC PHẦN (COURSES) ---
@@ -1539,13 +1630,44 @@ def evaluate_profile_fit_and_suggest_courses(user_id, position_id=None, save_his
         # 4. Đối chiếu chứng chỉ
         rec_certs = []
         missing_certs = []
+        seen_cert_keys = set()
         for j in jobs_rows:
             for c in parse_json_list(j["certificates"]):
-                if c not in rec_certs:
-                    rec_certs.append(c)
-                    c_lower = c.lower()
-                    if not any(_match(uc, c_lower) for uc in user_certs):
-                        missing_certs.append(c)
+                c_clean = str(c).strip()
+                if not c_clean:
+                    continue
+                # Chuẩn hóa để tránh trùng lặp
+                c_key = re.sub(r'[\s\-_]+', ' ', c_clean.lower())
+                if c_key not in seen_cert_keys:
+                    seen_cert_keys.add(c_key)
+                    rec_certs.append(c_clean)
+                    if not any(_match(uc, c_key) for uc in user_certs):
+                        missing_certs.append(c_clean)
+
+        # Lọc bớt chứng chỉ cùng nhóm nhà cung cấp (VD: nhiều chứng chỉ AWS chỉ giữ 1-2 chứng chỉ tiêu biểu)
+        deduped_missing_certs = []
+        seen_cert_families = set()
+        for c in missing_certs:
+            c_low = c.lower()
+            family = None
+            if "aws" in c_low:
+                family = "aws"
+            elif "istqb" in c_low:
+                family = "istqb"
+            elif "deeplearning" in c_low:
+                family = "deeplearning"
+            elif "google" in c_low:
+                family = "google"
+            elif "microsoft" in c_low or "pl-300" in c_low or "azure" in c_low:
+                family = "microsoft"
+
+            if family:
+                if family not in seen_cert_families:
+                    seen_cert_families.add(family)
+                    deduped_missing_certs.append(c)
+            else:
+                deduped_missing_certs.append(c)
+        missing_certs = deduped_missing_certs
 
         # 5. Đối chiếu số năm kinh nghiệm
         def _min_years(text):
@@ -1624,9 +1746,12 @@ def evaluate_profile_fit_and_suggest_courses(user_id, position_id=None, save_his
         )
         suggested_academic_courses = suggested_academic_courses[:6]
 
-        # 7. Gợi ý khóa học trực tuyến & chứng chỉ
+        # 7. Gợi ý khóa học trực tuyến & chứng chỉ (lọc trùng lặp & ưu tiên khóa học chất lượng)
         recommendations = []
         seen_titles = set()
+        seen_skills = set()
+
+        # Bước 7.1: Nạp các khóa học chuẩn từ bảng course_recommendations
         for m_skill in missing:
             m_lower = m_skill.lower()
             matched_rec = None
@@ -1635,23 +1760,37 @@ def evaluate_profile_fit_and_suggest_courses(user_id, position_id=None, save_his
                 if sk_lower == m_lower or sk_lower in m_lower or m_lower in sk_lower:
                     matched_rec = dict(r)
                     break
-            if matched_rec and matched_rec["title"] not in seen_titles:
-                seen_titles.add(matched_rec["title"])
-                recommendations.append(matched_rec)
-            elif not matched_rec:
-                fallback_title = f"Khóa học thực chiến {m_skill} cho vị trí {pos['name']}"
-                if fallback_title not in seen_titles:
-                    seen_titles.add(fallback_title)
-                    recommendations.append({
-                        "id": 0,
-                        "skill_name": m_skill,
-                        "title": fallback_title,
-                        "provider": "Coursera / Udemy",
-                        "rec_type": "course",
-                        "duration": "4 tuần",
-                        "url": "https://www.coursera.org",
-                        "description": f"Bổ sung kiến thức nền tảng và dự án thực hành về {m_skill} đáp ứng yêu cầu doanh nghiệp.",
-                    })
+            if matched_rec:
+                t_key = matched_rec["title"].strip().lower()
+                if t_key not in seen_titles:
+                    seen_titles.add(t_key)
+                    seen_skills.add(matched_rec["skill_name"].lower())
+                    recommendations.append(matched_rec)
+
+        # Bước 7.2: Bổ sung khóa học thực hành cho các kỹ năng thiếu còn lại (tối đa 6 gợi ý tổng cộng)
+        for m_skill in missing:
+            if len(recommendations) >= 6:
+                break
+            m_lower = m_skill.lower()
+            # Bỏ qua nếu kỹ năng này đã được bao hàm trong một khóa học ở trên
+            if any(m_lower in s or s in m_lower for s in seen_skills) or any(m_lower in t for t in seen_titles):
+                continue
+
+            fallback_title = f"Khóa học thực chiến {m_skill} cho vị trí {pos['name']}"
+            t_key = fallback_title.lower()
+            if t_key not in seen_titles:
+                seen_titles.add(t_key)
+                seen_skills.add(m_lower)
+                recommendations.append({
+                    "id": 0,
+                    "skill_name": m_skill,
+                    "title": fallback_title,
+                    "provider": "Coursera / Udemy",
+                    "rec_type": "course",
+                    "duration": "4 tuần",
+                    "url": "https://www.coursera.org",
+                    "description": f"Bổ sung kiến thức nền tảng và dự án thực hành về {m_skill} đáp ứng yêu cầu doanh nghiệp.",
+                })
 
         # 8. Lưu lịch sử đối sánh nếu được yêu cầu
         history_list = []
@@ -1715,7 +1854,7 @@ def evaluate_profile_fit_and_suggest_courses(user_id, position_id=None, save_his
             },
             "summary": summary,
             "suggested_academic_courses": suggested_academic_courses,
-            "recommended_certs": rec_certs,
+            "recommended_certs": missing_certs,
             "recommendations": recommendations,
             "history": history_list,
         }

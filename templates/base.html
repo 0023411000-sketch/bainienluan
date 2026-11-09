@@ -1,9 +1,17 @@
 <!DOCTYPE html>
-<html lang="vi" class="h-100">
+<html lang="vi" class="h-100" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Định Hướng Nghề Nghiệp CNTT{% endblock %} - IT Career Compass</title>
+
+    <!-- Khởi tạo chế độ Sáng / Tối tức thì chống chớp nháy (Zero-FOUC) -->
+    <script>
+        (function() {
+            var theme = localStorage.getItem('app_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
 
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,75 +23,243 @@
     <!-- Bootstrap Icons CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 
-    <!-- Custom CSS chung -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Custom CSS Dark Mode & Light Mode CRM -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=8">
     {% block extra_css %}{% endblock %}
 </head>
-<body class="d-flex flex-column h-100 bg-light-subtle text-dark">
+<body class="bg-main text-body">
+    {% set is_auth_page = (request.endpoint in ['login', 'register'] or request.path in ['/login', '/register']) %}
 
-    <!-- 1. Thanh điều hướng Navbar -->
-    {% include 'partials/navbar.html' %}
+    <div class="app-container {% if is_auth_page %}auth-container{% endif %}">
+        {% if not is_auth_page %}
+        <!-- VÙNG 1: SIDEBAR MỎNG BÊN TRÁI (~68px) -->
+        <aside class="app-sidebar" id="appSidebar">
+            <!-- Brand icon la bàn -->
+            <a href="/dashboard" class="sidebar-brand text-decoration-none" title="IT Career Compass" data-bs-toggle="tooltip" data-bs-placement="right">
+                <i class="bi bi-compass-fill"></i>
+            </a>
 
-    <!-- 2. Vùng nội dung chính -->
-    <main class="flex-shrink-0 my-4">
-        <div class="container-fluid px-lg-4">
-            {% block content %}{% endblock %}
+            <!-- Danh sách icon chức năng xếp dọc (Line-art icons) -->
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-link {% if request.endpoint == 'dashboard' or request.path == '/dashboard' %}active{% endif %}" 
+                   title="Tổng quan" data-bs-toggle="tooltip" data-bs-placement="right">
+                    <i class="bi bi-grid-1x2"></i>
+                </a>
+                <a href="/profile" class="sidebar-link {% if request.endpoint == 'profile' or request.path == '/profile' %}active{% endif %}" 
+                   title="Hồ sơ sinh viên" data-bs-toggle="tooltip" data-bs-placement="right">
+                    <i class="bi bi-person-bounding-box"></i>
+                </a>
+                <a href="/positions" class="sidebar-link {% if request.endpoint == 'positions' or request.path == '/positions' %}active{% endif %}" 
+                   title="Vị trí nghề nghiệp" data-bs-toggle="tooltip" data-bs-placement="right">
+                    <i class="bi bi-diagram-3"></i>
+                </a>
+                <a href="/jobs" class="sidebar-link {% if request.endpoint == 'jobs' or request.path == '/jobs' %}active{% endif %}" 
+                   title="Tin tuyển dụng" data-bs-toggle="tooltip" data-bs-placement="right">
+                    <i class="bi bi-briefcase"></i>
+                </a>
+                <a href="/statistics" class="sidebar-link {% if request.endpoint == 'statistics' or request.path == '/statistics' %}active{% endif %}" 
+                   title="Thống kê kỹ năng" data-bs-toggle="tooltip" data-bs-placement="right">
+                    <i class="bi bi-bar-chart-line"></i>
+                </a>
+                <a href="/compare" class="sidebar-link {% if request.endpoint in ['compare', 'comparison'] or request.path in ['/compare', '/comparison'] %}active{% endif %}" 
+                   title="Đánh giá phù hợp" data-bs-toggle="tooltip" data-bs-placement="right">
+                    <i class="bi bi-speedometer2"></i>
+                </a>
+                <a href="/plan" class="sidebar-link {% if request.endpoint in ['plan', 'roadmap'] or request.path in ['/plan', '/roadmap'] %}active{% endif %}" 
+                   title="Kế hoạch học tập" data-bs-toggle="tooltip" data-bs-placement="right">
+                    <i class="bi bi-calendar2-check"></i>
+                </a>
+                <a href="/admin/users" class="sidebar-link d-none {% if request.endpoint == 'admin_users' or request.path == '/admin/users' %}active{% endif %}" 
+                   id="sidebarAdminItem" title="Quản trị & Phân quyền" data-bs-toggle="tooltip" data-bs-placement="right" style="color: #F59E0B;">
+                    <i class="bi bi-shield-lock"></i>
+                </a>
+            </nav>
+
+            <!-- Khối icon chân sidebar -->
+            <div class="sidebar-bottom">
+                <a href="javascript:void(0)" class="sidebar-link" title="Đổi chế độ Sáng / Tối" id="sidebarThemeToggleBtn" data-bs-toggle="tooltip" data-bs-placement="right">
+                    <i class="bi bi-sun-fill theme-icon-light d-none"></i>
+                    <i class="bi bi-moon-stars-fill theme-icon-dark"></i>
+                </a>
+                <a href="/db-viewer" class="sidebar-link" title="Xem CSDL SQLite" data-bs-toggle="tooltip" data-bs-placement="right">
+                    <i class="bi bi-database"></i>
+                </a>
+                <a href="javascript:void(0)" class="sidebar-link" title="Đăng xuất" id="sidebarLogoutBtn" data-bs-toggle="tooltip" data-bs-placement="right">
+                    <i class="bi bi-box-arrow-right"></i>
+                </a>
+            </div>
+        </aside>
+        {% endif %}
+
+        {% if is_auth_page %}
+        <!-- Nút chuyển đổi Sáng / Tối nổi ở trang Đăng nhập / Đăng ký -->
+        <div class="position-fixed top-0 end-0 p-3" style="z-index: 1060;">
+            <button type="button" class="btn-theme-toggle" id="authThemeToggleBtn" title="Chuyển chế độ Sáng / Tối" data-bs-toggle="tooltip" data-bs-placement="left">
+                <i class="bi bi-sun-fill theme-icon-light d-none"></i>
+                <i class="bi bi-moon-stars-fill theme-icon-dark"></i>
+            </button>
         </div>
-    </main>
+        {% endif %}
 
-    <!-- 3. Lớp phủ Loading toàn màn hình -->
-    <div id="globalLoading" class="loading-overlay d-none">
-        <div class="spinner-border text-primary" role="status" style="width: 3.2rem; height: 3.2rem;">
-            <span class="visually-hidden">Đang xử lý...</span>
+        <!-- VÙNG 2 & 3: VIEWPORT CHÍNH -->
+        <div class="app-viewport {% if is_auth_page %}auth-viewport{% endif %}">
+            {% if not is_auth_page %}
+            <!-- 1. Top Navigation Bar (Header) -->
+            {% include 'partials/navbar.html' %}
+            {% endif %}
+
+            <!-- 2. Vùng Content lớn hiển thị dữ liệu -->
+            <main class="app-content {% if is_auth_page %}auth-content py-4{% endif %}">
+                <div class="container-fluid px-2 px-lg-3">
+                    {% block content %}{% endblock %}
+                </div>
+            </main>
+
+            <!-- 3. Chân trang Footer -->
+            <footer class="footer mt-auto py-3">
+                <div class="container-fluid px-lg-4 text-center text-muted small">
+                    <div class="row align-items-center">
+                        <div class="col-md-6 text-md-start mb-2 mb-md-0">
+                            <span>© 2026 <strong>Đồ án NLCNPM23CS-38</strong> - IT Career Compass: Định hướng Kỹ năng Nghề nghiệp CNTT.</span>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <span class="badge bg-secondary-subtle text-secondary me-2">Dark Mode CRM</span>
+                            <span class="badge bg-secondary-subtle text-secondary me-2">GSAP + Chart.js</span>
+                            <span class="badge bg-success-subtle text-success"><i class="bi bi-database-check me-1"></i>Flask + SQLite Connected</span>
+                        </div>
+                    </div>
+                </div>
+            </footer>
         </div>
-        <p class="mt-3 fw-semibold text-secondary" id="loadingText">Đang tải dữ liệu hệ thống...</p>
     </div>
 
-    <!-- 4. Vùng chứa Toast thông báo góc trên bên phải -->
+    <!-- Lớp phủ Loading toàn màn hình -->
+    <div id="globalLoading" class="loading-overlay d-none">
+        <div class="spinner-border text-light" role="status" style="width: 3.2rem; height: 3.2rem;">
+            <span class="visually-hidden">Đang xử lý...</span>
+        </div>
+        <p class="mt-3 fw-semibold text-white" id="loadingText">Đang tải dữ liệu hệ thống...</p>
+    </div>
+
+    <!-- Vùng chứa Toast thông báo -->
     <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1090;"></div>
 
-    <!-- 5. Chân trang Footer -->
-    <footer class="footer mt-auto py-3 bg-white border-top">
-        <div class="container-fluid px-lg-4 text-center text-muted small">
-            <div class="row align-items-center">
-                <div class="col-md-6 text-md-start mb-2 mb-md-0">
-                    <span>© 2026 <strong>Đồ án NLCNPM23CS-38</strong> - Hệ thống định hướng kỹ năng nghề nghiệp cho sinh viên CNTT.</span>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle me-1">Bootstrap 5 + Chart.js</span>
-                    <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-database-check me-1"></i>Flask + SQLite DB Connected</span>
-                </div>
-            </div>
-        </div>
-    </footer>
-
-    <!-- 6. Tiện ích Chatbot nổi góc phải dưới cùng -->
+    <!-- Tiện ích Chatbot nổi -->
     {% include 'partials/chatbot.html' %}
 
     <!-- Bootstrap 5 Bundle JS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Chart.js 4.x CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <!-- GSAP 3.x CDN for Smooth Pill Tab Sliding Transition -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 
     <!-- Các tập tin mã nguồn JavaScript cốt lõi -->
-    <script src="{{ url_for('static', filename='js/config.js') }}?v=3"></script>
-    <script src="{{ url_for('static', filename='js/mock-data.js') }}?v=3"></script>
-    <script src="{{ url_for('static', filename='js/utils.js') }}?v=3"></script>
-    <script src="{{ url_for('static', filename='js/api.js') }}?v=3"></script>
-    <script src="{{ url_for('static', filename='js/chatbot.js') }}?v=5"></script>
+    <script src="{{ url_for('static', filename='js/config.js') }}?v=4"></script>
+    <script src="{{ url_for('static', filename='js/mock-data.js') }}?v=4"></script>
+    <script src="{{ url_for('static', filename='js/utils.js') }}?v=4"></script>
+    <script src="{{ url_for('static', filename='js/api.js') }}?v=4"></script>
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}?v=6"></script>
 
-    <!-- Logic chung (Khởi tạo phiên người dùng, nút đăng xuất) -->
+    <!-- Logic chung & GSAP Slider Animation -->
     <script>
+        // Quản lý chuyển đổi chế độ Sáng / Tối (Theme Manager)
+        const ThemeManager = {
+            KEY: 'app_theme',
+
+            init() {
+                const savedTheme = localStorage.getItem(this.KEY) || 'dark';
+                this.apply(savedTheme, false);
+
+                const toggles = [
+                    document.getElementById('themeToggleBtn'),
+                    document.getElementById('sidebarThemeToggleBtn'),
+                    document.getElementById('authThemeToggleBtn')
+                ];
+                toggles.forEach(btn => {
+                    if (btn) btn.addEventListener('click', () => this.toggle());
+                });
+
+                const dropdownToggle = document.getElementById('dropdownThemeToggle');
+                if (dropdownToggle) {
+                    dropdownToggle.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.toggle();
+                    });
+                }
+            },
+
+            toggle() {
+                const curTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+                const newTheme = curTheme === 'dark' ? 'light' : 'dark';
+                this.apply(newTheme, true);
+                localStorage.setItem(this.KEY, newTheme);
+
+                if (window.Utils && typeof Utils.showToast === 'function') {
+                    Utils.showToast(newTheme === 'light' ? 'Đã bật Giao diện Sáng (Light Mode)' : 'Đã bật Giao diện Tối (Dark Mode)', 'info', 1800);
+                }
+            },
+
+            apply(theme, animate = false) {
+                document.documentElement.setAttribute('data-theme', theme);
+
+                const lightIcons = document.querySelectorAll('.theme-icon-light');
+                const darkIcons = document.querySelectorAll('.theme-icon-dark');
+                const labelText = document.getElementById('themeLabelText');
+
+                if (theme === 'light') {
+                    lightIcons.forEach(i => i.classList.remove('d-none'));
+                    darkIcons.forEach(i => i.classList.add('d-none'));
+                    if (labelText) labelText.textContent = 'Sáng (Light)';
+                } else {
+                    lightIcons.forEach(i => i.classList.add('d-none'));
+                    darkIcons.forEach(i => i.classList.remove('d-none'));
+                    if (labelText) labelText.textContent = 'Tối (Dark)';
+                }
+
+                // Cấu hình Chart.js theo Theme
+                if (window.Chart) {
+                    Chart.defaults.color = theme === 'light' ? '#64748B' : '#9CA3AF';
+                    Chart.defaults.borderColor = theme === 'light' ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.08)';
+                    if (window.Chart.instances) {
+                        Object.values(Chart.instances).forEach(chart => {
+                            try {
+                                if (chart.options.scales?.x) chart.options.scales.x.grid.color = Chart.defaults.borderColor;
+                                if (chart.options.scales?.y) chart.options.scales.y.grid.color = Chart.defaults.borderColor;
+                                chart.update('none');
+                            } catch (e) {}
+                        });
+                    }
+                }
+            }
+        };
+        window.ThemeManager = ThemeManager;
+
         document.addEventListener('DOMContentLoaded', () => {
+            // Khởi tạo Theme Manager
+            ThemeManager.init();
+            // 1. Kích hoạt Tooltips Bootstrap
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(el => new bootstrap.Tooltip(el));
+
+            // 2. Khởi tạo phiên người dùng & đồng bộ vai trò
             const user = Utils.auth.getUser();
             if (user) {
                 const navNameEl = document.getElementById('navUserFullName');
                 if (navNameEl && user.full_name) {
                     navNameEl.textContent = user.full_name;
                 }
+                const navAvatarImg = document.getElementById('navUserAvatarImg');
+                const navAvatarIcon = document.getElementById('navUserAvatarIcon');
+                if (user.avatar_url && navAvatarImg && navAvatarIcon) {
+                    navAvatarImg.src = user.avatar_url;
+                    navAvatarImg.classList.remove('d-none');
+                    navAvatarIcon.classList.add('d-none');
+                }
                 const roleBadgeEl = document.getElementById('navUserRoleBadge');
                 const roleHeaderEl = document.getElementById('navUserRoleHeader');
                 const navAdminItem = document.getElementById('navAdminItem');
+                const sidebarAdminItem = document.getElementById('sidebarAdminItem');
                 const dropdownAdminLink = document.getElementById('dropdownAdminLink');
 
                 if (user.role === 'admin') {
@@ -95,39 +271,141 @@
                         roleHeaderEl.textContent = 'Vai trò: Quản trị viên (Admin)';
                     }
                     navAdminItem?.classList.remove('d-none');
+                    sidebarAdminItem?.classList.remove('d-none');
                     dropdownAdminLink?.classList.remove('d-none');
                 } else {
                     if (roleBadgeEl) {
                         roleBadgeEl.textContent = 'Sinh viên';
-                        roleBadgeEl.className = 'badge bg-light text-primary rounded-pill';
+                        roleBadgeEl.className = 'badge bg-secondary-subtle text-light rounded-pill';
                     }
                     if (roleHeaderEl) {
                         roleHeaderEl.textContent = 'Vai trò: Sinh viên CNTT';
                     }
                     navAdminItem?.classList.add('d-none');
+                    sidebarAdminItem?.classList.add('d-none');
                     dropdownAdminLink?.classList.add('d-none');
                 }
             }
 
+            // 3. Xử lý sự kiện đăng xuất
+            const handleLogout = () => {
+                Utils.confirmModal({
+                    title: 'Đăng xuất tài khoản',
+                    message: 'Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?',
+                    confirmText: 'Đăng xuất',
+                    confirmClass: 'btn-danger',
+                    onConfirm: async () => {
+                        await API.auth.logout();
+                        Utils.showToast('Bạn đã đăng xuất thành công!', 'info');
+                        setTimeout(() => {
+                            window.location.href = '/login';
+                        }, 400);
+                    }
+                });
+            };
+
             const logoutBtn = document.getElementById('globalLogoutBtn');
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', async () => {
-                    Utils.confirmModal({
-                        title: 'Đăng xuất tài khoản',
-                        message: 'Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?',
-                        confirmText: 'Đăng xuất',
-                        confirmClass: 'btn-danger',
-                        onConfirm: async () => {
-                            await API.auth.logout();
-                            Utils.showToast('Bạn đã đăng xuất thành công!', 'info');
-                            setTimeout(() => {
-                                window.location.href = '/login';
-                            }, 500);
-                        }
-                    });
+            if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+            const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
+            if (sidebarLogoutBtn) sidebarLogoutBtn.addEventListener('click', handleLogout);
+
+            // 4. GSAP Tab Sliding Animation cho Top Navigation
+            initGsapTabSlider();
+        });
+
+        function initGsapTabSlider() {
+            const container = document.getElementById('pillNavContainer');
+            const slider = document.getElementById('pillNavSlider');
+            if (!container || !slider || typeof gsap === 'undefined') return;
+
+            // Kiểm tra kích thước màn hình
+            if (window.innerWidth < 992) {
+                slider.style.display = 'none';
+                return;
+            }
+
+            container.classList.add('gsap-ready');
+
+            const activeTab = container.querySelector('.pill-nav-item.active');
+            const tabs = container.querySelectorAll('.pill-nav-item');
+
+            const moveSliderTo = (targetTab, duration = 0.28, ease = 'power2.out') => {
+                if (!targetTab) return;
+                const rect = targetTab.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                const leftOffset = rect.left - containerRect.left;
+
+                gsap.to(slider, {
+                    x: leftOffset,
+                    width: rect.width,
+                    opacity: 1,
+                    duration: duration,
+                    ease: ease
+                });
+            };
+
+            // 1. Đặt vị trí ban đầu cho slider tại tab đang active
+            if (activeTab) {
+                const rect = activeTab.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                const leftOffset = rect.left - containerRect.left;
+
+                gsap.set(slider, {
+                    x: leftOffset,
+                    width: rect.width,
+                    opacity: 1
                 });
             }
-        });
+
+            // 2. Lướt mượt mà khi hover vào bất kỳ tab nào
+            tabs.forEach(tab => {
+                tab.addEventListener('mouseenter', () => {
+                    if (window.innerWidth < 992) return;
+                    moveSliderTo(tab, 0.25, 'power2.out');
+                    if (activeTab && tab !== activeTab) {
+                        activeTab.classList.add('slider-away');
+                    } else if (activeTab) {
+                        activeTab.classList.remove('slider-away');
+                    }
+                });
+            });
+
+            // 3. Khi rời chuột khỏi thanh tab: Slider quay về tab active
+            container.addEventListener('mouseleave', () => {
+                if (window.innerWidth < 992) return;
+                if (activeTab) {
+                    moveSliderTo(activeTab, 0.32, 'power3.out');
+                    activeTab.classList.remove('slider-away');
+                }
+            });
+
+            // 4. Đồng bộ lại vị trí khi font tải xong hoặc khi resize cửa sổ
+            const syncSlider = () => {
+                if (window.innerWidth < 992) {
+                    slider.style.display = 'none';
+                    container.classList.remove('gsap-ready');
+                    return;
+                }
+                slider.style.display = 'block';
+                container.classList.add('gsap-ready');
+                const curTab = container.querySelector('.pill-nav-item:hover') || activeTab;
+                if (curTab) {
+                    const rect = curTab.getBoundingClientRect();
+                    const containerRect = container.getBoundingClientRect();
+                    const leftOffset = rect.left - containerRect.left;
+                    gsap.set(slider, {
+                        x: leftOffset,
+                        width: rect.width,
+                        opacity: 1
+                    });
+                }
+            };
+
+            window.addEventListener('resize', syncSlider);
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(syncSlider);
+            }
+        }
     </script>
 
     <!-- Script riêng cho từng trang -->

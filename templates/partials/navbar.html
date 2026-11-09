@@ -1,89 +1,97 @@
 <!-- templates/partials/navbar.html -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top shadow-sm py-2">
-    <div class="container-fluid px-lg-4">
-        <!-- Logo thương hiệu -->
-        <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/dashboard">
-            <span class="brand-icon d-inline-flex align-items-center justify-content-center bg-white text-primary rounded-3 p-1 shadow-sm">
-                <i class="bi bi-compass-fill fs-5"></i>
-            </span>
-            <span class="fs-5 tracking-tight">IT Career Compass</span>
-        </a>
-
-        <!-- Nút toggle di động -->
-        <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" 
+<nav class="app-header navbar navbar-expand-lg sticky-top">
+    <div class="container-fluid px-2 px-lg-3">
+        <!-- Nút toggle cho mobile -->
+        <button class="navbar-toggler border-0 text-white p-1 me-2 d-lg-none shadow-none" type="button" 
+                data-bs-toggle="collapse" data-bs-target="#mainNavbar" 
                 aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
+            <i class="bi bi-list fs-3 text-white"></i>
         </button>
 
-        <!-- Danh sách menu điều hướng chính -->
-        <div class="collapse navbar-collapse" id="mainNavbar">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0 fw-medium">
-                <li class="nav-item">
-                    <a class="nav-link px-2 {% if request.endpoint == 'dashboard' or request.path == '/dashboard' %}active{% endif %}" href="/dashboard">
-                        <i class="bi bi-grid-1x2-fill me-1"></i>Tổng quan
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link px-2 {% if request.endpoint == 'profile' or request.path == '/profile' %}active{% endif %}" href="/profile">
-                        <i class="bi bi-person-bounding-box me-1"></i>Hồ sơ sinh viên
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link px-2 {% if request.endpoint == 'positions' or request.path == '/positions' %}active{% endif %}" href="/positions">
-                        <i class="bi bi-diagram-3-fill me-1"></i>Vị trí nghề nghiệp
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link px-2 {% if request.endpoint == 'jobs' or request.path == '/jobs' %}active{% endif %}" href="/jobs">
-                        <i class="bi bi-briefcase-fill me-1"></i>Tin tuyển dụng
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link px-2 {% if request.endpoint == 'statistics' or request.path == '/statistics' %}active{% endif %}" href="/statistics">
-                        <i class="bi bi-bar-chart-line-fill me-1"></i>Thống kê kỹ năng
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link px-2 {% if request.endpoint in ['compare', 'comparison'] or request.path in ['/compare', '/comparison'] %}active{% endif %}" href="/compare">
-                        <i class="bi bi-speedometer2 me-1"></i>Đánh giá phù hợp
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link px-2 {% if request.endpoint in ['plan', 'roadmap'] or request.path in ['/plan', '/roadmap'] %}active{% endif %}" href="/plan">
-                        <i class="bi bi-calendar2-check-fill me-1"></i>Kế hoạch học tập
-                    </a>
-                </li>
-                <li class="nav-item d-none" id="navAdminItem">
-                    <a class="nav-link px-2 fw-bold text-warning {% if request.endpoint == 'admin_users' or request.path == '/admin/users' %}active{% endif %}" href="/admin/users">
-                        <i class="bi bi-shield-lock-fill me-1"></i>Quản trị & Phân quyền
-                    </a>
-                </li>
-            </ul>
+        <!-- Logo thương hiệu -->
+        <a class="navbar-brand d-flex align-items-center gap-2 py-0 me-3" href="/dashboard">
+            <span class="d-inline-flex align-items-center justify-content-center bg-white text-dark rounded-3" 
+                  style="width: 34px; height: 34px; font-size: 1.1rem; box-shadow: 0 2px 8px rgba(255,255,255,0.18);">
+                <i class="bi bi-compass-fill"></i>
+            </span>
+            <span class="brand-text d-none d-sm-inline">IT Career Compass</span>
+        </a>
 
-            <!-- Khu vực tài khoản người dùng -->
-            <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0" id="navbarAuthArea">
-                <!-- Dropdown khi đã đăng nhập -->
+        <!-- Danh sách menu điều hướng chính dạng Pill Tabs -->
+        <div class="collapse navbar-collapse justify-content-between" id="mainNavbar">
+            <!-- Center: Pill Navigation Tabs -->
+            <div class="pill-nav-container my-2 my-lg-0 mx-auto" id="pillNavContainer">
+                <div class="pill-nav-slider" id="pillNavSlider"></div>
+                <a class="pill-nav-item {% if request.endpoint == 'dashboard' or request.path == '/dashboard' %}active{% endif %}" href="/dashboard">
+                    <i class="bi bi-grid-1x2-fill"></i><span>Tổng quan</span>
+                </a>
+                <a class="pill-nav-item {% if request.endpoint == 'profile' or request.path == '/profile' %}active{% endif %}" href="/profile">
+                    <i class="bi bi-person-bounding-box"></i><span>Hồ sơ sinh viên</span>
+                </a>
+                <a class="pill-nav-item {% if request.endpoint == 'positions' or request.path == '/positions' %}active{% endif %}" href="/positions">
+                    <i class="bi bi-diagram-3-fill"></i><span>Vị trí nghề nghiệp</span>
+                </a>
+                <a class="pill-nav-item {% if request.endpoint == 'jobs' or request.path == '/jobs' %}active{% endif %}" href="/jobs">
+                    <i class="bi bi-briefcase-fill"></i><span>Tin tuyển dụng</span>
+                </a>
+                <a class="pill-nav-item {% if request.endpoint == 'statistics' or request.path == '/statistics' %}active{% endif %}" href="/statistics">
+                    <i class="bi bi-bar-chart-line-fill"></i><span>Thống kê kỹ năng</span>
+                </a>
+                <a class="pill-nav-item {% if request.endpoint in ['compare', 'comparison'] or request.path in ['/compare', '/comparison'] %}active{% endif %}" href="/compare">
+                    <i class="bi bi-speedometer2"></i><span>Đánh giá phù hợp</span>
+                </a>
+                <a class="pill-nav-item {% if request.endpoint in ['plan', 'roadmap'] or request.path in ['/plan', '/roadmap'] %}active{% endif %}" href="/plan">
+                    <i class="bi bi-calendar2-check-fill"></i><span>Kế hoạch học tập</span>
+                </a>
+                <a class="pill-nav-item d-none {% if request.endpoint == 'admin_users' or request.path == '/admin/users' %}active{% endif %}" href="/admin/users" id="navAdminItem">
+                    <i class="bi bi-shield-lock-fill"></i><span>Quản trị & Phân quyền</span>
+                </a>
+            </div>
+
+            <!-- Right: Khu vực tài khoản người dùng & công cụ -->
+            <div class="d-flex align-items-center gap-2 mt-2 mt-lg-0" id="navbarAuthArea">
+                <!-- Nút chuyển đổi Giao diện Sáng / Tối (Theme Toggle Pill) -->
+                <button type="button" class="btn-theme-toggle" id="themeToggleBtn" title="Chuyển chế độ Sáng / Tối" data-bs-toggle="tooltip" data-bs-placement="bottom">
+                    <i class="bi bi-sun-fill theme-icon-light d-none"></i>
+                    <i class="bi bi-moon-stars-fill theme-icon-dark"></i>
+                </button>
+
+                <!-- Nút chuyển ngôn ngữ VI | EN -->
+                <div class="d-none d-xl-flex align-items-center navbar-lang-pill border rounded-pill px-2 py-1 text-muted" style="font-size: 0.75rem;">
+                    <span class="lang-text-active fw-bold me-1">VI</span>
+                    <span class="text-secondary opacity-50">|</span>
+                    <span class="text-secondary ms-1">EN</span>
+                </div>
+
+                <!-- Dropdown tài khoản người dùng -->
                 <div class="dropdown" id="userMenuDropdown">
-                    <button class="btn btn-outline-light btn-sm dropdown-toggle d-flex align-items-center gap-2 py-1 px-3 rounded-pill" 
-                            type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-person-circle fs-6"></i>
-                        <span id="navUserFullName" class="fw-semibold">Nguyễn Văn An</span>
-                        <span id="navUserRoleBadge" class="badge bg-light text-primary rounded-pill" style="font-size: 0.7rem;">Sinh viên</span>
+                    <button class="user-avatar-pill dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="user-avatar-circle overflow-hidden p-0" id="navUserAvatarWrapper">
+                            <i class="bi bi-person-fill" id="navUserAvatarIcon"></i>
+                            <img id="navUserAvatarImg" src="" class="rounded-circle w-100 h-100 object-fit-cover d-none" alt="Avatar">
+                        </span>
+                        <span id="navUserFullName" class="d-none d-md-inline">Nguyễn Văn An</span>
+                        <span id="navUserRoleBadge" class="badge bg-secondary-subtle text-secondary rounded-pill" style="font-size: 0.7rem;">Sinh viên</span>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-2 mt-2">
+                    <ul class="dropdown-menu dropdown-menu-end py-2 mt-2">
                         <li>
                             <h6 class="dropdown-header text-muted small" id="navUserRoleHeader">Vai trò: Sinh viên CNTT</h6>
                         </li>
                         <li id="dropdownAdminLink" class="d-none">
-                            <a class="dropdown-item py-2 fw-semibold text-primary" href="/admin/users">
-                                <i class="bi bi-shield-lock-fill me-2 text-warning"></i>Quản trị & Phân quyền
+                            <a class="dropdown-item py-2 fw-semibold text-warning" href="/admin/users">
+                                <i class="bi bi-shield-lock-fill me-2"></i>Quản trị & Phân quyền
                             </a>
-                            <a class="dropdown-item py-2 fw-semibold text-dark" href="/db-viewer">
-                                <i class="bi bi-database-fill-gear me-2 text-info"></i>Xem CSDL SQLite
+                            <a class="dropdown-item py-2 fw-semibold text-info" href="/db-viewer">
+                                <i class="bi bi-database-fill-gear me-2"></i>Xem CSDL SQLite
                             </a>
                         </li>
                         <li><a class="dropdown-item py-2" href="/profile"><i class="bi bi-person-gear me-2 text-primary"></i>Quản lý hồ sơ</a></li>
                         <li><a class="dropdown-item py-2" href="/plan"><i class="bi bi-card-checklist me-2 text-success"></i>Kế hoạch cá nhân</a></li>
+                        <li>
+                            <a class="dropdown-item py-2" href="javascript:void(0)" id="dropdownThemeToggle">
+                                <i class="bi bi-circle-half me-2 text-warning"></i><span>Giao diện: </span><strong id="themeLabelText" class="ms-1">Tối (Dark)</strong>
+                            </a>
+                        </li>
                         <li><hr class="dropdown-divider my-1"></li>
                         <li>
                             <a class="dropdown-item py-2 text-danger" href="javascript:void(0)" id="globalLogoutBtn">

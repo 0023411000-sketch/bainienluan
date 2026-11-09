@@ -190,6 +190,7 @@ def _ensure_admin_account(cursor):
                     "INSERT INTO skills (user_id, name, category, level, note) VALUES (?, ?, ?, ?, ?)",
                     (uid, name, category, level, note),
                 )
+            # pyrefly: ignore[bad-unpacking]
             for name, org, issue_date, exp_date, url in p["certs"]:
                 cursor.execute(
                     "INSERT INTO certificates (user_id, name, organization, issue_date, expiry_date, credential_url) VALUES (?, ?, ?, ?, ?, ?)",

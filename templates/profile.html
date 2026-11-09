@@ -26,10 +26,17 @@
         <div class="card border-0 shadow-sm sticky-top" style="top: 80px;">
             <div class="card-body text-center pt-4 pb-3">
                 <div class="position-relative d-inline-block mb-3">
-                    <div class="rounded-circle bg-primary-subtle text-primary d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 88px; height: 88px;">
-                        <i class="bi bi-person-fill fs-1"></i>
+                    <div class="rounded-circle bg-primary-subtle text-primary d-inline-flex align-items-center justify-content-center shadow-sm overflow-hidden border border-2 border-secondary border-opacity-25" style="width: 96px; height: 96px;" id="profileAvatarContainer">
+                        <i class="bi bi-person-fill fs-1" id="profileAvatarIcon"></i>
+                        <img id="profileAvatarImg" src="" class="w-100 h-100 object-fit-cover d-none" alt="Avatar">
                     </div>
-                    <span class="position-absolute bottom-0 end-0 badge rounded-pill bg-success p-2 border border-2 border-white" title="Đang trực tuyến"></span>
+                    <!-- Nút đổi ảnh đại diện nhanh (Icon máy ảnh nổi) -->
+                    <button type="button" class="btn btn-sm btn-primary rounded-circle position-absolute bottom-0 end-0 shadow p-0 d-flex align-items-center justify-content-center" 
+                            id="btnQuickChangeAvatar" title="Thay đổi ảnh đại diện" style="width: 32px; height: 32px; transform: translate(4px, 4px);">
+                        <i class="bi bi-camera-fill" style="font-size: 0.85rem;"></i>
+                    </button>
+                    <!-- Input file ẩn để chọn ảnh -->
+                    <input type="file" id="avatarFileInput" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="d-none">
                 </div>
                 <h5 class="fw-bold text-dark mb-1" id="profileCardName">Nguyễn Văn An</h5>
                 <p class="text-muted small mb-2" id="profileCardMajor">Khoa học Máy tính - K65</p>
@@ -360,6 +367,49 @@
             <form id="formPersonalInfo">
                 <div class="modal-body">
                     <div class="row g-3">
+                        <!-- Khu vực đổi ảnh đại diện trong Modal -->
+                        <div class="col-12 text-center pb-3 mb-1 border-bottom">
+                            <label class="form-label d-block text-muted small mb-2">Ảnh đại diện sinh viên</label>
+                            <div class="d-inline-flex align-items-center gap-3 mb-3">
+                                <div class="rounded-circle bg-secondary-subtle d-inline-flex align-items-center justify-content-center overflow-hidden border border-secondary border-opacity-50" style="width: 76px; height: 76px;" id="modalAvatarPreviewContainer">
+                                    <i class="bi bi-person-fill fs-1 text-muted" id="modalAvatarPreviewIcon"></i>
+                                    <img id="modalAvatarPreviewImg" src="" class="w-100 h-100 object-fit-cover d-none" alt="Avatar Preview">
+                                </div>
+                                <div class="text-start">
+                                    <button type="button" class="btn btn-outline-primary btn-sm mb-1" id="btnModalUploadAvatar">
+                                        <i class="bi bi-upload me-1"></i>Tải ảnh từ máy tính
+                                    </button>
+                                    <div class="text-muted small" style="font-size: 0.75rem;">Hỗ trợ JPG, PNG, WEBP, GIF, SVG (Tối đa 5MB)</div>
+                                    <input type="hidden" id="infoAvatarUrl" value="">
+                                </div>
+                            </div>
+
+                            <!-- Dải avatar mẫu 1-click chọn nhanh -->
+                            <div class="text-start">
+                                <div class="small text-muted mb-2"><i class="bi bi-stars text-warning me-1"></i>Hoặc chọn nhanh ảnh đại diện mẫu:</div>
+                                <div class="d-flex gap-2 flex-wrap" id="presetAvatarList">
+                                    <button type="button" class="btn p-0 border border-2 border-transparent rounded-circle preset-avatar-btn" data-avatar="/static/uploads/avatars/avatar_preset_1.svg" title="Developer Nam" style="width: 44px; height: 44px;">
+                                        <img src="/static/uploads/avatars/avatar_preset_1.svg" class="rounded-circle w-100 h-100" alt="Preset 1">
+                                    </button>
+                                    <button type="button" class="btn p-0 border border-2 border-transparent rounded-circle preset-avatar-btn" data-avatar="/static/uploads/avatars/avatar_preset_2.svg" title="Developer Nữ" style="width: 44px; height: 44px;">
+                                        <img src="/static/uploads/avatars/avatar_preset_2.svg" class="rounded-circle w-100 h-100" alt="Preset 2">
+                                    </button>
+                                    <button type="button" class="btn p-0 border border-2 border-transparent rounded-circle preset-avatar-btn" data-avatar="/static/uploads/avatars/avatar_preset_3.svg" title="Security / Hacker" style="width: 44px; height: 44px;">
+                                        <img src="/static/uploads/avatars/avatar_preset_3.svg" class="rounded-circle w-100 h-100" alt="Preset 3">
+                                    </button>
+                                    <button type="button" class="btn p-0 border border-2 border-transparent rounded-circle preset-avatar-btn" data-avatar="/static/uploads/avatars/avatar_preset_4.svg" title="Dev Headphone" style="width: 44px; height: 44px;">
+                                        <img src="/static/uploads/avatars/avatar_preset_4.svg" class="rounded-circle w-100 h-100" alt="Preset 4">
+                                    </button>
+                                    <button type="button" class="btn p-0 border border-2 border-transparent rounded-circle preset-avatar-btn" data-avatar="/static/uploads/avatars/avatar_preset_5.svg" title="AI Engineer / Robot" style="width: 44px; height: 44px;">
+                                        <img src="/static/uploads/avatars/avatar_preset_5.svg" class="rounded-circle w-100 h-100" alt="Preset 5">
+                                    </button>
+                                    <button type="button" class="btn p-0 border border-2 border-transparent rounded-circle preset-avatar-btn" data-avatar="/static/uploads/avatars/avatar_preset_6.svg" title="Coder Terminal" style="width: 44px; height: 44px;">
+                                        <img src="/static/uploads/avatars/avatar_preset_6.svg" class="rounded-circle w-100 h-100" alt="Preset 6">
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="col-md-6">
                             <label class="form-label">Họ và tên sinh viên <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="infoFullName" required>
@@ -622,5 +672,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/profile.js') }}"></script>
+<script src="{{ url_for('static', filename='js/profile.js') }}?v=11"></script>
 {% endblock %}

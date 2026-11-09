@@ -193,6 +193,19 @@ const API = {
             return await httpFetch('/profile', 'PUT', infoData);
         },
 
+        async uploadAvatar(formDataOrPayload) {
+            if (CONFIG.USE_MOCK) {
+                const url = formDataOrPayload instanceof FormData 
+                    ? '/static/uploads/avatars/avatar_mock.png' 
+                    : (formDataOrPayload && formDataOrPayload.avatar_url || '/static/uploads/avatars/avatar_mock.png');
+                if (MockData.profile && MockData.profile.personal_info) {
+                    MockData.profile.personal_info.avatar_url = url;
+                }
+                return mockResponse({ avatar_url: url }, true, "Cập nhật ảnh đại diện thành công!");
+            }
+            return await httpFetch('/profile/avatar', 'POST', formDataOrPayload);
+        },
+
         // --- HỌC PHẦN (COURSES) ---
         async addCourse(course) {
             if (CONFIG.USE_MOCK) {

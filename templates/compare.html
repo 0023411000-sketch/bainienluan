@@ -85,8 +85,13 @@
                     <h6 class="fw-bold text-dark mb-0"><i class="bi bi-chat-left-quote text-primary me-2"></i>Nhận Xét & Đánh Giá Chi Tiết</h6>
                 </div>
                 <div class="card-body">
-                    <div class="alert alert-light border p-3 rounded-3 mb-0" id="compareSummaryText">
-                        Đang phân tích dữ liệu so sánh...
+                    <div class="p-3 rounded-3 border mb-0 compare-summary-box" id="compareSummaryText">
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="bi bi-chat-quote-fill text-primary fs-5 mt-1 flex-shrink-0"></i>
+                            <p class="mb-0 text-white" style="line-height: 1.6; font-size: 0.95rem;">
+                                Đang phân tích dữ liệu so sánh...
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -178,5 +183,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/compare.js') }}"></script>
+<script src="{{ url_for('static', filename='js/compare.js') }}?v=12"></script>
 {% endblock %}

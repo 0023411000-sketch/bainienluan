@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <circle cx="50" cy="50" r="48" fill="#312E81" stroke="#8B5CF6" stroke-width="3"/>
+  <!-- Headphone Band -->
+  <path d="M 26 40 A 24 24 0 0 1 74 40" stroke="#C4B5FD" stroke-width="5" fill="none"/>
+  <!-- Ear Cups -->
+  <rect x="22" y="32" width="8" height="16" rx="4" fill="#8B5CF6"/>
+  <rect x="70" y="32" width="8" height="16" rx="4" fill="#8B5CF6"/>
+  <circle cx="50" cy="38" r="17" fill="#FED7AA"/>
+  <circle cx="43" cy="38" r="2.5" fill="#1E1B4B"/>
+  <circle cx="57" cy="38" r="2.5" fill="#1E1B4B"/>
+  <path d="M 45 44 Q 50 47 55 44" stroke="#C2410C" stroke-width="1.8" fill="none"/>
+  <path d="M 24 84 C 26 62, 38 58, 50 58 C 62 58, 74 62, 76 84 Z" fill="#6D28D9"/>
+</svg>
