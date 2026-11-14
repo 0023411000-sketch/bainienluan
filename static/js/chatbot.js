@@ -44,7 +44,80 @@ const ChatbotWidget = (() => {
         if (!res.ok || !result.success) {
             throw new Error(result.message || 'Không thể kết nối máy chủ Chatbot');
         }
-        return result.data?.reply || 'Mình đã nhận được câu hỏi của bạn!';
+        return {
+            reply: result.data?.reply || 'Mình đã nhận được câu hỏi của bạn!',
+            is_guest: !!result.data?.is_guest,
+            require_login: !!result.data?.require_login,
+            guest_remaining: result.data?.guest_remaining,
+            guest_limit: result.data?.guest_limit
+        };
+    }
+
+    function isUserAuthenticated() {
+        return !!(typeof Utils !== 'undefined' && Utils.auth && typeof Utils.auth.isAuthenticated === 'function' && Utils.auth.isAuthenticated());
+    }
+
+    function lockChatbotForLogin() {
+        const inputEl = document.getElementById('chatbotInput');
+        const sendBtn = document.getElementById('chatbotSendBtn');
+        const statusEl = document.getElementById('chatbotStatusText');
+        const suggestionsEl = document.getElementById('chatbotSuggestions');
+
+        if (inputEl) {
+            inputEl.disabled = true;
+            inputEl.placeholder = 'Vui lòng đăng nhập để tiếp tục hỏi AI...';
+        }
+        if (sendBtn) sendBtn.disabled = true;
+        if (statusEl) statusEl.textContent = 'Cần đăng nhập để tiếp tục';
+        suggestionsEl?.querySelectorAll('.chatbot-chip').forEach(chip => {
+            chip.disabled = true;
+        });
+    }
+
+    function applyChatbotAuthModeUI() {
+        const statusEl = document.getElementById('chatbotStatusText');
+        const suggestionsEl = document.getElementById('chatbotSuggestions');
+        const container = document.getElementById('chatbotMessages');
+
+        if (isUserAuthenticated()) {
+            if (statusEl) statusEl.textContent = 'Đã kết nối AI + CSDL SQLite';
+            return;
+        }
+
+        if (statusEl) statusEl.textContent = 'Chế độ khách (Hỏi đáp chung)';
+        if (container) {
+            container.innerHTML = `
+                <div class="chat-msg chat-msg-bot">
+                    <div class="chat-msg-avatar">
+                        <i class="bi bi-robot"></i>
+                    </div>
+                    <div class="chat-msg-bubble">
+                        Xin chào! 👋 Bạn đang ở <strong>chế độ khách</strong> (tối đa 4 câu hỏi chung ngắn). Hãy <a href="/login" class="fw-bold text-primary text-decoration-underline">đăng nhập</a> để được tư vấn chuyên sâu!
+                    </div>
+                </div>
+            `;
+        }
+        if (suggestionsEl) {
+            suggestionsEl.innerHTML = `
+                <div class="d-flex gap-1 overflow-auto pb-1 chatbot-chips-scroll">
+                    <button type="button" class="btn btn-sm chatbot-chip" data-prompt="Xin chào, bạn có thể làm gì?">
+                        👋 Giới thiệu AI
+                    </button>
+                    <button type="button" class="btn btn-sm chatbot-chip" data-prompt="Website IT Career Compass dùng để làm gì?">
+                        🌐 Tổng quan website
+                    </button>
+                    <button type="button" class="btn btn-sm chatbot-chip" data-prompt="Làm sao để đăng nhập và dùng tính năng chuyên sâu?">
+                        🔑 Cách dùng chuyên sâu
+                    </button>
+                </div>
+            `;
+            suggestionsEl.querySelectorAll('.chatbot-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    const prompt = chip.getAttribute('data-prompt');
+                    if (prompt) handleSendMessage(prompt);
+                });
+            });
+        }
     }
 
     // =========================================================================
@@ -62,6 +135,7 @@ const ChatbotWidget = (() => {
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/`([^`]+)`/g, '<code class="px-1 rounded bg-light text-dark">$1</code>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\[([^\]]+)\]\((\/[^\s)]+)\)/g, '<a href="$2" class="fw-bold text-primary text-decoration-underline">$1</a>')
             .replace(/\n/g, '<br>');
     }
 
@@ -146,9 +220,23 @@ const ChatbotWidget = (() => {
         showTypingIndicator(true);
 
         try {
-            const reply = await sendMessageToChatbotAPI(text, chatHistory);
+            const data = await sendMessageToChatbotAPI(text, chatHistory);
+            const reply = data.reply;
             showTypingIndicator(false);
             appendMessage('bot', reply);
+
+            if (data.is_guest && typeof data.guest_remaining === 'number') {
+                const statusEl = document.getElementById('chatbotStatusText');
+                if (statusEl) {
+                    statusEl.textContent = data.require_login
+                        ? 'Cần đăng nhập để tiếp tục'
+                        : `Chế độ khách (Còn ${data.guest_remaining}/${data.guest_limit} lượt)`;
+                }
+            }
+
+            if (data.require_login) {
+                lockChatbotForLogin();
+            }
 
             chatHistory.push({ role: 'user', content: text });
             chatHistory.push({ role: 'assistant', content: reply });
@@ -160,13 +248,18 @@ const ChatbotWidget = (() => {
             appendMessage('bot', `⚠️ ${err.message || 'Có lỗi xảy ra khi kết nối tới API Chatbot.'}`);
         } finally {
             isSending = false;
-            if (sendBtn) sendBtn.disabled = false;
-            inputEl?.focus();
+            const inputLocked = !!(inputEl && inputEl.disabled);
+            if (sendBtn && !inputLocked) sendBtn.disabled = false;
+            if (!inputLocked) inputEl?.focus();
         }
     }
 
     function resetConversation() {
         chatHistory = [];
+        if (!isUserAuthenticated()) {
+            applyChatbotAuthModeUI();
+            return;
+        }
         const container = document.getElementById('chatbotMessages');
         if (!container) return;
         container.innerHTML = `
@@ -228,6 +321,8 @@ const ChatbotWidget = (() => {
                 if (prompt) handleSendMessage(prompt);
             });
         });
+
+        applyChatbotAuthModeUI();
     }
 
     return {

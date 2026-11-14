@@ -272,6 +272,7 @@ def api_login():
         return api_response(False, None, "Email hoặc mật khẩu không chính xác!", 401)
 
     session["user_id"] = user["id"]
+    session.pop("guest_chat_count", None)
     user_data = {
         "id": user["id"],
         "full_name": user["full_name"],
@@ -286,6 +287,7 @@ def api_login():
 @app.route("/api/auth/logout", methods=["POST"])
 def api_logout():
     session.pop("user_id", None)
+    session.pop("guest_chat_count", None)
     return api_response(True, None, "Đã đăng xuất thành công!")
 
 
@@ -1995,22 +1997,31 @@ CHATBOT_GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 CHATBOT_GEMINI_MODEL = "gemini-2.5-flash"
 
 
-def _call_gemini_with_sqlite_context(api_key, user_message, history, student_context):
-    """Gọi Google Gemini REST API kèm ngữ cảnh trang web & hồ sơ sinh viên từ SQLite."""
+def _call_gemini_with_sqlite_context(api_key, user_message, history, student_context, is_guest=False):
+    """Gọi Google Gemini REST API kèm ngữ cảnh trang web & hồ sơ sinh viên từ SQLite (hoặc ngữ cảnh khách)."""
     import urllib.request
     import json as _json
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{CHATBOT_GEMINI_MODEL}:generateContent?key={api_key}"
-    system_prompt = (
-        "Bạn là Trợ lý AI chính thức của website IT Career Compass (Đề tài NLCNPM23CS-38).\n"
-        "Dưới đây là toàn bộ thông tin cấu trúc trang web và dữ liệu thực tế trích xuất từ CSDL SQLite của người dùng đang trò chuyện:\n"
-        f"{student_context}\n\n"
-        "Hãy trả lời tự nhiên, thông minh, linh hoạt mọi câu hỏi của người dùng bằng tiếng Việt, bám sát dữ liệu thực tế trên trang web."
-    )
+    if is_guest:
+        system_prompt = (
+            "Bạn là Trợ lý AI của website IT Career Compass.\n"
+            f"{student_context}\n\n"
+            "BẮT BUỘC: Trả lời CỰC KỲ NGẮN GỌN (tối đa 2 câu, dưới 50 từ) bằng tiếng Việt, chỉ trả lời chung chung, không liệt kê dài dòng."
+        )
+        ack_text = "Mình hiểu. Mình sẽ chỉ trả lời cực kỳ ngắn gọn (1-2 câu) cho các câu hỏi chung."
+    else:
+        system_prompt = (
+            "Bạn là Trợ lý AI chính thức của website IT Career Compass (Đề tài NLCNPM23CS-38).\n"
+            "Dưới đây là toàn bộ thông tin cấu trúc trang web và dữ liệu thực tế trích xuất từ CSDL SQLite của người dùng đang trò chuyện:\n"
+            f"{student_context}\n\n"
+            "Hãy trả lời tự nhiên, thông minh, linh hoạt mọi câu hỏi của người dùng bằng tiếng Việt, bám sát dữ liệu thực tế trên trang web."
+        )
+        ack_text = "Mình đã nắm rõ toàn bộ chức năng website và hồ sơ năng lực của bạn trong CSDL."
 
     contents = [
         {"role": "user", "parts": [{"text": system_prompt}]},
-        {"role": "model", "parts": [{"text": "Mình đã nắm rõ toàn bộ chức năng website và hồ sơ năng lực của bạn trong CSDL."}]},
+        {"role": "model", "parts": [{"text": ack_text}]},
     ]
     for h in (history or [])[-8:]:
         role = "user" if h.get("role") == "user" else "model"
@@ -2019,9 +2030,13 @@ def _call_gemini_with_sqlite_context(api_key, user_message, history, student_con
             contents.append({"role": role, "parts": [{"text": text}]})
     contents.append({"role": "user", "parts": [{"text": user_message}]})
 
+    body = {"contents": contents}
+    if is_guest:
+        body["generationConfig"] = {"maxOutputTokens": 140, "temperature": 0.3}
+
     req = urllib.request.Request(
         url,
-        data=_json.dumps({"contents": contents}).encode("utf-8"),
+        data=_json.dumps(body).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
@@ -2030,9 +2045,9 @@ def _call_gemini_with_sqlite_context(api_key, user_message, history, student_con
         return data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
 
 
-def _call_hf_llama_with_sqlite_context(user_message, history, website_context):
+def _call_hf_llama_with_sqlite_context(user_message, history, website_context, is_guest=False):
     """Gọi Mô hình Ngôn ngữ Lớn (Llama-3.2-Instruct trên HuggingFace Space) hoàn toàn miễn phí,
-    không bị giới hạn 429, kèm 100% dữ liệu thực tế người dùng đã nhập trên trang web."""
+    không bị giới hạn 429, kèm 100% dữ liệu thực tế (hoặc ngữ cảnh giới hạn cho khách chưa đăng nhập)."""
     import urllib.request
     import json as _json
 
@@ -2044,22 +2059,34 @@ def _call_hf_llama_with_sqlite_context(user_message, history, website_context):
             history_lines.append(f"{role_label}: {text}")
     history_block = "\n".join(history_lines)
 
-    full_prompt = (
-        "Bạn là Trợ lý AI chính thức của trang web IT Career Compass (Hệ thống định hướng kỹ năng nghề nghiệp CNTT).\n"
-        "Nhiệm vụ của bạn là hỗ trợ người dùng trả lời chính xác MỌI câu hỏi dựa trên TẤT CẢ dữ liệu mà người dùng đã nhập vào trang web dưới đây:\n\n"
-        f"{website_context}\n\n"
-        + (f"[LỊCH SỬ HỘI THOẠI GẦN ĐÂY]\n{history_block}\n\n" if history_block else "")
-        + f"[CÂU HỎI CỦA NGƯỜI DÙNG]: {user_message}\n\n"
-        "YÊU CẦU TRẢ LỜI:\n"
-        "- Trả lời trực tiếp vào trọng tâm câu hỏi của người dùng bằng tiếng Việt tự nhiên, rõ ràng, thân thiện (dùng Markdown).\n"
-        "- Bám sát 100% vào dữ liệu thực tế mà người dùng đã nhập ở trên (họ tên, MSSV, trường học, GPA, từng môn học đã nhập, từng kỹ năng, chứng chỉ, dự án/kinh nghiệm, kế hoạch học tập, vị trí mục tiêu và tin tuyển dụng trên web).\n"
-        "- Tuyệt đối không trả lời chung chung."
-    )
+    if is_guest:
+        full_prompt = (
+            "Bạn là Trợ lý AI của trang web IT Career Compass.\n"
+            f"{website_context}\n\n"
+            + (f"[LỊCH SỬ HỘI THOẠI GẦN ĐÂY]\n{history_block}\n\n" if history_block else "")
+            + f"[CÂU HỎI CỦA NGƯỜI DÙNG]: {user_message}\n\n"
+            "YÊU CẦU BẮT BUỘC:\n"
+            "- Người dùng CHƯA ĐĂNG NHẬP. Trả lời CỰC KỲ NGẮN GỌN: tối đa 2 câu (dưới 50 từ), không giải thích dài dòng, không gạch đầu dòng.\n"
+            "- Nếu câu hỏi mang tính chuyên môn sâu, đánh giá hồ sơ, kỹ năng, việc làm hay lộ trình, hãy từ chối ngắn gọn và nhắc đăng nhập tại /login."
+        )
+    else:
+        full_prompt = (
+            "Bạn là Trợ lý AI chính thức của trang web IT Career Compass (Hệ thống định hướng kỹ năng nghề nghiệp CNTT).\n"
+            "Nhiệm vụ của bạn là hỗ trợ người dùng trả lời chính xác MỌI câu hỏi dựa trên TẤT CẢ dữ liệu mà người dùng đã nhập vào trang web dưới đây:\n\n"
+            f"{website_context}\n\n"
+            + (f"[LỊCH SỬ HỘI THOẠI GẦN ĐÂY]\n{history_block}\n\n" if history_block else "")
+            + f"[CÂU HỎI CỦA NGƯỜI DÙNG]: {user_message}\n\n"
+            "YÊU CẦU TRẢ LỜI:\n"
+            "- Trả lời trực tiếp vào trọng tâm câu hỏi của người dùng bằng tiếng Việt tự nhiên, rõ ràng, thân thiện (dùng Markdown).\n"
+            "- Bám sát 100% vào dữ liệu thực tế mà người dùng đã nhập ở trên (họ tên, MSSV, trường học, GPA, từng môn học đã nhập, từng kỹ năng, chứng chỉ, dự án/kinh nghiệm, kế hoạch học tập, vị trí mục tiêu và tin tuyển dụng trên web).\n"
+            "- Tuyệt đối không trả lời chung chung."
+        )
 
+    max_tok = 140 if is_guest else 512
     base = "https://huggingface-projects-llama-3-2-3b-instruct.hf.space"
     req = urllib.request.Request(
         f"{base}/gradio_api/call/generate",
-        data=_json.dumps({"data": [full_prompt, 512, 0.25, 0.9, 50, 1.1]}).encode("utf-8"),
+        data=_json.dumps({"data": [full_prompt, max_tok, 0.25, 0.9, 50, 1.1]}).encode("utf-8"),
         headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"},
         method="POST",
     )
@@ -2076,8 +2103,8 @@ def _call_hf_llama_with_sqlite_context(user_message, history, website_context):
     return ""
 
 
-def _call_free_llm_with_sqlite_context(user_message, history, website_context):
-    """Cổng LLM dự phòng thứ 2 (LLM7 OpenAI-compatible Gateway) kèm ngữ cảnh SQLite."""
+def _call_free_llm_with_sqlite_context(user_message, history, website_context, is_guest=False):
+    """Cổng LLM dự phòng thứ 2 (LLM7 OpenAI-compatible Gateway) kèm ngữ cảnh SQLite (hoặc ngữ cảnh khách)."""
     import urllib.request
     import json as _json
 
@@ -2089,20 +2116,29 @@ def _call_free_llm_with_sqlite_context(user_message, history, website_context):
             history_lines.append(f"{role_label}: {text}")
     history_block = "\n".join(history_lines)
 
-    full_prompt = (
-        "[DỮ LIỆU TRANG WEB IT CAREER COMPASS & HỒ SƠ NGƯỜI DÙNG ĐÃ NHẬP]\n"
-        f"{website_context}\n\n"
-        + (f"[LỊCH SỬ TRÒ CHUYỆN]\n{history_block}\n\n" if history_block else "")
-        + f"[CÂU HỎI CỦA NGƯỜI DÙNG]: {user_message}\n\n"
-        "Hãy trả lời trực tiếp, chi tiết, đúng trọng tâm câu hỏi bằng tiếng Việt dựa trên đúng dữ liệu người dùng đã nhập ở trên."
-    )
+    if is_guest:
+        full_prompt = (
+            "[CHẾ ĐỘ KHÁCH CHƯA ĐĂNG NHẬP - IT CAREER COMPASS]\n"
+            f"{website_context}\n\n"
+            + (f"[LỊCH SỬ TRÒ CHUYỆN]\n{history_block}\n\n" if history_block else "")
+            + f"[CÂU HỎI CỦA NGƯỜI DÙNG]: {user_message}\n\n"
+            "Trả lời CỰC KỲ NGẮN GỌN (tối đa 2 câu, dưới 50 từ) bằng tiếng Việt, không liệt kê dài dòng. Nếu là câu hỏi chuyên sâu, chỉ nhắc người dùng đăng nhập."
+        )
+    else:
+        full_prompt = (
+            "[DỮ LIỆU TRANG WEB IT CAREER COMPASS & HỒ SƠ NGƯỜI DÙNG ĐÃ NHẬP]\n"
+            f"{website_context}\n\n"
+            + (f"[LỊCH SỬ TRÒ CHUYỆN]\n{history_block}\n\n" if history_block else "")
+            + f"[CÂU HỎI CỦA NGƯỜI DÙNG]: {user_message}\n\n"
+            "Hãy trả lời trực tiếp, chi tiết, đúng trọng tâm câu hỏi bằng tiếng Việt dựa trên đúng dữ liệu người dùng đã nhập ở trên."
+        )
 
     req = urllib.request.Request(
         "https://api.llm7.io/v1/chat/completions",
         data=_json.dumps({
             "model": "default",
             "temperature": 0.2,
-            "max_tokens": 500,
+            "max_tokens": 140 if is_guest else 500,
             "messages": [{"role": "user", "content": full_prompt}],
         }).encode("utf-8"),
         headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"},
@@ -2113,40 +2149,163 @@ def _call_free_llm_with_sqlite_context(user_message, history, website_context):
         return data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
 
 
-def _resolve_chatbot_user_id(payload):
-    """Xác định chính xác tài khoản người dùng đang thao tác trên trình duyệt."""
-    uid = get_current_user_id()
-    if uid:
-        return uid
-    if payload.get("user_id"):
+GUEST_CHAT_MAX_QUESTIONS = 4
+
+SPECIALIZED_CHATBOT_KEYWORDS = (
+    "thêm kỹ năng", "them ky nang", "thêm kế hoạch", "them ke hoach", "thêm mục tiêu", "them muc tieu",
+    "hồ sơ", "ho so", "của tôi", "cua toi", "mssv", "gpa", "điểm trung bình", "diem trung binh",
+    "học phần", "hoc phan", "môn học", "mon hoc", "tín chỉ", "tin chi", "kỹ năng", "ky nang",
+    "chứng chỉ", "chung chi", "kinh nghiệm", "kinh nghiem", "kế hoạch", "ke hoach", "mục tiêu", "muc tieu",
+    "lộ trình", "lo trinh", "đánh giá", "danh gia", "độ phù hợp", "do phu hop", "so sánh", "so sanh",
+    "vị trí", "vi tri", "tuyển dụng", "tuyen dung", "việc làm", "viec lam", "mức lương", "muc luong",
+    "lương cao", "luong cao", "backend", "frontend", "fullstack", "devops", "data analyst", "ai engineer",
+    "mobile developer", "qa", "tester", "phỏng vấn", "phong van", "thực tập", "thuc tap",
+    "đồ án", "do an", "dự án", "du an", "skill", "roadmap", "chuyên sâu", "chuyen sau",
+    "chuyên môn", "chuyen mon", "csdl", "sqlite", "database", "toeic", "ielts", "coursera", "aws",
+)
+
+
+def _is_specialized_chatbot_query(message):
+    """Kiểm tra câu hỏi có thuộc phạm vi chuyên môn/chuyên sâu của website hay không."""
+    msg_lower = (message or "").lower()
+    return any(kw in msg_lower for kw in SPECIALIZED_CHATBOT_KEYWORDS)
+
+
+def _build_guest_chatbot_context():
+    """Ngữ cảnh giới hạn cho người dùng chưa đăng nhập (không chứa dữ liệu SQLite hay nghiệp vụ chuyên sâu)."""
+    return (
+        "Người dùng hiện tại CHƯA ĐĂNG NHẬP tài khoản (đang ở chế độ khách).\n"
+        "Bạn KHÔNG có quyền truy cập hồ sơ cá nhân, điểm số, kỹ năng, việc làm hay dữ liệu chuyên môn trên hệ thống.\n"
+        "Quy tắc bắt buộc:\n"
+        "1. Chỉ trả lời các câu hỏi chung chung, cơ bản, mang tính giới thiệu tổng quan hoặc giao tiếp thông thường.\n"
+        "2. Tuyệt đối KHÔNG phân tích chuyên sâu, KHÔNG tư vấn lộ trình/kỹ năng/việc làm chi tiết.\n"
+        "3. Nếu người dùng hỏi sâu hơn, nhắc họ đăng nhập tại /login."
+    )
+
+
+def _shorten_guest_reply(text, max_chars=180, max_sentences=2):
+    """Rút gọn câu trả lời chế độ khách tối đa 2 câu ngắn gọn."""
+    import re
+    cleaned = " ".join((text or "").split())
+    sentences = re.split(r'(?<=[.!?])\s+', cleaned)
+    short = ""
+    for s in sentences[:max_sentences]:
+        if len(short) + len(s) + 1 <= max_chars:
+            short = f"{short} {s}".strip()
+        else:
+            break
+    if short:
+        return short
+    if len(cleaned) <= max_chars:
+        return cleaned
+    return cleaned[:max_chars].rsplit(" ", 1)[0] + "..."
+
+
+def _handle_guest_chatbot(message, history, active_api_key):
+    """Xử lý yêu cầu Chatbot cho khách chưa đăng nhập: chỉ trả lời ngắn gọn, chung chung và giới hạn tối đa 4 lượt."""
+    guest_count = int(session.get("guest_chat_count", 0))
+    if guest_count >= GUEST_CHAT_MAX_QUESTIONS:
+        return api_response(
+            True,
+            {
+                "reply": (
+                    f"🔒 Bạn đã dùng hết **{GUEST_CHAT_MAX_QUESTIONS}/{GUEST_CHAT_MAX_QUESTIONS}** lượt hỏi thử. "
+                    "Vui lòng [Đăng nhập ngay](/login) để tiếp tục sử dụng AI chuyên sâu!"
+                ),
+                "mode": "guest_limit_reached",
+                "is_guest": True,
+                "require_login": True,
+                "guest_count": guest_count,
+                "guest_limit": GUEST_CHAT_MAX_QUESTIONS,
+                "guest_remaining": 0,
+            },
+        )
+
+    guest_count += 1
+    session["guest_chat_count"] = guest_count
+    guest_remaining = max(0, GUEST_CHAT_MAX_QUESTIONS - guest_count)
+
+    if _is_specialized_chatbot_query(message):
+        reply = (
+            "🔒 Câu hỏi này cần **đăng nhập tài khoản** để AI tư vấn chuyên sâu. "
+            f"Vui lòng [Đăng nhập](/login)! *(Còn **{guest_remaining}/{GUEST_CHAT_MAX_QUESTIONS}** lượt)*"
+        )
+        return api_response(
+            True,
+            {
+                "reply": reply,
+                "mode": "guest_specialized_blocked",
+                "is_guest": True,
+                "require_login": False,
+                "guest_count": guest_count,
+                "guest_limit": GUEST_CHAT_MAX_QUESTIONS,
+                "guest_remaining": guest_remaining,
+            },
+        )
+
+    guest_context = _build_guest_chatbot_context()
+    ai_reply = ""
+    mode = "guest_general_fallback"
+
+    if active_api_key:
         try:
-            return int(payload.get("user_id"))
-        except (ValueError, TypeError):
-            pass
-    auth_header = request.headers.get("Authorization", "")
-    if "user_" in auth_header:
+            ai_reply = _call_gemini_with_sqlite_context(active_api_key, message, history, guest_context, is_guest=True)
+            if ai_reply:
+                mode = "guest_gemini"
+        except Exception:
+            ai_reply = ""
+
+    if not ai_reply:
         try:
-            return int(auth_header.split("user_")[-1].strip())
-        except (ValueError, TypeError):
-            pass
-    conn = get_db_connection()
-    row = conn.execute("SELECT id FROM users WHERE role = 'student' ORDER BY id DESC LIMIT 1").fetchone()
-    conn.close()
-    return row["id"] if row else 1
+            ai_reply = _call_hf_llama_with_sqlite_context(message, history, guest_context, is_guest=True)
+            if ai_reply:
+                mode = "guest_hf_llama"
+        except Exception:
+            ai_reply = ""
+
+    if not ai_reply:
+        try:
+            ai_reply = _call_free_llm_with_sqlite_context(message, history, guest_context, is_guest=True)
+            if ai_reply:
+                mode = "guest_llm7"
+        except Exception:
+            ai_reply = ""
+
+    if not ai_reply:
+        ai_reply = (
+            "👋 Mình là **Trợ lý AI IT Career Compass**. "
+            "Hiện bạn chưa đăng nhập nên mình chỉ trả lời ngắn gọn các câu hỏi chung; hãy [Đăng nhập](/login) để dùng tư vấn chuyên sâu!"
+        )
+    else:
+        ai_reply = _shorten_guest_reply(ai_reply)
+
+    if guest_remaining == 0:
+        ai_reply += f"\n\n⚠️ *Đã hết lượt khách ({guest_count}/{GUEST_CHAT_MAX_QUESTIONS}). Hãy [Đăng nhập](/login) để hỏi tiếp!*"
+    else:
+        ai_reply += f"\n\n*(Còn **{guest_remaining}/{GUEST_CHAT_MAX_QUESTIONS}** lượt khách)*"
+
+    return api_response(
+        True,
+        {
+            "reply": ai_reply,
+            "mode": mode,
+            "is_guest": True,
+            "require_login": False,
+            "guest_count": guest_count,
+            "guest_limit": GUEST_CHAT_MAX_QUESTIONS,
+            "guest_remaining": guest_remaining,
+        },
+    )
 
 
 @app.route("/api/chatbot", methods=["POST"])
 def api_chatbot():
     """
     Endpoint AI Hỗ trợ Người dùng thực thụ của Website (/api/chatbot):
-    1. Tự động nhận diện đúng tài khoản người dùng đang đăng nhập và đọc 100% dữ liệu người dùng đã nhập
-       (Hồ sơ cá nhân, Học phần & điểm số, Kỹ năng, Chứng chỉ, Kinh nghiệm & Dự án, Kế hoạch học tập,
-       Điểm đánh giá 8 vị trí nghề nghiệp và Tin tuyển dụng).
-    2. Hỗ trợ thực thi thao tác nhanh ngay trong khung chat (ví dụ: thêm kỹ năng, thêm mục tiêu học tập, đổi vị trí mục tiêu).
-    3. Kết nối trực tiếp mô hình AI sinh ngôn ngữ tự nhiên (Gemini / Llama-3.2-Instruct / LLM7) kèm toàn bộ ngữ cảnh trang web.
+    - Nếu đã đăng nhập (session hợp lệ): mở toàn bộ tính năng chuyên sâu + dữ liệu SQLite cá nhân.
+    - Nếu chưa đăng nhập (khách): chỉ trả lời câu hỏi chung chung, chặn câu hỏi chuyên môn sâu và giới hạn tối đa 4 lượt hỏi.
     """
     payload = request.get_json(silent=True) or {}
-    user_id = _resolve_chatbot_user_id(payload)
     message = (payload.get("message") or "").strip()
     history = payload.get("history") or []
     ui_api_key = (payload.get("api_key") or "").strip()
@@ -2154,6 +2313,10 @@ def api_chatbot():
 
     if not message:
         return api_response(False, None, "Vui lòng nhập nội dung câu hỏi!", 400)
+
+    user_id = get_current_user_id()
+    if not user_id:
+        return _handle_guest_chatbot(message, history, active_api_key)
 
     msg_lower = message.lower()
     conn = get_db_connection()
