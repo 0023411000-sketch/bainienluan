@@ -1,119 +1,1132 @@
-{% extends 'base.html' %}
+{% set initial_mode = default_mode|default('login') %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if initial_mode == 'signup' %}Sign Up{% else %}Login{% endif %} - IT Career Compass</title>
 
-{% block title %}Đăng nhập tài khoản{% endblock %}
+    <!-- Google Font: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-{% block content %}
-<div class="row justify-content-center align-items-center py-4">
-    <div class="col-12 col-sm-10 col-md-8 col-lg-5 col-xl-4">
-        <!-- Card Đăng nhập Dark Mode CRM -->
-        <div class="card border-0 shadow-lg overflow-hidden">
-            <div class="card-body p-4 p-sm-5">
-                <!-- Tiêu đề & Logo la bàn -->
-                <div class="text-center mb-4">
-                    <div class="d-inline-flex align-items-center justify-content-center auth-logo-circle rounded-circle p-3 mb-3 shadow-sm">
-                        <i class="bi bi-compass-fill fs-2"></i>
+    <style>
+        /* =====================================================================
+           1. CSS VARIABLES — Colors, Shadows, Radii & Transitions
+           ===================================================================== */
+        :root {
+            --bg-base: #eeeff4;
+            --bg-pill-active: #f5f6fa;
+
+            --text-primary: #2d3142;
+            --text-secondary: #7b8094;
+            --text-placeholder: #a3a8b8;
+
+            --accent-start: #6a9bf5;
+            --accent-mid: #5b8def;
+            --accent-end: #4a7be8;
+
+            --error-color: #e04f5f;
+            --success-color: #2fb37c;
+
+            /* Neumorphic Dual Shadows (dark bottom-right + white top-left) */
+            --shadow-card: 14px 14px 30px #d1d4de, -14px -14px 30px #ffffff;
+            --shadow-raised: 6px 6px 14px #d3d6e0, -6px -6px 14px #ffffff;
+            --shadow-raised-hover: 8px 8px 18px #cdd0db, -8px -8px 18px #ffffff;
+            --shadow-inset: inset 5px 5px 10px #d5d8e2, inset -5px -5px 10px #ffffff;
+            --shadow-inset-deep: inset 6px 6px 12px #cfd2dd, inset -6px -6px 12px #ffffff;
+            --shadow-inset-sm: inset 3px 3px 6px #d4d7e1, inset -3px -3px 6px #ffffff;
+
+            /* Accent Button Shadows */
+            --shadow-btn-accent: 0 10px 22px -6px rgba(74, 123, 232, 0.55), 4px 4px 10px #d1d4de, -4px -4px 10px #ffffff;
+            --shadow-btn-accent-hover: 0 14px 26px -6px rgba(74, 123, 232, 0.65), 6px 6px 14px #d1d4de, -6px -6px 14px #ffffff;
+            --shadow-btn-accent-active: inset 4px 4px 10px rgba(32, 69, 158, 0.45), inset -3px -3px 8px rgba(145, 184, 255, 0.35);
+
+            /* Focus Rings */
+            --focus-ring: 0 0 0 3px rgba(91, 141, 239, 0.28);
+            --error-ring: 0 0 0 3px rgba(224, 79, 95, 0.22);
+
+            --radius-card: 32px;
+            --radius-control: 16px;
+            --radius-pill: 999px;
+
+            --ease-smooth: 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        /* =====================================================================
+           2. RESET & MOBILE-FIRST 9:16 STAGE LAYOUT
+           ===================================================================== */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            min-height: 100%;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 16px;
+            -webkit-font-smoothing: antialiased;
+            line-height: 1.5;
+        }
+
+        .auth-stage {
+            width: 100%;
+            max-width: 380px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .auth-card {
+            width: 100%;
+            background-color: var(--bg-base);
+            border-radius: var(--radius-card);
+            padding: 28px;
+            box-shadow: var(--shadow-card);
+            position: relative;
+        }
+
+        /* =====================================================================
+           3. NEUMORPHIC PILL TAB SWITCHER
+           ===================================================================== */
+        .tab-switcher {
+            position: relative;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            padding: 6px;
+            border-radius: var(--radius-pill);
+            background-color: var(--bg-base);
+            box-shadow: var(--shadow-inset);
+            margin-bottom: 24px;
+            user-select: none;
+        }
+
+        .tab-indicator {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            width: calc(50% - 6px);
+            height: calc(100% - 12px);
+            border-radius: var(--radius-pill);
+            background-color: var(--bg-pill-active);
+            box-shadow: var(--shadow-raised);
+            transition: transform 0.3s cubic-bezier(0.25, 0.9, 0.3, 1);
+            pointer-events: none;
+        }
+
+        .tab-switcher[data-active="signup"] .tab-indicator {
+            transform: translateX(100%);
+        }
+
+        .tab-btn {
+            position: relative;
+            z-index: 1;
+            height: 40px;
+            border: none;
+            background: transparent;
+            border-radius: var(--radius-pill);
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: color 0.25s ease;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .tab-btn[aria-selected="true"] {
+            color: var(--accent-end);
+        }
+
+        .tab-btn:focus-visible {
+            outline: none;
+            box-shadow: var(--focus-ring);
+        }
+
+        /* =====================================================================
+           4. HEADER (TITLE & SUBTITLE WITH FADE/SLIDE TRANSITION)
+           ===================================================================== */
+        .auth-header {
+            text-align: center;
+            margin-bottom: 22px;
+            transition: opacity 0.24s ease, transform 0.24s ease;
+        }
+
+        .auth-header.is-switching {
+            opacity: 0;
+            transform: translateY(-6px);
+        }
+
+        .auth-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .auth-subtitle {
+            font-size: 0.845rem;
+            color: var(--text-secondary);
+        }
+
+        /* =====================================================================
+           5. FORM FIELDS, SMOOTH COLLAPSIBLE WRAPPERS & INSET INPUTS
+           ===================================================================== */
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .field-collapse {
+            display: grid;
+            grid-template-rows: 1fr;
+            opacity: 1;
+            transform: translateY(0);
+            margin-bottom: 16px;
+            transition:
+                grid-template-rows 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 0.24s ease,
+                transform 0.24s ease,
+                margin-bottom 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .field-collapse.is-collapsed {
+            grid-template-rows: 0fr;
+            opacity: 0;
+            transform: translateY(-6px);
+            margin-bottom: 0;
+            pointer-events: none;
+        }
+
+        .field-collapse-inner {
+            overflow: hidden;
+            padding: 3px;
+            margin: -3px;
+        }
+
+        .field-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .field-group.is-static {
+            margin-bottom: 16px;
+        }
+
+        .field-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 7px;
+            padding-left: 4px;
+            letter-spacing: 0.01em;
+        }
+
+        .input-box {
+            position: relative;
+            height: 52px;
+            border-radius: var(--radius-control);
+            background-color: var(--bg-base);
+            box-shadow: var(--shadow-inset);
+            display: flex;
+            align-items: center;
+            transition: box-shadow var(--ease-smooth);
+        }
+
+        .input-box:focus-within {
+            box-shadow: var(--shadow-inset-deep), var(--focus-ring);
+        }
+
+        .input-box.is-invalid {
+            box-shadow: var(--shadow-inset-deep), var(--error-ring);
+        }
+
+        .input-control {
+            width: 100%;
+            height: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            padding: 0 18px;
+            font-family: inherit;
+            font-size: 0.92rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            border-radius: var(--radius-control);
+        }
+
+        .input-control.has-toggle {
+            padding-right: 48px;
+        }
+
+        .input-control::placeholder {
+            color: var(--text-placeholder);
+            font-weight: 400;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 8px;
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 12px;
+            background: transparent;
+            color: var(--text-secondary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: color 0.2s ease, transform 0.15s ease;
+        }
+
+        .password-toggle:hover {
+            color: var(--accent-end);
+        }
+
+        .password-toggle:active {
+            transform: scale(0.92);
+        }
+
+        .password-toggle:focus-visible {
+            outline: none;
+            box-shadow: var(--focus-ring);
+            color: var(--accent-end);
+        }
+
+        .password-toggle svg {
+            width: 19px;
+            height: 19px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.9;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .field-error {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--error-color);
+            padding-left: 6px;
+            margin-top: 6px;
+            min-height: 16px;
+            display: none;
+        }
+
+        .field-error.is-visible {
+            display: block;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-6px); }
+            40% { transform: translateX(6px); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(4px); }
+        }
+
+        .shake {
+            animation: shake 0.36s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        }
+
+        /* =====================================================================
+           6. AUXILIARY ROW (REMEMBER ME & FORGOT PASSWORD — LOGIN ONLY)
+           ===================================================================== */
+        .form-aux-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 2px 2px 6px;
+        }
+
+        .remember-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .remember-checkbox {
+            position: relative;
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 7px;
+            background-color: var(--bg-base);
+            box-shadow: var(--shadow-inset-sm);
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease;
+        }
+
+        .remember-checkbox:hover {
+            transform: scale(1.04);
+        }
+
+        .remember-checkbox:focus-visible {
+            outline: none;
+            box-shadow: var(--shadow-inset-sm), var(--focus-ring);
+        }
+
+        .remember-checkbox:checked {
+            background: linear-gradient(135deg, var(--accent-start), var(--accent-end));
+            box-shadow: 0 3px 8px rgba(74, 123, 232, 0.42);
+        }
+
+        .remember-checkbox:checked::after {
+            content: "";
+            position: absolute;
+            left: 6.5px;
+            top: 3px;
+            width: 5px;
+            height: 9.5px;
+            border: solid #ffffff;
+            border-width: 0 2px 2px 0;
+            transform: rotate(42deg);
+        }
+
+        .forgot-link {
+            border: none;
+            background: transparent;
+            padding: 4px 2px;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 8px;
+            transition: color 0.2s ease;
+        }
+
+        .forgot-link:hover {
+            color: var(--accent-end);
+        }
+
+        .forgot-link:focus-visible {
+            outline: none;
+            box-shadow: var(--focus-ring);
+            color: var(--accent-end);
+        }
+
+        /* =====================================================================
+           7. PRIMARY GRADIENT CTA BUTTON
+           ===================================================================== */
+        .primary-btn {
+            width: 100%;
+            height: 54px;
+            margin-top: 6px;
+            border: none;
+            border-radius: var(--radius-control);
+            background: linear-gradient(135deg, var(--accent-start) 0%, var(--accent-end) 100%);
+            color: #ffffff;
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+            cursor: pointer;
+            box-shadow: var(--shadow-btn-accent);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.25s ease, opacity 0.2s ease;
+        }
+
+        .primary-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-btn-accent-hover);
+        }
+
+        .primary-btn:active:not(:disabled) {
+            transform: translateY(1px);
+            box-shadow: var(--shadow-btn-accent-active);
+        }
+
+        .primary-btn:focus-visible {
+            outline: none;
+            box-shadow: var(--shadow-btn-accent), var(--focus-ring);
+        }
+
+        .primary-btn:disabled {
+            cursor: default;
+        }
+
+        .primary-btn.is-success {
+            background: linear-gradient(135deg, #3ac98f 0%, var(--success-color) 100%);
+            box-shadow: 0 10px 22px -6px rgba(47, 179, 124, 0.5), 4px 4px 10px #d1d4de, -4px -4px 10px #ffffff;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2.4px solid rgba(255, 255, 255, 0.35);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* =====================================================================
+           8. OR DIVIDER & NEUMORPHIC SOCIAL LOGIN BUTTONS
+           ===================================================================== */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin: 22px 0 18px;
+            color: var(--text-secondary);
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            user-select: none;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: "";
+            flex: 1;
+            height: 1.5px;
+            border-radius: 99px;
+            background: linear-gradient(90deg, rgba(209, 212, 222, 0.2), rgba(190, 195, 208, 0.85), rgba(209, 212, 222, 0.2));
+            box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
+        }
+
+        .social-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .social-btn {
+            height: 48px;
+            border: none;
+            border-radius: var(--radius-control);
+            background-color: var(--bg-base);
+            box-shadow: var(--shadow-raised);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            cursor: pointer;
+            transition: transform 0.22s ease, box-shadow 0.22s ease, color 0.2s ease;
+        }
+
+        .social-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-raised-hover);
+        }
+
+        .social-btn:active {
+            transform: translateY(0);
+            box-shadow: var(--shadow-inset);
+        }
+
+        .social-btn:focus-visible {
+            outline: none;
+            box-shadow: var(--shadow-raised), var(--focus-ring);
+        }
+
+        .social-btn svg {
+            width: 19px;
+            height: 19px;
+            flex-shrink: 0;
+        }
+
+        /* =====================================================================
+           9. FLOATING NEUMORPHIC TOAST NOTIFICATION
+           ===================================================================== */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translate(-50%, 16px);
+            opacity: 0;
+            pointer-events: none;
+            background-color: var(--bg-pill-active);
+            color: var(--text-primary);
+            padding: 12px 20px;
+            border-radius: var(--radius-pill);
+            box-shadow: var(--shadow-raised-hover);
+            font-size: 0.84rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 100;
+            max-width: calc(100vw - 32px);
+            text-align: center;
+            transition: opacity 0.26s ease, transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .toast.is-visible {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        .toast-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--accent-mid);
+            flex-shrink: 0;
+        }
+
+        .toast.is-success .toast-dot {
+            background-color: var(--success-color);
+        }
+
+        .toast.is-error .toast-dot {
+            background-color: var(--error-color);
+        }
+
+        @media (max-width: 390px) {
+            body {
+                padding: 14px 12px;
+            }
+
+            .auth-card {
+                padding: 24px 20px;
+                border-radius: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="auth-stage">
+        <section class="auth-card" aria-label="Authentication card">
+            <!-- 1. Neumorphic Pill Tab Switcher -->
+            <div class="tab-switcher" id="tabSwitcher" role="tablist" aria-label="Authentication mode" data-active="{{ initial_mode }}">
+                <span class="tab-indicator" aria-hidden="true"></span>
+                <button
+                    type="button"
+                    class="tab-btn"
+                    id="tabLogin"
+                    role="tab"
+                    aria-selected="{{ 'true' if initial_mode != 'signup' else 'false' }}"
+                    data-mode="login"
+                >Login</button>
+                <button
+                    type="button"
+                    class="tab-btn"
+                    id="tabSignup"
+                    role="tab"
+                    aria-selected="{{ 'true' if initial_mode == 'signup' else 'false' }}"
+                    data-mode="signup"
+                >Sign Up</button>
+            </div>
+
+            <!-- 2. Header Title & Subtitle -->
+            <header class="auth-header" id="authHeader">
+                <h1 class="auth-title" id="authTitle">{% if initial_mode == 'signup' %}Create an Account{% else %}Welcome Back{% endif %}</h1>
+                <p class="auth-subtitle" id="authSubtitle">{% if initial_mode == 'signup' %}Start your 30-day free trial today.{% else %}Please enter your details to sign in.{% endif %}</p>
+            </header>
+
+            <!-- 3. Authentication Form -->
+            <form class="auth-form" id="authForm" novalidate>
+                <!-- Full Name (Sign Up only) -->
+                <div class="field-collapse {% if initial_mode != 'signup' %}is-collapsed{% endif %}" id="fullNameWrap" aria-hidden="{{ 'false' if initial_mode == 'signup' else 'true' }}">
+                    <div class="field-collapse-inner">
+                        <div class="field-group">
+                            <label class="field-label" for="fullName">Full Name</label>
+                            <div class="input-box" id="fullNameBox">
+                                <input
+                                    type="text"
+                                    class="input-control"
+                                    id="fullName"
+                                    name="fullName"
+                                    placeholder="John Doe"
+                                    autocomplete="name"
+                                    {% if initial_mode != 'signup' %}disabled{% endif %}
+                                >
+                            </div>
+                            <span class="field-error" id="fullNameError" role="alert"></span>
+                        </div>
                     </div>
-                    <h3 class="fw-bold text-white mb-1">Đăng Nhập Hệ Thống</h3>
-                    <p class="text-muted small">IT Career Compass — Định hướng Kỹ năng Nghề nghiệp CNTT</p>
                 </div>
 
-                <!-- Form đăng nhập -->
-                <form id="loginForm" novalidate>
-                    <!-- Email -->
-                    <div class="mb-3">
-                        <label for="loginEmail" class="form-label">Địa chỉ Email <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <span class="input-group-text border-end-0"><i class="bi bi-envelope"></i></span>
-                            <input type="email" class="form-control border-start-0 ps-0" id="loginEmail" 
-                                   placeholder="sinhvien@sis.hust.edu.vn" value="an.nguyen20@sis.hust.edu.vn" required autocomplete="username">
-                        </div>
-                        <div class="invalid-feedback d-none" id="loginEmailFeedback">Email không hợp lệ.</div>
+                <!-- Email Address -->
+                <div class="field-group is-static">
+                    <label class="field-label" for="email">Email Address</label>
+                    <div class="input-box" id="emailBox">
+                        <input
+                            type="email"
+                            class="input-control"
+                            id="email"
+                            name="email"
+                            placeholder="you@example.com"
+                            autocomplete="email"
+                            required
+                        >
                     </div>
+                    <span class="field-error" id="emailError" role="alert"></span>
+                </div>
 
-                    <!-- Mật khẩu -->
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <label for="loginPassword" class="form-label mb-0">Mật khẩu <span class="text-danger">*</span></label>
-                            <a href="javascript:void(0)" class="small text-decoration-none text-info" onclick="Utils.showToast('Vui lòng liên hệ quản trị viên để cấp lại mật khẩu!', 'info')">Quên mật khẩu?</a>
-                        </div>
-                        <div class="input-group">
-                            <span class="input-group-text border-end-0"><i class="bi bi-key"></i></span>
-                            <input type="password" class="form-control border-start-0 border-end-0 ps-0" id="loginPassword" 
-                                   placeholder="••••••••" value="123456" required autocomplete="current-password">
-                            <button class="btn btn-outline-secondary border-start-0 text-muted" type="button" id="togglePasswordBtn">
-                                <i class="bi bi-eye"></i>
-                            </button>
-                        </div>
-                        <div class="invalid-feedback d-none" id="loginPasswordFeedback">Vui lòng nhập mật khẩu.</div>
-                    </div>
-
-                    <!-- Ghi nhớ đăng nhập -->
-                    <div class="form-check mb-4">
-                        <input class="form-check-input" type="checkbox" id="rememberMe" checked>
-                        <label class="form-check-label small" for="rememberMe">
-                            Ghi nhớ phiên đăng nhập trên thiết bị này
-                        </label>
-                    </div>
-
-                    <!-- Nút đăng nhập -->
-                    <div class="d-grid mb-3">
-                        <button type="submit" class="btn btn-primary btn-lg fs-6 fw-bold py-2" id="btnLoginSubmit">
-                            <i class="bi bi-box-arrow-in-right me-2"></i>Đăng nhập ngay
+                <!-- Password -->
+                <div class="field-group is-static">
+                    <label class="field-label" for="password">Password</label>
+                    <div class="input-box" id="passwordBox">
+                        <input
+                            type="password"
+                            class="input-control has-toggle"
+                            id="password"
+                            name="password"
+                            placeholder="{% if initial_mode == 'signup' %}Create a password{% else %}••••••••{% endif %}"
+                            autocomplete="{% if initial_mode == 'signup' %}new-password{% else %}current-password{% endif %}"
+                            required
+                        >
+                        <button
+                            type="button"
+                            class="password-toggle"
+                            data-target="password"
+                            aria-label="Show password"
+                            aria-pressed="false"
+                        >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
                         </button>
                     </div>
+                    <span class="field-error" id="passwordError" role="alert"></span>
+                </div>
 
-                    <!-- Chuyển sang đăng ký -->
-                    <div class="text-center pt-3 border-top">
-                        <p class="small text-muted mb-0">Chưa có tài khoản sinh viên? 
-                            <a href="/register" class="fw-semibold text-white text-decoration-underline ms-1">Đăng ký tài khoản</a>
-                        </p>
+                <!-- Confirm Password (Sign Up only) -->
+                <div class="field-collapse {% if initial_mode != 'signup' %}is-collapsed{% endif %}" id="confirmPasswordWrap" aria-hidden="{{ 'false' if initial_mode == 'signup' else 'true' }}">
+                    <div class="field-collapse-inner">
+                        <div class="field-group">
+                            <label class="field-label" for="confirmPassword">Confirm Password</label>
+                            <div class="input-box" id="confirmPasswordBox">
+                                <input
+                                    type="password"
+                                    class="input-control has-toggle"
+                                    id="confirmPassword"
+                                    name="confirmPassword"
+                                    placeholder="Confirm your password"
+                                    autocomplete="new-password"
+                                    {% if initial_mode != 'signup' %}disabled{% endif %}
+                                >
+                                <button
+                                    type="button"
+                                    class="password-toggle"
+                                    data-target="confirmPassword"
+                                    aria-label="Show confirm password"
+                                    aria-pressed="false"
+                                >
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </button>
+                            </div>
+                            <span class="field-error" id="confirmPasswordError" role="alert"></span>
+                        </div>
                     </div>
-                </form>
-            </div>
-        </div>
+                </div>
 
-        <!-- Hộp gợi ý tài khoản mẫu (1-Click chọn nhanh Sinh viên hoặc Admin) -->
-        <div class="card mt-3 p-3 small">
-            <div class="text-center fw-semibold text-white mb-2">
-                <i class="bi bi-lightbulb-fill text-warning me-1"></i>Chọn nhanh tài khoản dùng thử (Mật khẩu: <code>123456</code>):
+                <!-- 4. Auxiliary Row (Remember me & Forgot Password — Login only) -->
+                <div class="field-collapse {% if initial_mode == 'signup' %}is-collapsed{% endif %}" id="loginAuxWrap" aria-hidden="{{ 'true' if initial_mode == 'signup' else 'false' }}">
+                    <div class="field-collapse-inner">
+                        <div class="form-aux-row">
+                            <label class="remember-label" for="rememberMe">
+                                <input type="checkbox" class="remember-checkbox" id="rememberMe" checked {% if initial_mode == 'signup' %}disabled{% endif %}>
+                                <span>Remember me</span>
+                            </label>
+                            <button type="button" class="forgot-link" id="forgotPasswordBtn" {% if initial_mode == 'signup' %}disabled{% endif %}>Forgot Password?</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Primary Gradient Button -->
+                <button type="submit" class="primary-btn" id="submitBtn">
+                    <span id="submitBtnText">{% if initial_mode == 'signup' %}Create Account &rarr;{% else %}Sign In &rarr;{% endif %}</span>
+                </button>
+            </form>
+
+            <!-- 6. Divider -->
+            <div class="divider" role="separator">OR</div>
+
+            <!-- 7. Social Login Buttons -->
+            <div class="social-grid">
+                <button type="button" class="social-btn" id="googleBtn">
+                    <!-- Google 4-color SVG logo -->
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path fill="#EA4335" d="M12 10.2v3.9h5.4c-.2 1.3-1.5 3.7-5.4 3.7-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.3 14.6 2.4 12 2.4 6.7 2.4 2.4 6.7 2.4 12S6.7 21.6 12 21.6c6.9 0 9.6-4.8 9.6-7.3 0-.5-.1-.9-.1-1.3H12z"></path>
+                        <path fill="#34A853" d="M3.5 16.5l3.2-2.5c.9 2.2 3 3.7 5.3 3.7 1.9 0 3.5-.7 4.6-1.8l3 2.3C17.8 20.1 15.1 21.6 12 21.6c-3.9 0-7.2-2.2-8.5-5.1z"></path>
+                        <path fill="#4A90E2" d="M19.6 18.2l-3-2.3c.8-.7 1.4-1.7 1.6-2.8H12v-3.9h9.5c.1.5.1 1 .1 1.7 0 2.9-1 5.4-2 7.3z"></path>
+                        <path fill="#FBBC05" d="M3.5 7.5C2.8 8.9 2.4 10.4 2.4 12c0 1.6.4 3.1 1.1 4.5l3.2-2.5c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2L3.5 7.5z"></path>
+                    </svg>
+                    <span>Google</span>
+                </button>
+
+                <button type="button" class="social-btn" id="githubBtn">
+                    <!-- GitHub SVG logo -->
+                    <svg viewBox="0 0 24 24" fill="#2d3142" aria-hidden="true">
+                        <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"></path>
+                    </svg>
+                    <span>GitHub</span>
+                </button>
             </div>
-            <div class="d-grid gap-2">
-                <button type="button" class="btn btn-outline-secondary btn-sm text-start d-flex justify-content-between align-items-center"
-                        onclick="document.getElementById('loginEmail').value='admin@hust.edu.vn'; document.getElementById('loginPassword').value='123456';">
-                    <span><i class="bi bi-shield-lock-fill text-danger me-1"></i><strong>Admin 1:</strong> admin@hust.edu.vn</span>
-                    <span class="badge bg-danger-subtle text-danger">Quản trị viên</span>
-                </button>
-                <button type="button" class="btn btn-outline-secondary btn-sm text-start d-flex justify-content-between align-items-center"
-                        onclick="document.getElementById('loginEmail').value='long.admin@hust.edu.vn'; document.getElementById('loginPassword').value='123456';">
-                    <span><i class="bi bi-shield-check text-danger me-1"></i><strong>Admin 2:</strong> long.admin@hust.edu.vn</span>
-                    <span class="badge bg-danger-subtle text-danger">Quản trị viên</span>
-                </button>
-                <button type="button" class="btn btn-outline-secondary btn-sm text-start d-flex justify-content-between align-items-center"
-                        onclick="document.getElementById('loginEmail').value='an.nguyen20@sis.hust.edu.vn'; document.getElementById('loginPassword').value='123456';">
-                    <span><i class="bi bi-mortarboard-fill text-primary me-1"></i><strong>Nguyễn Văn An:</strong> an.nguyen20@sis.hust.edu.vn</span>
-                    <span class="badge bg-primary-subtle text-primary">SV Backend</span>
-                </button>
-                <button type="button" class="btn btn-outline-secondary btn-sm text-start d-flex justify-content-between align-items-center"
-                        onclick="document.getElementById('loginEmail').value='ngoc.tran21@student.edu.vn'; document.getElementById('loginPassword').value='123456';">
-                    <span><i class="bi bi-mortarboard-fill text-info me-1"></i><strong>Trần Thị Bích Ngọc:</strong> ngoc.tran21@student.edu.vn</span>
-                    <span class="badge bg-info-subtle text-info">SV Frontend</span>
-                </button>
-                <button type="button" class="btn btn-outline-secondary btn-sm text-start d-flex justify-content-between align-items-center"
-                        onclick="document.getElementById('loginEmail').value='nam.le21@student.edu.vn'; document.getElementById('loginPassword').value='123456';">
-                    <span><i class="bi bi-mortarboard-fill text-success me-1"></i><strong>Lê Hoàng Nam:</strong> nam.le21@student.edu.vn</span>
-                    <span class="badge bg-success-subtle text-success">SV Data Analyst</span>
-                </button>
-                <button type="button" class="btn btn-outline-secondary btn-sm text-start d-flex justify-content-between align-items-center"
-                        onclick="document.getElementById('loginEmail').value='tuan.pham22@student.edu.vn'; document.getElementById('loginPassword').value='123456';">
-                    <span><i class="bi bi-mortarboard-fill text-warning me-1"></i><strong>Phạm Minh Tuấn:</strong> tuan.pham22@student.edu.vn</span>
-                    <span class="badge bg-warning-subtle text-warning">SV AI / ML</span>
-                </button>
-            </div>
-        </div>
+        </section>
+    </main>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast" role="status" aria-live="polite">
+        <span class="toast-dot" aria-hidden="true"></span>
+        <span id="toastMessage"></span>
     </div>
-</div>
-{% endblock %}
 
-{% block extra_js %}
-<script src="{{ url_for('static', filename='js/auth.js') }}?v=4"></script>
-{% endblock %}
+    <script>
+        (function () {
+            "use strict";
+
+            // =================================================================
+            // 1. STATE & DOM REFERENCES
+            // =================================================================
+            let currentMode = "{{ initial_mode }}";
+            let isSubmitting = false;
+            let toastTimer = null;
+
+            const tabSwitcher = document.getElementById("tabSwitcher");
+            const tabLogin = document.getElementById("tabLogin");
+            const tabSignup = document.getElementById("tabSignup");
+
+            const authHeader = document.getElementById("authHeader");
+            const authTitle = document.getElementById("authTitle");
+            const authSubtitle = document.getElementById("authSubtitle");
+
+            const authForm = document.getElementById("authForm");
+            const fullNameWrap = document.getElementById("fullNameWrap");
+            const confirmPasswordWrap = document.getElementById("confirmPasswordWrap");
+            const loginAuxWrap = document.getElementById("loginAuxWrap");
+
+            const fullNameInput = document.getElementById("fullName");
+            const emailInput = document.getElementById("email");
+            const passwordInput = document.getElementById("password");
+            const confirmPasswordInput = document.getElementById("confirmPassword");
+            const rememberCheckbox = document.getElementById("rememberMe");
+
+            const forgotPasswordBtn = document.getElementById("forgotPasswordBtn");
+            const submitBtn = document.getElementById("submitBtn");
+            const googleBtn = document.getElementById("googleBtn");
+            const githubBtn = document.getElementById("githubBtn");
+
+            const toast = document.getElementById("toast");
+            const toastMessage = document.getElementById("toastMessage");
+
+            const EYE_OPEN_SVG = `
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>`;
+
+            const EYE_CLOSED_SVG = `
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-6.5 0-10-7-10-7a18.4 18.4 0 0 1 5.06-5.94"></path>
+                    <path d="M9.9 4.24A10.8 10.8 0 0 1 12 4c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19"></path>
+                    <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="2" y1="2" x2="22" y2="22"></line>
+                </svg>`;
+
+            const MODE_COPY = {
+                login: {
+                    title: "Welcome Back",
+                    subtitle: "Please enter your details to sign in.",
+                    passwordPlaceholder: "••••••••",
+                    passwordAutoComplete: "current-password",
+                    ctaHtml: '<span id="submitBtnText">Sign In &rarr;</span>'
+                },
+                signup: {
+                    title: "Create an Account",
+                    subtitle: "Start your 30-day free trial today.",
+                    passwordPlaceholder: "Create a password",
+                    passwordAutoComplete: "new-password",
+                    ctaHtml: '<span id="submitBtnText">Create Account &rarr;</span>'
+                }
+            };
+
+            // =================================================================
+            // 2. HELPER FUNCTIONS (TOAST, ERRORS, SHAKE)
+            // =================================================================
+            function showToast(message, variant = "info") {
+                clearTimeout(toastTimer);
+                toastMessage.textContent = message;
+                toast.classList.remove("is-success", "is-error");
+                if (variant === "success") toast.classList.add("is-success");
+                if (variant === "error") toast.classList.add("is-error");
+                toast.classList.add("is-visible");
+                toastTimer = setTimeout(() => {
+                    toast.classList.remove("is-visible");
+                }, 3000);
+            }
+
+            function setFieldError(fieldId, message) {
+                const box = document.getElementById(fieldId + "Box");
+                const errorEl = document.getElementById(fieldId + "Error");
+                if (!box || !errorEl) return;
+
+                if (message) {
+                    errorEl.textContent = message;
+                    errorEl.classList.add("is-visible");
+                    box.classList.add("is-invalid");
+
+                    box.classList.remove("shake");
+                    void box.offsetWidth;
+                    box.classList.add("shake");
+                } else {
+                    errorEl.textContent = "";
+                    errorEl.classList.remove("is-visible");
+                    box.classList.remove("is-invalid", "shake");
+                }
+            }
+
+            function clearAllErrors() {
+                ["fullName", "email", "password", "confirmPassword"].forEach((id) => {
+                    setFieldError(id, "");
+                });
+            }
+
+            function setCollapsed(wrapperEl, inputEl, isCollapsed) {
+                wrapperEl.classList.toggle("is-collapsed", isCollapsed);
+                wrapperEl.setAttribute("aria-hidden", String(isCollapsed));
+                if (inputEl) {
+                    inputEl.disabled = isCollapsed;
+                }
+            }
+
+            // =================================================================
+            // 3. TAB SWITCHING (LOGIN <-> SIGN UP)
+            // =================================================================
+            function switchMode(nextMode) {
+                if (nextMode === currentMode || isSubmitting) return;
+                currentMode = nextMode;
+                const isSignup = nextMode === "signup";
+                const copy = MODE_COPY[nextMode];
+
+                tabSwitcher.setAttribute("data-active", nextMode);
+                tabLogin.setAttribute("aria-selected", String(!isSignup));
+                tabSignup.setAttribute("aria-selected", String(isSignup));
+
+                clearAllErrors();
+                submitBtn.classList.remove("is-success");
+
+                authHeader.classList.add("is-switching");
+                setTimeout(() => {
+                    authTitle.textContent = copy.title;
+                    authSubtitle.textContent = copy.subtitle;
+                    authHeader.classList.remove("is-switching");
+                }, 140);
+
+                setCollapsed(fullNameWrap, fullNameInput, !isSignup);
+                setCollapsed(confirmPasswordWrap, confirmPasswordInput, !isSignup);
+                setCollapsed(loginAuxWrap, null, isSignup);
+                rememberCheckbox.disabled = isSignup;
+                forgotPasswordBtn.disabled = isSignup;
+
+                passwordInput.placeholder = copy.passwordPlaceholder;
+                passwordInput.setAttribute("autocomplete", copy.passwordAutoComplete);
+                submitBtn.innerHTML = copy.ctaHtml;
+            }
+
+            tabLogin.addEventListener("click", () => switchMode("login"));
+            tabSignup.addEventListener("click", () => switchMode("signup"));
+
+            // =================================================================
+            // 4. PASSWORD VISIBILITY TOGGLE
+            // =================================================================
+            document.querySelectorAll(".password-toggle").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const targetId = btn.getAttribute("data-target");
+                    const input = document.getElementById(targetId);
+                    if (!input) return;
+
+                    const isHidden = input.type === "password";
+                    input.type = isHidden ? "text" : "password";
+                    btn.innerHTML = isHidden ? EYE_CLOSED_SVG : EYE_OPEN_SVG;
+                    btn.setAttribute("aria-pressed", String(isHidden));
+
+                    const baseLabel = targetId === "confirmPassword" ? "confirm password" : "password";
+                    btn.setAttribute("aria-label", (isHidden ? "Hide " : "Show ") + baseLabel);
+                });
+            });
+
+            [
+                { id: "fullName", el: fullNameInput },
+                { id: "email", el: emailInput },
+                { id: "password", el: passwordInput },
+                { id: "confirmPassword", el: confirmPasswordInput }
+            ].forEach(({ id, el }) => {
+                el.addEventListener("input", () => {
+                    setFieldError(id, "");
+                });
+            });
+
+            // =================================================================
+            // 5. FORM VALIDATION & FLASK API INTEGRATION
+            // =================================================================
+            function validateForm() {
+                clearAllErrors();
+                let valid = true;
+                let firstInvalidEl = null;
+
+                const markInvalid = (id, inputEl, message) => {
+                    setFieldError(id, message);
+                    if (!firstInvalidEl) firstInvalidEl = inputEl;
+                    valid = false;
+                };
+
+                if (currentMode === "signup") {
+                    const fullName = fullNameInput.value.trim();
+                    if (fullName.length < 2) {
+                        markInvalid("fullName", fullNameInput, "Vui lòng nhập họ và tên (tối thiểu 2 ký tự).");
+                    }
+                }
+
+                const email = emailInput.value.trim();
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    markInvalid("email", emailInput, "Vui lòng nhập địa chỉ email hợp lệ.");
+                }
+
+                const password = passwordInput.value;
+                if (password.length < 6) {
+                    markInvalid("password", passwordInput, "Mật khẩu phải có ít nhất 6 ký tự.");
+                }
+
+                if (currentMode === "signup") {
+                    const confirmPassword = confirmPasswordInput.value;
+                    if (!confirmPassword || confirmPassword !== password) {
+                        markInvalid("confirmPassword", confirmPasswordInput, "Mật khẩu nhập lại không khớp.");
+                    }
+                }
+
+                if (firstInvalidEl) {
+                    firstInvalidEl.focus();
+                }
+
+                return valid;
+            }
+
+            authForm.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                if (isSubmitting) return;
+                if (!validateForm()) return;
+
+                isSubmitting = true;
+                submitBtn.disabled = true;
+                submitBtn.classList.remove("is-success");
+                submitBtn.innerHTML = '<span class="spinner" aria-hidden="true"></span><span>Processing...</span>';
+
+                const isSignup = currentMode === "signup";
+                const endpoint = isSignup ? "/api/auth/register" : "/api/auth/login";
+                const payload = isSignup
+                    ? {
+                        full_name: fullNameInput.value.trim(),
+                        email: emailInput.value.trim(),
+                        password: passwordInput.value
+                    }
+                    : {
+                        email: emailInput.value.trim(),
+                        password: passwordInput.value
+                    };
+
+                const minDelay = new Promise((resolve) => setTimeout(resolve, 1200));
+
+                try {
+                    const [response] = await Promise.all([
+                        fetch(endpoint, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Accept": "application/json"
+                            },
+                            body: JSON.stringify(payload)
+                        }),
+                        minDelay
+                    ]);
+
+                    const result = await response.json().catch(() => ({
+                        success: false,
+                        message: "Lỗi phân tích phản hồi máy chủ!"
+                    }));
+
+                    if (!response.ok || !result.success || !result.data) {
+                        const errMsg = result.message || "Email hoặc mật khẩu không chính xác!";
+                        if (isSignup) {
+                            setFieldError("email", errMsg);
+                        } else {
+                            setFieldError("password", errMsg);
+                        }
+                        showToast(errMsg, "error");
+                        isSubmitting = false;
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = MODE_COPY[currentMode].ctaHtml;
+                        return;
+                    }
+
+                    // Lưu phiên vào localStorage khớp với static/js/config.js & utils.js
+                    localStorage.setItem("it_career_user", JSON.stringify(result.data));
+                    localStorage.setItem("it_career_token", result.data.token || ("user_" + (result.data.id || 1)));
+
+                    submitBtn.classList.add("is-success");
+                    submitBtn.innerHTML = "<span>&#10003; Success</span>";
+                    showToast(result.message || (isSignup ? "Đăng ký thành công!" : "Đăng nhập thành công!"), "success");
+
+                    setTimeout(() => {
+                        window.location.href = "/profile";
+                    }, 700);
+                } catch (error) {
+                    showToast("Không thể kết nối tới máy chủ Flask!", "error");
+                    isSubmitting = false;
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = MODE_COPY[currentMode].ctaHtml;
+                }
+            });
+
+            // =================================================================
+            // 6. SECONDARY ACTIONS (FORGOT PASSWORD & SOCIAL LOGIN)
+            // =================================================================
+            forgotPasswordBtn.addEventListener("click", () => {
+                showToast("Vui lòng liên hệ quản trị viên hoặc xem tài khoản dùng thử trong start.bat.");
+            });
+
+            googleBtn.addEventListener("click", () => {
+                showToast("Đăng nhập Google chưa được tích hợp. Vui lòng dùng Email & Mật khẩu.");
+            });
+
+            githubBtn.addEventListener("click", () => {
+                showToast("Đăng nhập GitHub chưa được tích hợp. Vui lòng dùng Email & Mật khẩu.");
+            });
+        })();
+    </script>
+</body>
+</html>
