@@ -334,10 +334,36 @@ a:hover {
 .navbar-lang-pill {
     background-color: #1E1C1A;
     border-color: var(--border-card) !important;
+    transition: all 0.2s ease;
+    color: var(--text-muted);
+}
+
+.navbar-lang-pill:hover {
+    background-color: var(--bg-card-hover);
+    border-color: rgba(255, 255, 255, 0.24) !important;
+}
+
+.navbar-lang-pill .lang-option {
+    transition: color 0.18s ease, opacity 0.18s ease;
 }
 
 .navbar-lang-pill .lang-text-active {
-    color: #FFFFFF;
+    color: #FFFFFF !important;
+}
+
+[data-theme="light"] .navbar-lang-pill {
+    background-color: #F1F5F9 !important;
+    border-color: #CBD5E1 !important;
+    color: #64748B !important;
+}
+
+[data-theme="light"] .navbar-lang-pill:hover {
+    background-color: #E2E8F0 !important;
+    border-color: #94A3B8 !important;
+}
+
+[data-theme="light"] .navbar-lang-pill .lang-text-active {
+    color: #0F172A !important;
 }
 
 .user-avatar-circle {

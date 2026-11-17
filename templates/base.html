@@ -24,7 +24,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 
     <!-- Custom CSS Dark Mode & Light Mode CRM -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=9">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=10">
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-main text-body">
@@ -234,9 +234,431 @@
         };
         window.ThemeManager = ThemeManager;
 
+        // Quản lý chuyển đổi ngôn ngữ song ngữ (VI <-> EN)
+        const LangManager = {
+            KEY: 'app_lang',
+            _applying: false,
+            _observer: null,
+            _pendingTimer: null,
+
+            DICT: {
+                // Navbar, Sidebar, Footer & Account Menu
+                'Tổng quan': 'Overview',
+                'Hồ sơ sinh viên': 'Student Profile',
+                'Vị trí nghề nghiệp': 'Career Positions',
+                'Tin tuyển dụng': 'Job Postings',
+                'Thống kê kỹ năng': 'Skill Analytics',
+                'Đánh giá phù hợp': 'Fit Evaluation',
+                'Kế hoạch học tập': 'Study Plan',
+                'Quản trị & Phân quyền': 'Admin & RBAC',
+                'Chuyển chế độ Sáng / Tối': 'Toggle Light / Dark Mode',
+                'Đổi chế độ Sáng / Tối': 'Toggle Light / Dark Mode',
+                'Chuyển đổi ngôn ngữ (VI / EN)': 'Switch language (VI / EN)',
+                'Xem CSDL SQLite': 'SQLite DB Viewer',
+                'Quản lý hồ sơ': 'Manage Profile',
+                'Kế hoạch cá nhân': 'Personal Study Plan',
+                'Giao diện:': 'Theme:',
+                'Tối (Dark)': 'Dark',
+                'Sáng (Light)': 'Light',
+                'Đăng xuất': 'Sign Out',
+                'Sinh viên': 'Student',
+                'Vai trò: Sinh viên CNTT': 'Role: IT Student',
+                'Vai trò: Quản trị viên (Admin)': 'Role: Administrator (Admin)',
+                'Đang xử lý...': 'Processing...',
+                'Đang tải dữ liệu hệ thống...': 'Loading system data...',
+                'Đồ án NLCNPM23CS-38': 'Project NLCNPM23CS-38',
+                '- IT Career Compass: Định hướng Kỹ năng Nghề nghiệp CNTT.': '- IT Career Compass: IT Career Skill Guidance.',
+
+                // Chatbot Widget
+                'Trợ Lý AI Định Hướng CNTT': 'IT Career AI Assistant',
+                'Đã kết nối AI + CSDL SQLite': 'Connected to AI + SQLite DB',
+                'Cấu hình AI nâng cao (Tùy chọn)': 'Advanced AI Settings (Optional)',
+                'Mặc định: Tự động AI + SQLite': 'Default: Auto AI + SQLite',
+                'Dán Gemini API Key (AIza...) nếu có, hoặc để trống': 'Paste Gemini API Key (AIza...) if available, or leave blank',
+                'Lưu': 'Save',
+                '* Để trống hệ thống vẫn hoạt động đầy đủ bằng AI tích hợp sẵn & CSDL SQLite.': '* Leave blank to use built-in AI & SQLite DB.',
+                '🎯 Đánh giá hồ sơ của tôi': '🎯 Evaluate my profile',
+                '📊 So sánh 8 vị trí': '📊 Compare 8 roles',
+                '💻 Kỹ năng Backend': '💻 Backend skills',
+                '🏢 Việc làm lương cao': '🏢 High-paying jobs',
+                '📚 Lộ trình & Học phần': '📚 Roadmap & Courses',
+                'Nhập câu hỏi của bạn...': 'Ask your question...',
+                'Gửi câu hỏi': 'Send question',
+                'Hỏi đáp AI': 'Ask AI',
+                'Làm mới cuộc trò chuyện': 'Reset conversation',
+                'Thu gọn': 'Minimize',
+                'Cấu hình API Key (Tùy chọn)': 'API Key Settings (Optional)',
+
+                // Dashboard
+                'Bảng điều khiển tổng quan': 'Overview Dashboard',
+                'Bảng Điều Khiển Tổng Quan': 'Overview Dashboard',
+                'Theo dõi tiến trình phát triển kỹ năng và mức độ phù hợp với thị trường việc làm CNTT thực tế.': 'Track your skill progress and alignment with the real IT job market.',
+                'Cập nhật hồ sơ': 'Update Profile',
+                'Kỹ năng hiện có': 'Current Skills',
+                'Đã xác thực': 'Verified',
+                'Chứng chỉ tích lũy': 'Earned Certificates',
+                'Chứng chỉ quốc tế': 'International Certificates',
+                'Độ phù hợp cao nhất': 'Highest Match Score',
+                'Đang tính...': 'Calculating...',
+                'Tiến độ kế hoạch': 'Study Plan Progress',
+                'Điểm phù hợp với các vị trí nghề nghiệp (%)': 'Match Score by Career Position (%)',
+                'Chi tiết so sánh →': 'Detailed comparison →',
+                'Việc cần làm gần đây': 'Recent To-Do Items',
+                'Xem tất cả': 'View all',
+                'Đang tải việc cần làm...': 'Loading recent tasks...',
+                'Thêm mục tiêu mới': 'Add New Goal',
+                'Bắt đầu định hướng sự nghiệp ngay hôm nay!': 'Start planning your IT career today!',
+                'Hệ thống liên tục phân tích tin tuyển dụng từ các doanh nghiệp hàng đầu để đưa ra gợi ý sát với thực tế nhất.': 'Continuously analyzes real enterprise job postings to provide tailored career guidance.',
+                'Khám phá tin tuyển dụng': 'Explore Job Postings',
+                'Thống kê xu hướng': 'Trend Analytics',
+
+                // Profile
+                'Hồ sơ năng lực sinh viên': 'Student Competency Profile',
+                'Hồ Sơ Năng Lực Sinh Viên': 'Student Competency Profile',
+                'Quản lý thông tin học thuật, kỹ năng chuyên môn, chứng chỉ quốc tế và kinh nghiệm dự án cá nhân.': 'Manage academic records, technical skills, international certificates, and project experience.',
+                'Đánh giá độ phù hợp': 'Evaluate Fit',
+                'Chỉnh sửa thông tin cá nhân': 'Edit Personal Info',
+                'Thay đổi ảnh đại diện': 'Change avatar',
+                'Mục tiêu nghề nghiệp:': 'Career Objective:',
+                'Vị trí nghề nghiệp mục tiêu': 'Target Career Position',
+                'Đang đánh giá': 'Evaluating',
+                'Kỹ năng đạt yêu cầu': 'Matched Skills',
+                'Kỹ năng còn thiếu': 'Missing Skills',
+                'Kinh nghiệm thực tế': 'Practical Experience',
+                'Môn học nên đăng ký': 'Recommended Courses',
+                'Tự động tính lại ngay khi bạn thêm/sửa bất kỳ kỹ năng, học phần, chứng chỉ hay dự án nào.': 'Automatically recalculated whenever you add or edit skills, courses, certificates, or projects.',
+                'Xem môn học gợi ý': 'View Recommended Courses',
+                'Đối sánh chuyên sâu': 'In-depth Comparison',
+                'Danh mục Kỹ năng cá nhân (Mức độ 1 - 5)': 'Personal Skills (Level 1 - 5)',
+                'Thêm kỹ năng': 'Add Skill',
+                'Tên kỹ năng': 'Skill Name',
+                'Phân loại': 'Category',
+                'Mức độ thành thạo': 'Proficiency Level',
+                'Ghi chú': 'Notes',
+                'Thao tác': 'Actions',
+                'Học phần & Điểm tích lũy đại học': 'University Courses & Grades',
+                'Thêm học phần': 'Add Course',
+                'Mã HP': 'Course Code',
+                'Tên học phần': 'Course Name',
+                'Số tín chỉ': 'Credits',
+                'Điểm': 'Grade',
+                'Kỳ học': 'Semester',
+                'Chứng chỉ Chuyên môn & Ngoại ngữ': 'Professional & Language Certificates',
+                'Thêm chứng chỉ': 'Add Certificate',
+                'Kinh nghiệm & Dự án thực tế': 'Experience & Practical Projects',
+
+                // Positions
+                'Danh mục Vị trí Nghề nghiệp CNTT': 'IT Career Positions Directory',
+                'Danh Mục Vị Trí Nghề Nghiệp CNTT': 'IT Career Positions Directory',
+                'Quản lý các vị trí việc làm chuyên môn, chuẩn hóa bộ kỹ năng cốt lõi làm cơ sở phân tích độ phù hợp.': 'Manage career roles and standardize core skill sets for fit evaluation.',
+                'Thêm vị trí mới': 'Add New Position',
+                'Tìm kiếm theo tên vị trí, mô tả hoặc kỹ năng...': 'Search by position, description, or skill...',
+                'Tổng số vị trí:': 'Total positions:',
+                'Tên vị trí': 'Position Name',
+                'Kỹ năng cốt lõi': 'Core Skills',
+                'Nhu cầu': 'Demand',
+                'Lưu vị trí': 'Save Position',
+                'Hủy bỏ': 'Cancel',
+
+                // Jobs
+                'Quản lý Tin Tuyển Dụng CNTT': 'IT Job Postings Management',
+                'Thị Trường & Tin Tuyển Dụng CNTT': 'IT Market & Job Postings',
+                'Theo dõi, cập nhật dữ liệu tuyển dụng từ các doanh nghiệp công nghệ, phân tích yêu cầu kỹ năng thực tế.': 'Track tech job postings and analyze real-world skill requirements.',
+                'Nhập file CSV': 'Import CSV',
+                'Đăng tin mới': 'Post New Job',
+                'Tìm theo tiêu đề, công ty, kỹ năng...': 'Search by title, company, skill...',
+                '-- Tất cả vị trí tuyển dụng --': '-- All career positions --',
+                'Tổng số tin:': 'Total jobs:',
+                'Tiêu đề việc làm': 'Job Title',
+                'Doanh nghiệp & Địa điểm': 'Company & Location',
+                'Mức lương': 'Salary',
+                'Kỹ năng & Công nghệ yêu cầu': 'Required Skills & Tech',
+                'Lưu tin tuyển dụng': 'Save Job Posting',
+                'Chi tiết tin tuyển dụng': 'Job Posting Details',
+                'Đóng': 'Close',
+
+                // Statistics
+                'Thống Kê Kỹ Năng Theo Vị Trí Tuyển Dụng': 'Skill Statistics by Position',
+                'Thống Kê Kỹ Năng & Xu Hướng Công Nghệ': 'Skill Statistics & Tech Trends',
+                'Phân tích chuyên sâu tần suất xuất hiện của các kỹ năng, công nghệ và chứng chỉ từ các tin tuyển dụng thực tế.': 'Analyze frequencies of required skills, frameworks, and certificates across job postings.',
+                'So sánh với hồ sơ cá nhân': 'Compare with Profile',
+                'Chọn vị trí nghề nghiệp cần thống kê:': 'Select career position for statistics:',
+                'Số tin đã phân tích:': 'Analyzed jobs:',
+                'Top Kỹ Năng Yêu Cầu Nhiều Nhất': 'Top Most Requested Skills',
+                'Tần suất xuất hiện (%)': 'Frequency (%)',
+                'Tỷ Lệ Công Nghệ & Framework': 'Technologies & Frameworks Share',
+                'Chứng Chỉ Nghề Nghiệp Khuyên Dùng': 'Recommended Career Certificates',
+                'Yêu Cầu Kinh Nghiệm': 'Experience Requirements',
+
+                // Compare
+                'Đánh Giá Độ Phù Hợp Với Vị Trí Nghề Nghiệp': 'Career Fit Evaluation',
+                'Đánh Giá & So Sánh Hồ Sơ Nghề Nghiệp': 'Profile Fit Evaluation & Comparison',
+                'Hệ thống đối soát toàn bộ kỹ năng sinh viên với yêu cầu thực tế từ các doanh nghiệp CNTT tuyển dụng.': 'Compare student skills against real-world IT hiring requirements.',
+                'Cập nhật kỹ năng': 'Update Skills',
+                'Xem kế hoạch học tập': 'View Study Plan',
+                'Vị trí nghề nghiệp muốn đối sánh:': 'Career position to evaluate:',
+                'Bắt đầu so sánh': 'Run Evaluation',
+                'Điểm Phù Hợp Tổng Thể': 'Overall Match Score',
+                'Dựa trên tỷ lệ kỹ năng đáp ứng yêu cầu tuyển dụng': 'Based on matched skills against hiring demand',
+                'Kỹ năng đã đáp ứng:': 'Matched skills:',
+                'Kỹ năng cần bổ sung:': 'Skills to improve:',
+                'Nhận Xét & Đánh Giá Chi Tiết': 'Detailed Assessment & Summary',
+                'Kỹ năng đã có': 'Acquired Skills',
+                'Hành động khuyến nghị:': 'Recommended Action:',
+                'Tự động thêm các kỹ năng còn thiếu vào Kế hoạch học tập cá nhân.': 'Automatically add missing skills to your Study Plan.',
+                'Thêm vào Kế hoạch': 'Add to Study Plan',
+                'Gợi Ý Nội Dung Học Tập & Chứng Chỉ Cần Bổ Sung': 'Recommended Courses & Certificates',
+                'Chứng chỉ nghề nghiệp ưu tiên cho vị trí này:': 'Priority certificates for this role:',
+                'Học phần Đại học CNTT nên đăng ký bổ sung:': 'Recommended university IT courses:',
+                'Khóa học trực tuyến & lộ trình thực tế:': 'Online courses & practical roadmap:',
+                'Lịch Sử Đánh Giá Gần Đây': 'Recent Evaluation History',
+
+                // Plan
+                'Kế Hoạch Học Tập & Phát Triển Kỹ Năng': 'Study Plan & Skill Development',
+                'Kế Hoạch & Lộ Trình Phát Triển Kỹ Năng': 'Study Plan & Skill Roadmap',
+                'Theo dõi tiến trình hoàn thiện các kỹ năng còn thiếu, ôn thi chứng chỉ và hoàn thành dự án cá nhân.': 'Track progress on missing skills, certificates, and personal projects.',
+                'Tiến độ hoàn thành kế hoạch': 'Overall Plan Progress',
+                'Đã hoàn thành:': 'Completed:',
+                'Đang thực hiện:': 'In Progress:',
+                'Chưa bắt đầu:': 'Not Started:',
+                'Tổng số mục tiêu:': 'Total Goals:',
+                'mục tiêu được thiết lập': 'goals configured',
+                'Tất cả': 'All',
+                'Đang học': 'In Progress',
+                'Đã hoàn thành': 'Completed',
+                'Bấm vào nút trạng thái trên từng thẻ để cập nhật nhanh': 'Click the status button on each card for quick updates',
+                'Lưu mục tiêu': 'Save Goal',
+
+                // Admin & DB Viewer
+                'Quản trị Tài khoản & Phân quyền Hệ thống': 'User Management & RBAC',
+                'Quản Trị Tài Khoản & Phân Quyền (RBAC)': 'Account & Role Management (RBAC)',
+                'Quản lý danh sách tài khoản người dùng, cấp quyền Quản trị viên (Admin) hoặc Sinh viên (Student) trong hệ thống.': 'Manage system accounts and assign Admin or Student roles.',
+                'Tạo tài khoản mới': 'Create New Account',
+                'Ma Trận Phân Quyền Chức Năng (Role-Based Access Control)': 'Role-Based Access Control Matrix',
+                'Trình Xem Cơ Sở Dữ Liệu SQLite (Database Viewer)': 'SQLite Database Viewer',
+                'Trình Xem Cơ Sở Dữ Liệu SQLite Trực Tuyến': 'Online SQLite Database Viewer',
+                'Làm mới dữ liệu': 'Refresh Data',
+                'Xem lệnh SQL (DDL)': 'View SQL (DDL)'
+            },
+
+            PREFIX_RULES: [
+                ['Kỹ năng (', 'Skills ('],
+                ['Học phần (', 'Courses ('],
+                ['Chứng chỉ (', 'Certificates ('],
+                ['Kinh nghiệm & Dự án (', 'Experience & Projects ('],
+                ['Gợi ý môn học cho nghề (', 'Recommended Courses ('],
+                ['Danh Sách Tài Khoản Trong Hệ Thống (', 'System Accounts ('],
+                ['Danh Sách Bảng (', 'Database Tables (']
+            ],
+
+            current() {
+                return localStorage.getItem(this.KEY) || 'vi';
+            },
+
+            init() {
+                const savedLang = this.current();
+                this.bindButton();
+                this.apply(savedLang, false);
+                this.startObserver();
+            },
+
+            bindButton() {
+                const btn = document.getElementById('langToggleBtn');
+                if (!btn || btn.dataset.langBound) return;
+                btn.dataset.langBound = '1';
+                btn.addEventListener('click', (e) => {
+                    const cur = this.current();
+                    const opt = e.target.closest('[data-lang]');
+                    let next = cur === 'vi' ? 'en' : 'vi';
+                    if (opt && opt.dataset.lang && opt.dataset.lang !== cur) {
+                        next = opt.dataset.lang;
+                    }
+                    this.set(next, true);
+                });
+            },
+
+            set(lang, withToast = true) {
+                const normalized = lang === 'en' ? 'en' : 'vi';
+                localStorage.setItem(this.KEY, normalized);
+                this.apply(normalized, true);
+                if (withToast && window.Utils && typeof Utils.showToast === 'function') {
+                    Utils.showToast(
+                        normalized === 'en'
+                            ? 'Switched language to English (EN)'
+                            : 'Đã chuyển ngôn ngữ sang Tiếng Việt (VI)',
+                        'info',
+                        1800
+                    );
+                }
+            },
+
+            translateText(viText) {
+                if (!viText) return viText;
+                const norm = viText.trim().replace(/\s+/g, ' ');
+                if (!norm) return viText;
+                if (Object.prototype.hasOwnProperty.call(this.DICT, norm)) {
+                    const leading = (viText.match(/^\s*/) || [''])[0];
+                    const trailing = (viText.match(/\s*$/) || [''])[0];
+                    return leading + this.DICT[norm] + trailing;
+                }
+                for (let i = 0; i < this.PREFIX_RULES.length; i++) {
+                    const [viPrefix, enPrefix] = this.PREFIX_RULES[i];
+                    if (norm.startsWith(viPrefix)) {
+                        const leading = (viText.match(/^\s*/) || [''])[0];
+                        const trailing = (viText.match(/\s*$/) || [''])[0];
+                        return leading + enPrefix + norm.slice(viPrefix.length) + trailing;
+                    }
+                }
+                return null;
+            },
+
+            updateSwitcherUI(lang) {
+                const viEl = document.getElementById('langOptVi');
+                const enEl = document.getElementById('langOptEn');
+                if (!viEl || !enEl) return;
+                if (lang === 'en') {
+                    enEl.classList.add('lang-text-active', 'fw-bold');
+                    enEl.classList.remove('text-secondary');
+                    viEl.classList.remove('lang-text-active', 'fw-bold');
+                    viEl.classList.add('text-secondary');
+                } else {
+                    viEl.classList.add('lang-text-active', 'fw-bold');
+                    viEl.classList.remove('text-secondary');
+                    enEl.classList.remove('lang-text-active', 'fw-bold');
+                    enEl.classList.add('text-secondary');
+                }
+            },
+
+            translateSubtree(root, lang) {
+                if (!root) return;
+                const skipSelector = 'script, style, noscript, code, pre, #dbViewerTbody, #activeTableSql, #tableListGroup';
+                const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+                    acceptNode: (node) => {
+                        const parent = node.parentElement;
+                        if (!parent || parent.closest(skipSelector)) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        if (!node.nodeValue || !node.nodeValue.trim()) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        return NodeFilter.FILTER_ACCEPT;
+                    }
+                });
+
+                const nodes = [];
+                while (walker.nextNode()) nodes.push(walker.currentNode);
+
+                nodes.forEach((node) => {
+                    if (lang === 'en') {
+                        const baseVi = node._origVi !== undefined ? node._origVi : node.nodeValue;
+                        const translated = this.translateText(baseVi);
+                        if (translated !== null) {
+                            node._origVi = baseVi;
+                            if (node.nodeValue !== translated) node.nodeValue = translated;
+                        }
+                    } else if (node._origVi !== undefined) {
+                        if (node.nodeValue !== node._origVi) node.nodeValue = node._origVi;
+                    }
+                });
+
+                // Dịch placeholder và title / tooltip
+                const attrTargets = root.querySelectorAll
+                    ? root.querySelectorAll('[placeholder], [title], [data-bs-original-title]')
+                    : [];
+                attrTargets.forEach((el) => {
+                    if (el.hasAttribute('placeholder')) {
+                        const origPh = el.dataset.origPlaceholderVi || el.getAttribute('placeholder');
+                        if (lang === 'en') {
+                            const tr = this.translateText(origPh);
+                            if (tr !== null) {
+                                el.dataset.origPlaceholderVi = origPh;
+                                el.setAttribute('placeholder', tr);
+                            }
+                        } else if (el.dataset.origPlaceholderVi) {
+                            el.setAttribute('placeholder', el.dataset.origPlaceholderVi);
+                        }
+                    }
+
+                    const rawTitle = el.dataset.origTitleVi
+                        || el.getAttribute('data-bs-original-title')
+                        || el.getAttribute('title');
+                    if (rawTitle) {
+                        if (lang === 'en') {
+                            const trTitle = this.translateText(rawTitle);
+                            if (trTitle !== null) {
+                                el.dataset.origTitleVi = rawTitle;
+                                if (el.hasAttribute('title')) el.setAttribute('title', trTitle);
+                                if (el.hasAttribute('data-bs-original-title')) el.setAttribute('data-bs-original-title', trTitle);
+                            }
+                        } else if (el.dataset.origTitleVi) {
+                            const orig = el.dataset.origTitleVi;
+                            if (el.hasAttribute('data-bs-original-title')) {
+                                el.setAttribute('data-bs-original-title', orig);
+                            } else {
+                                el.setAttribute('title', orig);
+                            }
+                        }
+                    }
+                });
+            },
+
+            apply(lang, syncSlider = true) {
+                this._applying = true;
+                try {
+                    document.documentElement.lang = lang;
+                    this.updateSwitcherUI(lang);
+
+                    if (!this._origDocTitleVi) {
+                        this._origDocTitleVi = document.title;
+                    }
+                    if (lang === 'en') {
+                        const parts = this._origDocTitleVi.split(' - ');
+                        const translatedPrefix = this.translateText(parts[0]);
+                        if (translatedPrefix !== null) {
+                            document.title = parts.length > 1
+                                ? translatedPrefix + ' - ' + parts.slice(1).join(' - ')
+                                : translatedPrefix;
+                        }
+                    } else if (this._origDocTitleVi) {
+                        document.title = this._origDocTitleVi;
+                    }
+
+                    this.translateSubtree(document.body, lang);
+                } finally {
+                    this._applying = false;
+                }
+
+                if (syncSlider) {
+                    requestAnimationFrame(() => {
+                        window.dispatchEvent(new Event('resize'));
+                    });
+                }
+            },
+
+            startObserver() {
+                if (this._observer || !document.body) return;
+                this._observer = new MutationObserver(() => {
+                    if (this._applying || this.current() !== 'en') return;
+                    clearTimeout(this._pendingTimer);
+                    this._pendingTimer = setTimeout(() => {
+                        if (this._applying || this.current() !== 'en') return;
+                        this._applying = true;
+                        try {
+                            this.translateSubtree(document.body, 'en');
+                        } finally {
+                            this._applying = false;
+                        }
+                    }, 40);
+                });
+                this._observer.observe(document.body, { childList: true, subtree: true });
+            }
+        };
+        window.LangManager = LangManager;
+
         document.addEventListener('DOMContentLoaded', () => {
-            // Khởi tạo Theme Manager
+            // Khởi tạo Theme Manager & Lang Manager
             ThemeManager.init();
+            LangManager.init();
             // 1. Kích hoạt Tooltips Bootstrap
             const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             tooltipTriggerList.map(el => new bootstrap.Tooltip(el));
@@ -283,6 +705,9 @@
                     navAdminItem?.classList.add('d-none');
                     sidebarAdminItem?.classList.add('d-none');
                     dropdownAdminLink?.classList.add('d-none');
+                }
+                if (LangManager.current() === 'en') {
+                    LangManager.apply('en', false);
                 }
             }
 
