@@ -116,11 +116,12 @@ function renderChart(matchList) {
                     beginAtZero: true,
                     max: 100,
                     ticks: {
+                        color: '#9CA3AF',
                         stepSize: 20,
                         callback: value => `${value}%`
                     },
                     grid: {
-                        color: 'rgba(226, 232, 240, 0.6)'
+                        color: 'rgba(255, 255, 255, 0.08)'
                     }
                 },
                 x: {
@@ -128,6 +129,7 @@ function renderChart(matchList) {
                         display: false
                     },
                     ticks: {
+                        color: '#9CA3AF',
                         font: {
                             size: 11
                         }

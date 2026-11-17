@@ -141,10 +141,11 @@ function renderSkillsHorizontalBarChart(skills) {
                     beginAtZero: true,
                     max: 100,
                     ticks: {
+                        color: '#9CA3AF',
                         callback: val => `${val}%`
                     },
                     grid: {
-                        color: 'rgba(226, 232, 240, 0.6)'
+                        color: 'rgba(255, 255, 255, 0.08)'
                     }
                 },
                 y: {
@@ -152,6 +153,7 @@ function renderSkillsHorizontalBarChart(skills) {
                         display: false
                     },
                     ticks: {
+                        color: '#9CA3AF',
                         font: {
                             weight: '500'
                         }
@@ -190,7 +192,7 @@ function renderTechnologiesPieChart(technologies) {
                 data: dataValues,
                 backgroundColor: colors.slice(0, labels.length),
                 borderWidth: 2,
-                borderColor: '#ffffff'
+                borderColor: '#1E1C1A'
             }]
         },
         options: {
@@ -200,6 +202,7 @@ function renderTechnologiesPieChart(technologies) {
                 legend: {
                     position: 'bottom',
                     labels: {
+                        color: '#9CA3AF',
                         boxWidth: 12,
                         padding: 10,
                         font: {

@@ -80,6 +80,7 @@ def init_db():
             email TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
             role TEXT DEFAULT 'student',
+            avatar_url TEXT DEFAULT '',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
@@ -100,6 +101,7 @@ def init_db():
             gpa TEXT DEFAULT '0.0',
             target_position_id INTEGER DEFAULT 1,
             bio TEXT DEFAULT '',
+            avatar_url TEXT DEFAULT '',
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         );
     """)

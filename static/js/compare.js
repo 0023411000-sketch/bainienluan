@@ -16,11 +16,19 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initComparePage() {
     await loadComparePositions();
 
+    const selectEl = document.getElementById('comparePositionSelect');
     const btnRun = document.getElementById('btnRunCompare');
     if (btnRun) {
         btnRun.addEventListener('click', () => {
-            const selectEl = document.getElementById('comparePositionSelect');
             if (selectEl && selectEl.value) {
+                runComparison(selectEl.value);
+            }
+        });
+    }
+
+    if (selectEl) {
+        selectEl.addEventListener('change', () => {
+            if (selectEl.value) {
                 runComparison(selectEl.value);
             }
         });
@@ -29,18 +37,28 @@ async function initComparePage() {
     // Nút thêm kỹ năng thiếu vào Kế hoạch học tập
     document.getElementById('btnAddMissingToPlan')?.addEventListener('click', handleAddMissingSkillsToPlan);
 
-    // Tự động chạy so sánh vị trí đầu tiên
-    const selectEl = document.getElementById('comparePositionSelect');
+    // Tự động chạy so sánh vị trí đang chọn
     if (selectEl && selectEl.value) {
         runComparison(selectEl.value);
     }
 }
 
 /**
- * Tải danh mục vị trí vào dropdown
+ * Tải danh mục vị trí vào dropdown và ưu tiên chọn vị trí mục tiêu của sinh viên
  */
 async function loadComparePositions() {
     try {
+        const urlParams = new URLSearchParams(window.location.search);
+        let preferredPosId = urlParams.get('position_id');
+        if (!preferredPosId) {
+            try {
+                const profRes = await API.profile.get();
+                if (profRes.success && profRes.data?.personal_info?.target_position_id) {
+                    preferredPosId = String(profRes.data.personal_info.target_position_id);
+                }
+            } catch (_) {}
+        }
+
         const res = await API.positions.getAll({ limit: 100 });
         if (res.success && res.data) {
             const selectEl = document.getElementById('comparePositionSelect');
@@ -52,7 +70,9 @@ async function loadComparePositions() {
                 const opt = document.createElement('option');
                 opt.value = p.id;
                 opt.textContent = p.name;
-                if (idx === 0) opt.selected = true;
+                if (preferredPosId ? String(p.id) === String(preferredPosId) : idx === 0) {
+                    opt.selected = true;
+                }
                 selectEl.appendChild(opt);
             });
         }
@@ -119,7 +139,12 @@ function renderComparisonResult(data) {
     // Nhận xét kết luận
     const summaryEl = document.getElementById('compareSummaryText');
     if (summaryEl) {
-        summaryEl.innerHTML = `<p class="mb-0 text-dark" style="line-height: 1.6;">${Utils.escapeHtml(data.summary)}</p>`;
+        summaryEl.innerHTML = `
+            <div class="d-flex align-items-start gap-2">
+                <i class="bi bi-chat-quote-fill text-primary fs-5 mt-1 flex-shrink-0"></i>
+                <p class="mb-0 text-white" style="line-height: 1.6; font-size: 0.95rem;">${Utils.escapeHtml(data.summary)}</p>
+            </div>
+        `;
     }
 
     // Danh sách kỹ năng Đã có (Badge xanh)
@@ -162,12 +187,53 @@ function renderComparisonResult(data) {
  * Hiển thị danh sách chứng chỉ ưu tiên, môn học đại học và khóa học gợi ý cho kỹ năng còn thiếu
  */
 function renderRecommendations(recCerts, missingCerts, recommendations, suggestedAcademicCourses = []) {
+    const normKey = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+    // Chuẩn hóa và lọc danh sách khóa học đề xuất (tối đa 6 khóa học chất lượng)
+    const seenRecTitles = new Set();
+    const seenSkills = new Set();
+    const uniqueRecs = [];
+    (recommendations || []).forEach((rec, originalIdx) => {
+        if (!rec || !rec.title) return;
+        const kTitle = normKey(rec.title);
+        const kSkill = normKey(rec.skill_name);
+
+        if (seenRecTitles.has(kTitle)) return;
+        if (kTitle.includes('khóa học thực chiến') && seenSkills.has(kSkill)) return;
+
+        seenRecTitles.add(kTitle);
+        if (kSkill) seenSkills.add(kSkill);
+        uniqueRecs.push({ rec, originalIdx });
+    });
+    const displayRecs = uniqueRecs.slice(0, 6);
+
+    // Kiểm tra chứng chỉ có được bao hàm trong thẻ khóa học bên dưới không
+    const isCertCovered = (certName) => {
+        const c = normKey(certName);
+        return displayRecs.some(({ rec }) => {
+            const t = normKey(rec.title);
+            const s = normKey(rec.skill_name);
+            if (c === t || t.includes(c) || c.includes(t)) return true;
+            if (c.includes('cka') && (t.includes('cka') || t.includes('kubernetes'))) return true;
+            if (c.includes('pl-300') && (t.includes('pl-300') || t.includes('power bi'))) return true;
+            if (c.includes('meta') && (t.includes('meta') || t.includes('react'))) return true;
+            if (c.includes('aws') && (t.includes('aws') || s.includes('aws'))) return true;
+            if ((c.includes('rhcsa') || c.includes('linux')) && (t.includes('linux') || s.includes('linux'))) return true;
+            if (c.includes('istqb') && (t.includes('istqb') || t.includes('test') || s.includes('test'))) return true;
+            if (c.includes('tableau') && (t.includes('tableau') || s.includes('tableau'))) return true;
+            if (c.includes('deeplearning') && (t.includes('deep learning') || s.includes('pytorch') || s.includes('tensorflow'))) return true;
+            return false;
+        });
+    };
+
     const certsContainer = document.getElementById('recommendedCertsContainer');
     if (certsContainer) {
-        if (!recCerts || recCerts.length === 0) {
-            certsContainer.innerHTML = `<span class="text-muted small">Không yêu cầu chứng chỉ bắt buộc.</span>`;
+        // Chỉ hiển thị chứng chỉ độc lập chưa có thẻ học tập bên dưới
+        const standaloneCerts = (recCerts || []).filter(c => !isCertCovered(c));
+        if (standaloneCerts.length === 0) {
+            certsContainer.innerHTML = `<span class="text-muted small">Các chứng chỉ chuyên môn liên quan đã được tích hợp chi tiết trong lộ trình học tập bên dưới.</span>`;
         } else {
-            certsContainer.innerHTML = recCerts.map(c => {
+            certsContainer.innerHTML = standaloneCerts.map(c => {
                 const isMissing = !missingCerts || missingCerts.length === 0 || missingCerts.includes(c);
                 const badgeClass = isMissing
                     ? 'bg-warning-subtle text-dark border border-warning-subtle'
@@ -217,17 +283,23 @@ function renderRecommendations(recCerts, missingCerts, recommendations, suggeste
     }
     if (!recsContainer) return;
 
-    if (!recommendations || recommendations.length === 0) {
+    if (displayRecs.length === 0) {
         recsContainer.innerHTML = `<div class="col-12 text-muted small">Bạn đã đáp ứng đầy đủ kỹ năng cốt lõi của vị trí này!</div>`;
         return;
     }
 
-    recsContainer.innerHTML = recommendations.map((rec, idx) => `
+    recsContainer.innerHTML = displayRecs.map(({ rec, originalIdx: idx }) => {
+        const isCertType = rec.rec_type === 'certificate' || (rec.title && (rec.title.includes('Certificate') || rec.title.includes('Certification') || rec.title.includes('CKA') || rec.title.includes('PL-300') || rec.title.includes('Specialization')));
+        const typeBadge = isCertType
+            ? `<span class="badge bg-warning-subtle text-dark border border-warning-subtle small me-1"><i class="bi bi-award-fill text-warning me-1"></i>Chứng chỉ</span>`
+            : '';
+        return `
         <div class="col-12">
             <div class="border rounded-3 p-2 px-3 bg-light-subtle d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
                 <div>
                     <div class="d-flex align-items-center gap-2 mb-1">
                         <span class="badge badge-soft-danger">${Utils.escapeHtml(rec.skill_name)}</span>
+                        ${typeBadge}
                         <span class="fw-bold text-dark small">${Utils.escapeHtml(rec.title)}</span>
                     </div>
                     <div class="text-muted small">
@@ -243,7 +315,8 @@ function renderRecommendations(recCerts, missingCerts, recommendations, suggeste
                 </div>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 async function addAcademicCourseToPlan(index) {
@@ -257,7 +330,7 @@ async function addAcademicCourseToPlan(index) {
             category: `Học phần cho vị trí ${lastComparisonResult.position_name}`,
             type: 'course',
             status: 'todo',
-            target_date: '',
+            target_date: '2026-12-31',
             note: c.description || c.reason || 'Môn học CNTT trọng tâm.'
         });
         if (res.success) {
@@ -306,7 +379,7 @@ function renderComparisonHistory(historyList) {
     }
 
     container.innerHTML = historyList.map(h => {
-        const badgeColor = h.score >= 75 ? 'bg-success' : (h.score >= 50 ? 'bg-primary' : 'bg-warning text-dark');
+        const badgeColor = h.score >= 75 ? 'badge-soft-success' : (h.score >= 50 ? 'badge-soft-primary' : 'badge-soft-warning');
         return `
             <div class="list-group-item px-3 py-2 d-flex align-items-center justify-content-between border-0 border-bottom">
                 <div class="text-truncate me-2">
@@ -341,7 +414,7 @@ function renderScoreDoughnutChart(score) {
         data: {
             datasets: [{
                 data: [score, 100 - score],
-                backgroundColor: [mainColor, '#e2e8f0'],
+                backgroundColor: [mainColor, '#2C2825'],
                 borderWidth: 0
             }]
         },

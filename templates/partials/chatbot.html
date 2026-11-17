@@ -1,0 +1,102 @@
+<!-- templates/partials/chatbot.html -->
+<!-- Nút nổi (Floating Pill Button) góc phải dưới cùng giống mẫu ảnh -->
+<div class="chatbot-widget-wrapper" id="chatbotWidgetWrapper">
+    <!-- Cửa sổ hộp thoại Chatbot -->
+    <div class="chatbot-window shadow-lg d-none" id="chatbotWindow" role="dialog" aria-label="Hộp thoại Trợ lý AI">
+        <!-- Header -->
+        <div class="chatbot-header d-flex align-items-center justify-content-between px-3 py-2">
+            <div class="d-flex align-items-center gap-2">
+                <div class="chatbot-avatar d-flex align-items-center justify-content-center">
+                    <i class="bi bi-robot fs-5"></i>
+                </div>
+                <div>
+                    <div class="fw-bold text-white small lh-sm">Trợ Lý AI Định Hướng CNTT</div>
+                    <div class="d-flex align-items-center gap-1" style="font-size: 0.72rem; color: rgba(255,255,255,0.88);">
+                        <span class="chatbot-status-dot"></span>
+                        <span id="chatbotStatusText">Đã kết nối AI + CSDL SQLite</span>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-1">
+                <button type="button" class="btn btn-sm text-white-50 p-1 chatbot-header-btn" id="chatbotSettingsToggleBtn" title="Cấu hình API Key (Tùy chọn)">
+                    <i class="bi bi-gear-fill"></i>
+                </button>
+                <button type="button" class="btn btn-sm text-white-50 p-1 chatbot-header-btn" id="chatbotClearBtn" title="Làm mới cuộc trò chuyện">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+                <button type="button" class="btn btn-sm text-white-50 p-1 chatbot-header-btn" id="chatbotCloseBtn" title="Thu gọn">
+                    <i class="bi bi-dash-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Khung cài đặt nhanh API Key ngay trên giao diện (ẩn mặc định) -->
+        <div class="px-3 py-2 bg-light border-bottom d-none" id="chatbotSettingsPanel">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="fw-bold text-dark" style="font-size: 0.76rem;">
+                    <i class="bi bi-key-fill text-primary me-1"></i>Cấu hình AI nâng cao (Tùy chọn)
+                </span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.68rem;">Mặc định: Tự động AI + SQLite</span>
+            </div>
+            <div class="input-group input-group-sm mb-1">
+                <input type="password" class="form-control form-control-sm" id="chatbotApiKeyInput"
+                       placeholder="Dán Gemini API Key (AIza...) nếu có, hoặc để trống">
+                <button class="btn btn-primary btn-sm" type="button" id="chatbotSaveApiKeyBtn">Lưu</button>
+            </div>
+            <div class="text-muted" style="font-size: 0.7rem;">
+                * Để trống hệ thống vẫn hoạt động đầy đủ bằng AI tích hợp sẵn & CSDL SQLite.
+            </div>
+        </div>
+
+        <!-- Danh sách tin nhắn -->
+        <div class="chatbot-messages p-3" id="chatbotMessages">
+            <!-- Tin nhắn chào mừng mặc định -->
+            <div class="chat-msg chat-msg-bot">
+                <div class="chat-msg-avatar">
+                    <i class="bi bi-robot"></i>
+                </div>
+                <div class="chat-msg-bubble">
+                    Xin chào! 👋 Mình là <strong>Trợ lý AI Định hướng Nghề nghiệp CNTT</strong> (đã kết nối trực tiếp với hồ sơ & CSDL tuyển dụng của bạn).<br>
+                    Bạn có thể bấm chọn câu hỏi nhanh bên dưới hoặc hỏi bất kỳ câu hỏi nào nhé!
+                </div>
+            </div>
+        </div>
+
+        <!-- Gợi ý câu hỏi nhanh (Quick Replies) -->
+        <div class="chatbot-suggestions px-3 py-2 border-top bg-light-subtle" id="chatbotSuggestions">
+            <div class="d-flex gap-1 overflow-auto pb-1 chatbot-chips-scroll">
+                <button type="button" class="btn btn-sm chatbot-chip" data-prompt="Đánh giá hồ sơ hiện tại của tôi phù hợp vị trí nào?">
+                    🎯 Đánh giá hồ sơ của tôi
+                </button>
+                <button type="button" class="btn btn-sm chatbot-chip" data-prompt="So sánh độ phù hợp của tôi với tất cả 8 vị trí CNTT">
+                    📊 So sánh 8 vị trí
+                </button>
+                <button type="button" class="btn btn-sm chatbot-chip" data-prompt="Vị trí Backend Developer cần những kỹ năng gì?">
+                    💻 Kỹ năng Backend
+                </button>
+                <button type="button" class="btn btn-sm chatbot-chip" data-prompt="Gợi ý các tin tuyển dụng lương cao trong hệ thống">
+                    🏢 Việc làm lương cao
+                </button>
+                <button type="button" class="btn btn-sm chatbot-chip" data-prompt="Gợi ý lộ trình học tập và học phần đại học cần học">
+                    📚 Lộ trình & Học phần
+                </button>
+            </div>
+        </div>
+
+        <!-- Ô nhập câu hỏi -->
+        <form class="chatbot-input-area p-2 border-top bg-white d-flex align-items-center gap-2" id="chatbotForm" autocomplete="off">
+            <input type="text" class="form-control form-control-sm border-0 bg-light rounded-pill px-3 py-2"
+                   id="chatbotInput" placeholder="Nhập câu hỏi của bạn..." maxlength="1000">
+            <button type="submit" class="btn btn-primary btn-sm rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                    id="chatbotSendBtn" style="width: 36px; height: 36px;" title="Gửi câu hỏi">
+                <i class="bi bi-send-fill" style="font-size: 0.85rem;"></i>
+            </button>
+        </form>
+    </div>
+
+    <!-- Nút bấm nổi góc phải dưới (kiểu viên thuốc giống ảnh mẫu) -->
+    <button type="button" class="chatbot-launcher-pill shadow-sm" id="chatbotToggleBtn" aria-expanded="false">
+        <i class="bi bi-chat-left-text chatbot-launcher-icon" id="chatbotLauncherIcon"></i>
+        <span class="chatbot-launcher-label" id="chatbotLauncherLabel">Hỏi đáp AI</span>
+    </button>
+</div>

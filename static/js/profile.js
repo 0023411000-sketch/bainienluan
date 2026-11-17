@@ -52,6 +52,19 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('formCert')?.addEventListener('submit', handleSaveCert);
     document.getElementById('formExp')?.addEventListener('submit', handleSaveExp);
 
+    // Gắn sự kiện Đổi ảnh đại diện
+    const avatarInput = document.getElementById('avatarFileInput');
+    document.getElementById('btnQuickChangeAvatar')?.addEventListener('click', () => avatarInput?.click());
+    document.getElementById('btnModalUploadAvatar')?.addEventListener('click', () => avatarInput?.click());
+    if (avatarInput) {
+        avatarInput.addEventListener('change', handleAvatarFileChange);
+    }
+
+    // Gắn sự kiện chọn ảnh đại diện mẫu (Presets)
+    document.querySelectorAll('.preset-avatar-btn').forEach(btn => {
+        btn.addEventListener('click', handleSelectPresetAvatar);
+    });
+
     // Tải dữ liệu hồ sơ
     loadProfileData();
 });
@@ -96,8 +109,110 @@ async function loadProfileData() {
 }
 
 // ==========================================
-// 1. XỬ LÝ THÔNG TIN CÁ NHÂN
+// 1. XỬ LÝ THÔNG TIN CÁ NHÂN & ẢNH ĐẠI DIỆN
 // ==========================================
+function updateAvatarDisplay(avatarUrl) {
+    const cardImg = document.getElementById('profileAvatarImg');
+    const cardIcon = document.getElementById('profileAvatarIcon');
+    const modalImg = document.getElementById('modalAvatarPreviewImg');
+    const modalIcon = document.getElementById('modalAvatarPreviewIcon');
+    const infoAvatarUrl = document.getElementById('infoAvatarUrl');
+    const navImg = document.getElementById('navUserAvatarImg');
+    const navIcon = document.getElementById('navUserAvatarIcon');
+
+    if (infoAvatarUrl) infoAvatarUrl.value = avatarUrl || '';
+
+    if (avatarUrl) {
+        if (cardImg) { cardImg.src = avatarUrl; cardImg.classList.remove('d-none'); }
+        if (cardIcon) cardIcon.classList.add('d-none');
+        if (modalImg) { modalImg.src = avatarUrl; modalImg.classList.remove('d-none'); }
+        if (modalIcon) modalIcon.classList.add('d-none');
+        if (navImg) { navImg.src = avatarUrl; navImg.classList.remove('d-none'); }
+        if (navIcon) navIcon.classList.add('d-none');
+    } else {
+        if (cardImg) cardImg.classList.add('d-none');
+        if (cardIcon) cardIcon.classList.remove('d-none');
+        if (modalImg) modalImg.classList.add('d-none');
+        if (modalIcon) modalIcon.classList.remove('d-none');
+        if (navImg) navImg.classList.add('d-none');
+        if (navIcon) navIcon.classList.remove('d-none');
+    }
+
+    // Đánh dấu ảnh mẫu đang chọn nếu khớp URL
+    document.querySelectorAll('.preset-avatar-btn').forEach(btn => {
+        if (btn.getAttribute('data-avatar') === avatarUrl) {
+            btn.classList.add('border-primary', 'shadow');
+            btn.classList.remove('border-transparent');
+        } else {
+            btn.classList.remove('border-primary', 'shadow');
+            btn.classList.add('border-transparent');
+        }
+    });
+}
+
+async function handleAvatarFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+    if (!validTypes.includes(file.type)) {
+        Utils.showToast('Định dạng ảnh không hợp lệ (hỗ trợ JPG, PNG, WEBP, GIF, SVG)!', 'warning');
+        return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        Utils.showToast('Kích thước ảnh tối đa là 5MB!', 'warning');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    try {
+        Utils.showLoading(true, 'Đang tải lên ảnh đại diện...');
+        const res = await API.profile.uploadAvatar(formData);
+        if (res.success && res.data && res.data.avatar_url) {
+            const newUrl = res.data.avatar_url;
+            updateAvatarDisplay(newUrl);
+
+            const currentUser = Utils.auth.getUser() || {};
+            Utils.auth.setUser({ ...currentUser, avatar_url: newUrl });
+
+            Utils.showToast('Cập nhật ảnh đại diện thành công!', 'success');
+        } else {
+            Utils.showToast(res.message || 'Tải lên ảnh thất bại!', 'danger');
+        }
+    } catch (err) {
+        Utils.showToast(err.message || 'Lỗi khi tải ảnh lên máy chủ!', 'danger');
+    } finally {
+        Utils.showLoading(false);
+        e.target.value = '';
+    }
+}
+
+async function handleSelectPresetAvatar(e) {
+    const btn = e.currentTarget;
+    const avatarUrl = btn.getAttribute('data-avatar');
+    if (!avatarUrl) return;
+
+    try {
+        Utils.showLoading(true, 'Đang áp dụng ảnh đại diện mẫu...');
+        const res = await API.profile.uploadAvatar({ avatar_url: avatarUrl });
+        if (res.success) {
+            updateAvatarDisplay(avatarUrl);
+            const currentUser = Utils.auth.getUser() || {};
+            Utils.auth.setUser({ ...currentUser, avatar_url: avatarUrl });
+            Utils.showToast('Đã chọn ảnh đại diện mẫu thành công!', 'success');
+        } else {
+            Utils.showToast(res.message || 'Không thể áp dụng ảnh mẫu!', 'danger');
+        }
+    } catch (err) {
+        Utils.showToast('Lỗi khi cập nhật ảnh đại diện mẫu!', 'danger');
+    } finally {
+        Utils.showLoading(false);
+    }
+}
+
 function renderPersonalInfo(info) {
     if (!info) return;
 
@@ -119,6 +234,9 @@ function renderPersonalInfo(info) {
     }
     const navNameEl = document.getElementById('navUserFullName');
     if (navNameEl && info.full_name) navNameEl.textContent = info.full_name;
+
+    // Cập nhật ảnh đại diện
+    updateAvatarDisplay(info.avatar_url || '');
 
     // Điền vào form Modal chỉnh sửa
     document.getElementById('infoFullName').value = info.full_name || '';
@@ -149,14 +267,15 @@ async function handleSavePersonalInfo(e) {
         academic_year: document.getElementById('infoAcademicYear').value.trim(),
         gpa: document.getElementById('infoGpa').value.trim(),
         target_position_id: parseInt(document.getElementById('infoTargetPosition')?.value) || 1,
-        bio: document.getElementById('infoBio').value.trim()
+        bio: document.getElementById('infoBio').value.trim(),
+        avatar_url: document.getElementById('infoAvatarUrl')?.value?.trim() || ''
     };
 
     try {
         const res = await API.profile.updatePersonal(payload);
         if (res.success) {
             const currentUser = Utils.auth.getUser() || {};
-            Utils.auth.setUser({ ...currentUser, full_name: payload.full_name, email: payload.email });
+            Utils.auth.setUser({ ...currentUser, full_name: payload.full_name, email: payload.email, avatar_url: payload.avatar_url });
             renderPersonalInfo(payload);
             personalInfoModal?.hide();
             await loadProfileData();
@@ -781,7 +900,7 @@ function renderSuggestedCourses(courses) {
     }
 
     let html = '';
-    courses.forEach(c => {
+    courses.forEach((c, idx) => {
         const missingBadges = (c.matched_missing_skills || []).map(sk => 
             `<span class="badge badge-soft-danger me-1 mb-1 small"><i class="bi bi-tag me-1"></i>${Utils.escapeHtml(sk)}</span>`
         ).join('');
@@ -812,10 +931,10 @@ function renderSuggestedCourses(courses) {
                 </td>
                 <td class="text-end">
                     <div class="btn-group btn-group-sm">
-                        <button type="button" class="btn btn-outline-primary" title="Thêm môn này vào kế hoạch học tập" onclick="addSuggestedCourseToPlan('${escapedCode}', '${escapedName}', '${escapedDesc}')">
+                        <button type="button" class="btn btn-outline-primary" title="Thêm môn này vào kế hoạch học tập" onclick="addSuggestedAcademicByIdx(${idx})">
                             <i class="bi bi-calendar-plus me-1"></i>Vào Kế hoạch
                         </button>
-                        <button type="button" class="btn btn-outline-success" title="Đánh dấu đã hoàn thành và lưu điểm" onclick="markCourseAsLearned('${escapedCode}', '${escapedName}', ${c.credits || 3})">
+                        <button type="button" class="btn btn-outline-success" title="Đánh dấu đã hoàn thành và lưu điểm" onclick="markCourseLearnedByIdx(${idx})">
                             <i class="bi bi-check2 me-1"></i>Đã học
                         </button>
                     </div>
@@ -830,36 +949,101 @@ function renderSuggestedOnlineCourses(recs, certs) {
     const container = document.getElementById('suggestedOnlineCoursesContainer');
     if (!container) return;
 
+    const normKey = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+    // 1. Lọc và chuẩn hóa danh sách khóa học (loại bỏ trùng lặp tiêu đề và trùng kỹ năng)
+    const seenRecs = new Set();
+    const seenSkills = new Set();
+    const uniqueRecs = [];
+
+    (recs || []).forEach((r, originalIdx) => {
+        if (!r || !r.title) return;
+        const kTitle = normKey(r.title);
+        const kSkill = normKey(r.skill_name);
+
+        if (seenRecs.has(kTitle)) return;
+
+        // Nếu là khóa học thực chiến generic và kỹ năng này đã được bao hàm trong một khóa học khác -> bỏ qua
+        const isGeneric = kTitle.includes('khóa học thực chiến');
+        if (isGeneric && seenSkills.has(kSkill)) return;
+
+        seenRecs.add(kTitle);
+        if (kSkill) seenSkills.add(kSkill);
+        uniqueRecs.push({ r, originalIdx });
+    });
+
+    // Giới hạn tối đa 6 khóa học gợi ý chất lượng nhất
+    const displayRecs = uniqueRecs.slice(0, 6);
+
+    // 2. Hàm kiểm tra xem chứng chỉ có trùng/đã được thể hiện bằng một thẻ khóa học bên dưới không
+    const isCertCoveredByRec = (certName, recItem) => {
+        const c = normKey(certName);
+        const t = normKey(recItem.title);
+        const s = normKey(recItem.skill_name);
+
+        if (c === t || t.includes(c) || c.includes(t)) return true;
+        if (c.includes('cka') && (t.includes('cka') || t.includes('kubernetes'))) return true;
+        if (c.includes('pl-300') && (t.includes('pl-300') || t.includes('power bi'))) return true;
+        if (c.includes('meta') && (t.includes('meta') || t.includes('react'))) return true;
+        if (c.includes('aws') && (t.includes('aws') || s.includes('aws'))) return true;
+        if ((c.includes('rhcsa') || c.includes('linux')) && (t.includes('linux') || s.includes('linux'))) return true;
+        if (c.includes('istqb') && (t.includes('istqb') || t.includes('test') || s.includes('test'))) return true;
+        if (c.includes('tableau') && (t.includes('tableau') || s.includes('tableau'))) return true;
+        if (c.includes('pcep') && (t.includes('pcep') || s.includes('python'))) return true;
+        if (c.includes('deeplearning') && (t.includes('deep learning') || s.includes('pytorch') || s.includes('tensorflow'))) return true;
+        return false;
+    };
+
+    // 3. Lọc danh sách chứng chỉ: chỉ giữ lại chứng chỉ độc lập CHƯA được hiển thị thành thẻ bên dưới
+    const seenCerts = new Set();
+    const standaloneCerts = (certs || []).filter(crt => {
+        const k = normKey(crt);
+        if (!k || seenCerts.has(k)) return false;
+        seenCerts.add(k);
+        // Nếu chứng chỉ này đã có một thẻ khóa học tương ứng bên dưới -> không hiển thị lặp ở khung trên
+        const isCovered = displayRecs.some(({ r }) => isCertCoveredByRec(crt, r));
+        return !isCovered;
+    });
+
+    // Chỉ hiển thị khung chứng chỉ nếu còn chứng chỉ độc lập cần bổ sung
     let certsHtml = '';
-    if (certs && certs.length > 0) {
+    if (standaloneCerts.length > 0) {
         certsHtml = `
             <div class="col-12 mb-2">
                 <div class="p-3 bg-light-subtle border rounded-3">
                     <div class="small fw-semibold text-dark mb-2">
-                        <i class="bi bi-award-fill text-warning me-1"></i>Chứng chỉ nghề nghiệp được nhà tuyển dụng đánh giá cao:
+                        <i class="bi bi-award-fill text-warning me-1"></i>Chứng chỉ chuyên môn ưu tiên bổ sung:
                     </div>
                     <div>
-                        ${certs.map(crt => `<span class="badge bg-warning-subtle text-dark border border-warning-subtle me-2 mb-1 p-2"><i class="bi bi-patch-check text-warning me-1"></i>${Utils.escapeHtml(crt)}</span>`).join('')}
+                        ${standaloneCerts.map(crt => `<span class="badge bg-warning-subtle text-dark border border-warning-subtle me-2 mb-1 p-2"><i class="bi bi-patch-check text-warning me-1"></i>${Utils.escapeHtml(crt)}</span>`).join('')}
                     </div>
                 </div>
             </div>
         `;
     }
 
-    if (!recs || recs.length === 0) {
-        container.innerHTML = certsHtml + `<div class="col-12 text-muted small p-2">Không có khóa học trực tuyến bổ trợ nào thêm.</div>`;
+    if (displayRecs.length === 0 && standaloneCerts.length === 0) {
+        container.innerHTML = `<div class="col-12 text-muted small p-2">Không có khóa học trực tuyến bổ trợ nào thêm.</div>`;
         return;
     }
 
-    let recsHtml = recs.map(r => {
+    let recsHtml = displayRecs.map(({ r, originalIdx: idx }) => {
         const titleEscaped = Utils.escapeHtml(r.title);
         const skillEscaped = Utils.escapeHtml(r.skill_name || 'Kỹ năng CNTT');
+        const isCertType = r.rec_type === 'certificate' || (r.title && (r.title.includes('Certificate') || r.title.includes('Certification') || r.title.includes('CKA') || r.title.includes('PL-300') || r.title.includes('Specialization')));
+        const typeBadge = isCertType
+            ? `<span class="badge bg-warning-subtle text-dark border border-warning-subtle small me-1"><i class="bi bi-award-fill text-warning me-1"></i>Chứng chỉ nghề nghiệp</span>`
+            : '';
+
         return `
             <div class="col-md-6">
                 <div class="border rounded-3 p-3 bg-white h-100 d-flex flex-column justify-content-between shadow-sm">
                     <div>
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <span class="badge badge-soft-danger"><i class="bi bi-tag-fill me-1"></i>${skillEscaped}</span>
+                            <div>
+                                <span class="badge badge-soft-danger me-1"><i class="bi bi-tag-fill me-1"></i>${skillEscaped}</span>
+                                ${typeBadge}
+                            </div>
                             <span class="badge bg-secondary-subtle text-secondary border small">${Utils.escapeHtml(r.provider || 'Coursera / Udemy')}</span>
                         </div>
                         <h6 class="fw-bold text-dark mb-1">${titleEscaped}</h6>
@@ -868,10 +1052,10 @@ function renderSuggestedOnlineCourses(recs, certs) {
                     <div class="d-flex justify-content-between align-items-center pt-2 border-top">
                         <span class="text-muted small"><i class="bi bi-clock me-1"></i>${Utils.escapeHtml(r.duration || '4 tuần')}</span>
                         <div class="btn-group btn-group-sm">
-                            <button type="button" class="btn btn-outline-primary" onclick="addSuggestedCourseToPlan('${skillEscaped}', '${titleEscaped}', '${Utils.escapeHtml(r.description || '')}')">
+                            <button type="button" class="btn btn-outline-primary" onclick="addSuggestedOnlineByIdx(${idx})">
                                 <i class="bi bi-calendar-plus me-1"></i>Lên kế hoạch
                             </button>
-                            <a href="${Utils.escapeHtml(r.url || 'https://www.coursera.org')}" target="_blank" class="btn btn-light border">
+                            <a href="${Utils.escapeHtml(r.url || 'https://www.coursera.org')}" target="_blank" class="btn btn-light border" title="Xem khóa học">
                                 <i class="bi bi-box-arrow-up-right"></i>
                             </a>
                         </div>
@@ -884,6 +1068,24 @@ function renderSuggestedOnlineCourses(recs, certs) {
     container.innerHTML = certsHtml + recsHtml;
 }
 
+function addSuggestedAcademicByIdx(idx) {
+    const c = currentProfile?.evaluation?.suggested_academic_courses?.[idx];
+    if (!c) return;
+    addSuggestedCourseToPlan(c.code, c.name, c.description || c.reason || '');
+}
+
+function markCourseLearnedByIdx(idx) {
+    const c = currentProfile?.evaluation?.suggested_academic_courses?.[idx];
+    if (!c) return;
+    markCourseAsLearned(c.code, c.name, c.credits || 3);
+}
+
+function addSuggestedOnlineByIdx(idx) {
+    const r = currentProfile?.evaluation?.recommendations?.[idx];
+    if (!r) return;
+    addSuggestedCourseToPlan(r.skill_name || 'Khóa học', r.title, r.description || '');
+}
+
 async function addSuggestedCourseToPlan(code, name, description) {
     try {
         Utils.showLoading(true, 'Đang thêm vào kế hoạch học tập...');
@@ -892,7 +1094,7 @@ async function addSuggestedCourseToPlan(code, name, description) {
             category: 'Học phần đại học',
             type: 'course',
             status: 'todo',
-            target_date: '',
+            target_date: '2026-12-31',
             note: description || `Môn học đề xuất cho vị trí mục tiêu.`
         };
         const res = await API.plan.create(payload);

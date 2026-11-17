@@ -1,118 +1,1663 @@
-{% extends 'base.html' %}
+{% set initial_mode = default_mode|default('login') %}
+<!DOCTYPE html>
+<html lang="vi" data-neumorph-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if initial_mode == 'signup' %}Đăng ký tài khoản sinh viên{% else %}Đăng nhập tài khoản{% endif %} - IT Career Compass</title>
 
-{% block title %}Đăng nhập tài khoản{% endblock %}
+    <!-- Khởi tạo theme Neumorphism tức thì (Sáng mặc định) -->
+    <script>
+        (function () {
+            try {
+                var saved = localStorage.getItem('neumorph_auth_theme') || 'light';
+                document.documentElement.setAttribute('data-neumorph-theme', saved);
+            } catch (e) {}
+        })();
+    </script>
 
-{% block content %}
-<div class="row justify-content-center align-items-center py-5">
-    <div class="col-12 col-sm-10 col-md-8 col-lg-5 col-xl-4">
-        <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="card-body p-4 p-sm-5">
-                <!-- Tiêu đề & Logo -->
-                <div class="text-center mb-4">
-                    <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle p-3 mb-3 shadow-sm" style="width: 64px; height: 64px;">
-                        <i class="bi bi-person-fill-lock fs-2"></i>
-                    </div>
-                    <h3 class="fw-bold text-dark mb-1">Đăng Nhập</h3>
-                    <p class="text-muted small">Hệ thống Định hướng Kỹ năng Nghề nghiệp CNTT</p>
+    <!-- Google Font: Inter (hỗ trợ đầy đủ tiếng Việt có dấu) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* =====================================================================
+           1. BIẾN CSS (:root) — Light Neumorphism mặc định & Dark Neumorphism
+           ===================================================================== */
+        :root {
+            --bg-base: #eeeff4;
+            --bg-pill-active: #f5f6fa;
+
+            --text-primary: #2d3142;
+            --text-secondary: #7b8094;
+            --text-placeholder: #a4a9ba;
+            --icon-muted: #8a90a6;
+
+            --accent-start: #5b8def;
+            --accent-end: #4a7be8;
+            --required-color: #e05260;
+            --error-color: #dc3545;
+            --success-color: #26a675;
+
+            /* Đổ bóng đôi Neumorphic sáng */
+            --shadow-card: 14px 14px 30px #d1d4de, -14px -14px 30px #ffffff;
+            --shadow-raised: 6px 6px 14px #d3d6e0, -6px -6px 14px #ffffff;
+            --shadow-raised-hover: 8px 8px 18px #cdd0db, -8px -8px 18px #ffffff;
+            --shadow-badge-icon: 8px 8px 16px #d2d5df, -8px -8px 16px #ffffff;
+            --shadow-inset: inset 5px 5px 10px #d5d8e2, inset -5px -5px 10px #ffffff;
+            --shadow-inset-deep: inset 6px 6px 12px #ced1dc, inset -6px -6px 12px #ffffff;
+            --shadow-inset-sm: inset 3px 3px 6px #d4d7e1, inset -3px -3px 6px #ffffff;
+
+            /* Bóng nút chính màu xanh */
+            --shadow-btn-accent: 0 10px 22px -6px rgba(74, 123, 232, 0.52), 4px 4px 10px #d1d4de, -4px -4px 10px #ffffff;
+            --shadow-btn-accent-hover: 0 14px 26px -6px rgba(74, 123, 232, 0.65), 6px 6px 14px #d1d4de, -6px -6px 14px #ffffff;
+            --shadow-btn-accent-active: inset 4px 4px 10px rgba(32, 69, 158, 0.45), inset -3px -3px 8px rgba(145, 184, 255, 0.35);
+
+            /* Focus & Error Ring */
+            --focus-ring: 0 0 0 3px rgba(91, 141, 239, 0.28);
+            --error-ring: 0 0 0 3px rgba(220, 53, 69, 0.22);
+
+            --divider-shadow-dark: rgba(190, 195, 208, 0.85);
+            --divider-shadow-light: rgba(255, 255, 255, 0.9);
+
+            --radius-card: 32px;
+            --radius-control: 16px;
+            --radius-pill: 999px;
+
+            --ease-smooth: 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        /* Biến thể Dark Neumorphism */
+        [data-neumorph-theme="dark"] {
+            --bg-base: #1f232e;
+            --bg-pill-active: #262b38;
+
+            --text-primary: #edf1f8;
+            --text-secondary: #98a1b8;
+            --text-placeholder: #646d85;
+            --icon-muted: #848da6;
+
+            --shadow-card: 14px 14px 30px #151820, -14px -14px 30px #292e3c;
+            --shadow-raised: 6px 6px 14px #151820, -6px -6px 14px #292e3c;
+            --shadow-raised-hover: 8px 8px 18px #12151c, -8px -8px 18px #2c3140;
+            --shadow-badge-icon: 8px 8px 16px #151820, -8px -8px 16px #292e3c;
+            --shadow-inset: inset 5px 5px 10px #151820, inset -5px -5px 10px #292e3c;
+            --shadow-inset-deep: inset 6px 6px 12px #13161d, inset -6px -6px 12px #2b303f;
+            --shadow-inset-sm: inset 3px 3px 6px #151820, inset -3px -3px 6px #292e3c;
+
+            --shadow-btn-accent: 0 10px 22px -6px rgba(74, 123, 232, 0.48), 4px 4px 10px #151820, -4px -4px 10px #292e3c;
+            --shadow-btn-accent-hover: 0 14px 26px -6px rgba(74, 123, 232, 0.62), 6px 6px 14px #151820, -6px -6px 14px #292e3c;
+
+            --divider-shadow-dark: rgba(15, 18, 25, 0.75);
+            --divider-shadow-light: rgba(255, 255, 255, 0.08);
+        }
+
+        /* =====================================================================
+           2. RESET & BỐ CỤC CHUNG
+           ===================================================================== */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            min-height: 100%;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+            -webkit-font-smoothing: antialiased;
+            line-height: 1.5;
+            transition: background-color 0.25s ease, color 0.25s ease;
+        }
+
+        /* Cụm nút tiện ích (VI | EN và Sáng / Tối) ở góc trên bên phải */
+        .top-right-tools {
+            position: fixed;
+            top: 18px;
+            right: 18px;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .lang-toggle-btn {
+            height: 42px;
+            padding: 0 14px;
+            border: none;
+            border-radius: var(--radius-pill);
+            background-color: var(--bg-base);
+            box-shadow: var(--shadow-raised);
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 0.78rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            user-select: none;
+            transition: transform var(--ease-smooth), box-shadow var(--ease-smooth), color 0.2s ease, background-color 0.25s ease;
+        }
+
+        .lang-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-raised-hover);
+        }
+
+        .lang-toggle-btn:active {
+            transform: translateY(0);
+            box-shadow: var(--shadow-inset);
+        }
+
+        .lang-toggle-btn:focus-visible {
+            outline: none;
+            box-shadow: var(--shadow-raised), var(--focus-ring);
+        }
+
+        .lang-toggle-btn .lang-sep {
+            opacity: 0.45;
+        }
+
+        .lang-toggle-btn .lang-active {
+            color: var(--accent-end);
+            font-weight: 700;
+        }
+
+        .theme-toggle-btn {
+            width: 42px;
+            height: 42px;
+            border: none;
+            border-radius: 50%;
+            background-color: var(--bg-base);
+            box-shadow: var(--shadow-raised);
+            color: var(--text-primary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform var(--ease-smooth), box-shadow var(--ease-smooth), color 0.2s ease, background-color 0.25s ease;
+        }
+
+        .theme-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-raised-hover);
+            color: var(--accent-end);
+        }
+
+        .theme-toggle-btn:active {
+            transform: translateY(0);
+            box-shadow: var(--shadow-inset);
+        }
+
+        .theme-toggle-btn:focus-visible {
+            outline: none;
+            box-shadow: var(--shadow-raised), var(--focus-ring);
+        }
+
+        .theme-toggle-btn svg {
+            width: 19px;
+            height: 19px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.9;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .auth-stage {
+            width: 100%;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .auth-card {
+            width: 100%;
+            background-color: var(--bg-base);
+            border-radius: var(--radius-card);
+            padding: 30px;
+            box-shadow: var(--shadow-card);
+            position: relative;
+            transition: background-color 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        /* =====================================================================
+           3. THANH CHUYỂN TAB VIÊN THUỐC (ĐĂNG NHẬP / ĐĂNG KÝ)
+           ===================================================================== */
+        .tab-switcher {
+            position: relative;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            padding: 6px;
+            border-radius: var(--radius-pill);
+            background-color: var(--bg-base);
+            box-shadow: var(--shadow-inset);
+            margin-bottom: 24px;
+            user-select: none;
+            transition: background-color 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .tab-indicator {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            width: calc(50% - 6px);
+            height: calc(100% - 12px);
+            border-radius: var(--radius-pill);
+            background-color: var(--bg-pill-active);
+            box-shadow: var(--shadow-raised);
+            transition: transform 0.3s cubic-bezier(0.25, 0.9, 0.3, 1), background-color 0.25s ease, box-shadow 0.25s ease;
+            pointer-events: none;
+        }
+
+        .tab-switcher[data-active="signup"] .tab-indicator {
+            transform: translateX(100%);
+        }
+
+        .tab-btn {
+            position: relative;
+            z-index: 1;
+            height: 40px;
+            border: none;
+            background: transparent;
+            border-radius: var(--radius-pill);
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: color 0.25s ease;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .tab-btn[aria-selected="true"] {
+            color: var(--accent-end);
+        }
+
+        .tab-btn:focus-visible {
+            outline: none;
+            box-shadow: var(--focus-ring);
+        }
+
+        /* =====================================================================
+           4. KHUNG CHUYỂN ĐỔI MÀN HÌNH MƯỢT MÀ (FADE + SLIDE + CHIỀU CAO)
+           ===================================================================== */
+        .panel-viewport {
+            position: relative;
+            overflow: hidden;
+            margin: -18px;
+            padding: 18px;
+            transition: height 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .auth-panel {
+            transition: opacity 0.24s ease, transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .auth-panel.is-hidden {
+            display: none;
+        }
+
+        .auth-panel.is-fading-out {
+            opacity: 0;
+            transform: translateY(-6px);
+        }
+
+        .auth-panel.is-entering {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+
+        /* =====================================================================
+           5. HEADER ICON TRÒN NEUMORPHIC, TIÊU ĐỀ & MÔ TẢ
+           ===================================================================== */
+        .auth-header {
+            text-align: center;
+            margin-bottom: 22px;
+        }
+
+        .auth-icon-circle {
+            width: 62px;
+            height: 62px;
+            margin: 0 auto 14px;
+            border-radius: 50%;
+            background-color: var(--bg-base);
+            box-shadow: var(--shadow-badge-icon);
+            color: var(--accent-end);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .auth-icon-circle svg {
+            width: 28px;
+            height: 28px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.9;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .auth-title {
+            font-size: 1.45rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+        }
+
+        .auth-subtitle {
+            font-size: 0.83rem;
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+
+        /* =====================================================================
+           6. FORM & Ô NHẬP LIỆU NỀN LÕM (INSET SHADOW)
+           ===================================================================== */
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 16px;
+        }
+
+        .label-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 7px;
+            padding: 0 4px;
+        }
+
+        .field-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: block;
+        }
+
+        .field-group > .field-label {
+            margin-bottom: 7px;
+            padding-left: 4px;
+        }
+
+        .req-star {
+            color: var(--required-color);
+            font-weight: 700;
+            margin-left: 2px;
+        }
+
+        .forgot-link {
+            border: none;
+            background: transparent;
+            padding: 2px 4px;
+            font-family: inherit;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--accent-end);
+            cursor: pointer;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: color 0.2s ease, opacity 0.2s ease;
+        }
+
+        .forgot-link:hover {
+            color: var(--accent-start);
+            text-decoration: underline;
+        }
+
+        .forgot-link:focus-visible {
+            outline: none;
+            box-shadow: var(--focus-ring);
+        }
+
+        .input-box {
+            position: relative;
+            height: 52px;
+            border-radius: var(--radius-control);
+            background-color: var(--bg-base);
+            box-shadow: var(--shadow-inset);
+            display: flex;
+            align-items: center;
+            transition: box-shadow 0.2s ease, background-color 0.25s ease;
+        }
+
+        .input-box:focus-within {
+            box-shadow: var(--shadow-inset-deep), var(--focus-ring);
+        }
+
+        .input-box:focus-within .input-icon {
+            color: var(--accent-end);
+        }
+
+        .input-box.is-invalid {
+            box-shadow: var(--shadow-inset-deep), var(--error-ring);
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 16px;
+            width: 18px;
+            height: 18px;
+            color: var(--icon-muted);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            transition: color 0.2s ease;
+        }
+
+        .input-icon svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.85;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .input-control {
+            width: 100%;
+            height: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            padding: 0 16px 0 44px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            border-radius: var(--radius-control);
+        }
+
+        .input-control.has-toggle {
+            padding-right: 48px;
+        }
+
+        .input-control::placeholder {
+            color: var(--text-placeholder);
+            font-weight: 400;
+        }
+
+        /* Nút con mắt bật/tắt mật khẩu */
+        .password-toggle {
+            position: absolute;
+            right: 8px;
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 12px;
+            background: transparent;
+            color: var(--icon-muted);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: color 0.2s ease, transform 0.15s ease;
+        }
+
+        .password-toggle:hover {
+            color: var(--accent-end);
+        }
+
+        .password-toggle:active {
+            transform: scale(0.9);
+        }
+
+        .password-toggle:focus-visible {
+            outline: none;
+            box-shadow: var(--focus-ring);
+            color: var(--accent-end);
+        }
+
+        .password-toggle svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.9;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Lỗi tiếng Việt nhỏ dưới ô nhập + Shake */
+        .field-error {
+            font-size: 0.74rem;
+            font-weight: 500;
+            color: var(--error-color);
+            padding-left: 6px;
+            margin-top: 6px;
+            display: none;
+        }
+
+        .field-error.is-visible {
+            display: block;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-6px); }
+            40% { transform: translateX(6px); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(4px); }
+        }
+
+        .shake {
+            animation: shake 0.36s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        }
+
+        /* =====================================================================
+           7. CHECKBOX NEUMORPHIC TÙY CHỈNH
+           ===================================================================== */
+        .checkbox-group {
+            margin: 2px 2px 18px;
+        }
+
+        .neu-checkbox-label {
+            display: inline-flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            user-select: none;
+            line-height: 1.45;
+        }
+
+        .neu-checkbox {
+            position: relative;
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            margin-top: 1px;
+            border-radius: 7px;
+            background-color: var(--bg-base);
+            box-shadow: var(--shadow-inset-sm);
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background 0.22s ease, box-shadow 0.22s ease, transform 0.15s ease;
+        }
+
+        .neu-checkbox:hover {
+            transform: scale(1.05);
+        }
+
+        .neu-checkbox:focus-visible {
+            outline: none;
+            box-shadow: var(--shadow-inset-sm), var(--focus-ring);
+        }
+
+        .neu-checkbox.is-invalid {
+            box-shadow: var(--shadow-inset-sm), var(--error-ring);
+        }
+
+        .neu-checkbox:checked {
+            background: linear-gradient(135deg, var(--accent-start), var(--accent-end));
+            box-shadow: 0 3px 8px rgba(74, 123, 232, 0.42);
+        }
+
+        .neu-checkbox:checked::after {
+            content: "";
+            position: absolute;
+            left: 6.5px;
+            top: 3px;
+            width: 5px;
+            height: 9.5px;
+            border: solid #ffffff;
+            border-width: 0 2px 2px 0;
+            transform: rotate(42deg);
+        }
+
+        /* =====================================================================
+           8. NÚT CHÍNH GRADIENT XANH & FOOTER LINK CHUYỂN ĐỔI
+           ===================================================================== */
+        .primary-btn {
+            width: 100%;
+            height: 52px;
+            border: none;
+            border-radius: var(--radius-control);
+            background: linear-gradient(135deg, var(--accent-start) 0%, var(--accent-end) 100%);
+            color: #ffffff;
+            font-family: inherit;
+            font-size: 0.94rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: var(--shadow-btn-accent);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.25s ease;
+        }
+
+        .primary-btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            flex-shrink: 0;
+        }
+
+        .primary-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-btn-accent-hover);
+        }
+
+        .primary-btn:active:not(:disabled) {
+            transform: translateY(1px);
+            box-shadow: var(--shadow-btn-accent-active);
+        }
+
+        .primary-btn:focus-visible {
+            outline: none;
+            box-shadow: var(--shadow-btn-accent), var(--focus-ring);
+        }
+
+        .primary-btn:disabled {
+            cursor: default;
+        }
+
+        .primary-btn.is-success {
+            background: linear-gradient(135deg, #32c28b 0%, var(--success-color) 100%);
+            box-shadow: 0 10px 22px -6px rgba(38, 166, 117, 0.5), 4px 4px 10px #d1d4de, -4px -4px 10px #ffffff;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2.4px solid rgba(255, 255, 255, 0.35);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .panel-divider {
+            height: 1.5px;
+            border-radius: 99px;
+            margin: 22px 0 16px;
+            background: var(--divider-shadow-dark);
+            box-shadow: 0 1px 0 var(--divider-shadow-light);
+        }
+
+        .switch-footer {
+            text-align: center;
+            font-size: 0.83rem;
+            color: var(--text-secondary);
+        }
+
+        .switch-link {
+            border: none;
+            background: transparent;
+            padding: 2px 4px;
+            font-family: inherit;
+            font-size: 0.83rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            cursor: pointer;
+            border-radius: 6px;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            transition: color 0.2s ease;
+        }
+
+        .switch-link:hover {
+            color: var(--accent-end);
+        }
+
+        .switch-link:focus-visible {
+            outline: none;
+            box-shadow: var(--focus-ring);
+            color: var(--accent-end);
+        }
+
+        /* =====================================================================
+           9. TOAST THÔNG BÁO TIẾNG VIỆT KIỂU NEUMORPHISM
+           ===================================================================== */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translate(-50%, 16px);
+            opacity: 0;
+            pointer-events: none;
+            background-color: var(--bg-pill-active);
+            color: var(--text-primary);
+            padding: 12px 20px;
+            border-radius: var(--radius-pill);
+            box-shadow: var(--shadow-raised-hover);
+            font-size: 0.84rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            z-index: 100;
+            max-width: calc(100vw - 32px);
+            text-align: center;
+            transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .toast.is-visible {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        .toast-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--accent-start);
+            flex-shrink: 0;
+        }
+
+        .toast.is-success .toast-dot {
+            background-color: var(--success-color);
+        }
+
+        .toast.is-error .toast-dot {
+            background-color: var(--error-color);
+        }
+
+        @media (max-width: 440px) {
+            body {
+                padding: 16px 12px;
+            }
+
+            .auth-card {
+                padding: 24px 20px;
+                border-radius: 28px;
+            }
+
+            .top-right-tools {
+                top: 12px;
+                right: 12px;
+                gap: 8px;
+            }
+
+            .lang-toggle-btn {
+                height: 38px;
+                padding: 0 11px;
+                font-size: 0.74rem;
+            }
+
+            .theme-toggle-btn {
+                width: 38px;
+                height: 38px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Cụm nút nhỏ góc trên phải: Ngôn ngữ VI | EN & Sáng / Tối Neumorphism -->
+    <div class="top-right-tools">
+        <button
+            type="button"
+            class="lang-toggle-btn"
+            id="langToggleBtn"
+            aria-label="Chuyển đổi ngôn ngữ Tiếng Việt hoặc Tiếng Anh"
+            title="Chuyển đổi ngôn ngữ (VI / EN)"
+        >
+            <span class="lang-active" id="langOptVi" data-lang="vi">VI</span>
+            <span class="lang-sep">|</span>
+            <span id="langOptEn" data-lang="en">EN</span>
+        </button>
+        <button
+            type="button"
+            class="theme-toggle-btn"
+            id="themeToggleBtn"
+            aria-label="Chuyển giao diện Sáng hoặc Tối"
+            title="Chuyển chế độ Sáng / Tối"
+        >
+            <svg id="themeIconMoon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+            <svg id="themeIconSun" viewBox="0 0 24 24" style="display:none;" aria-hidden="true">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+        </button>
+    </div>
+
+    <main class="auth-stage">
+        <section class="auth-card" aria-label="Xác thực tài khoản IT Career Compass">
+            <!-- Thanh chuyển tab viên thuốc (Đăng nhập / Đăng ký) -->
+            <div class="tab-switcher" id="tabSwitcher" role="tablist" aria-label="Chọn chế độ" data-active="{{ initial_mode }}">
+                <span class="tab-indicator" aria-hidden="true"></span>
+                <button
+                    type="button"
+                    class="tab-btn"
+                    id="tabLogin"
+                    role="tab"
+                    aria-selected="{{ 'true' if initial_mode != 'signup' else 'false' }}"
+                    data-mode="login"
+                >Đăng nhập</button>
+                <button
+                    type="button"
+                    class="tab-btn"
+                    id="tabSignup"
+                    role="tab"
+                    aria-selected="{{ 'true' if initial_mode == 'signup' else 'false' }}"
+                    data-mode="signup"
+                >Đăng ký</button>
+            </div>
+
+            <div class="panel-viewport" id="panelViewport">
+                <!-- =========================================================
+                     MÀN HÌNH ĐĂNG NHẬP
+                     ========================================================= -->
+                <div class="auth-panel {% if initial_mode == 'signup' %}is-hidden{% endif %}" id="loginPanel" role="tabpanel" aria-labelledby="tabLogin">
+                    <header class="auth-header">
+                        <div class="auth-icon-circle" aria-hidden="true">
+                            <!-- Icon La bàn (Compass) -->
+                            <svg viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+                            </svg>
+                        </div>
+                        <h1 class="auth-title">Đăng Nhập Hệ Thống</h1>
+                        <p class="auth-subtitle">IT Career Compass — Định hướng Kỹ năng Nghề nghiệp CNTT</p>
+                    </header>
+
+                    <form class="auth-form" id="loginForm" novalidate>
+                        <!-- Địa chỉ Email * -->
+                        <div class="field-group">
+                            <label class="field-label" for="loginEmail">Địa chỉ Email<span class="req-star">*</span></label>
+                            <div class="input-box" id="loginEmailBox">
+                                <span class="input-icon" aria-hidden="true">
+                                    <!-- Icon phong bì -->
+                                    <svg viewBox="0 0 24 24">
+                                        <rect x="2" y="4" width="20" height="16" rx="3"></rect>
+                                        <path d="M22 7l-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+                                    </svg>
+                                </span>
+                                <input
+                                    type="email"
+                                    class="input-control"
+                                    id="loginEmail"
+                                    placeholder="an.nguyen20@sis.hust.edu.vn"
+                                    autocomplete="username"
+                                    required
+                                >
+                            </div>
+                            <span class="field-error" id="loginEmailError" role="alert"></span>
+                        </div>
+
+                        <!-- Mật khẩu * & Quên mật khẩu? -->
+                        <div class="field-group">
+                            <div class="label-row">
+                                <label class="field-label" for="loginPassword">Mật khẩu<span class="req-star">*</span></label>
+                                <button type="button" class="forgot-link" id="forgotPasswordBtn">Quên mật khẩu?</button>
+                            </div>
+                            <div class="input-box" id="loginPasswordBox">
+                                <span class="input-icon" aria-hidden="true">
+                                    <!-- Icon chìa khóa -->
+                                    <svg viewBox="0 0 24 24">
+                                        <circle cx="7.5" cy="15.5" r="4.5"></circle>
+                                        <path d="M21 2l-9.6 9.6"></path>
+                                        <path d="M15.5 7.5l3 3L22 7l-3-3"></path>
+                                    </svg>
+                                </span>
+                                <input
+                                    type="password"
+                                    class="input-control has-toggle"
+                                    id="loginPassword"
+                                    placeholder="••••••••"
+                                    autocomplete="current-password"
+                                    required
+                                >
+                                <button
+                                    type="button"
+                                    class="password-toggle"
+                                    data-target="loginPassword"
+                                    aria-label="Hiện hoặc ẩn mật khẩu"
+                                    aria-pressed="false"
+                                >
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </button>
+                            </div>
+                            <span class="field-error" id="loginPasswordError" role="alert"></span>
+                        </div>
+
+                        <!-- Ghi nhớ phiên đăng nhập -->
+                        <div class="checkbox-group">
+                            <label class="neu-checkbox-label" for="rememberMe">
+                                <input type="checkbox" class="neu-checkbox" id="rememberMe" checked>
+                                <span>Ghi nhớ phiên đăng nhập trên thiết bị này</span>
+                            </label>
+                        </div>
+
+                        <!-- Nút đăng nhập -->
+                        <button type="submit" class="primary-btn" id="btnLoginSubmit">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                                <polyline points="10 17 15 12 10 7"></polyline>
+                                <line x1="15" y1="12" x2="3" y2="12"></line>
+                            </svg>
+                            <span>Đăng nhập ngay</span>
+                        </button>
+                    </form>
+
+                    <div class="panel-divider" role="separator"></div>
+                    <p class="switch-footer">
+                        Chưa có tài khoản sinh viên?
+                        <button type="button" class="switch-link" data-switch="signup">Đăng ký tài khoản</button>
+                    </p>
                 </div>
 
-                <!-- Form đăng nhập -->
-                <form id="loginForm" novalidate>
-                    <!-- Email -->
-                    <div class="mb-3">
-                        <label for="loginEmail" class="form-label">Địa chỉ Email <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-envelope"></i></span>
-                            <input type="email" class="form-control border-start-0 ps-0" id="loginEmail" 
-                                   placeholder="sinhvien@sis.hust.edu.vn" value="an.nguyen20@sis.hust.edu.vn" required autocomplete="username">
+                <!-- =========================================================
+                     MÀN HÌNH ĐĂNG KÝ
+                     ========================================================= -->
+                <div class="auth-panel {% if initial_mode != 'signup' %}is-hidden{% endif %}" id="signupPanel" role="tabpanel" aria-labelledby="tabSignup">
+                    <header class="auth-header">
+                        <div class="auth-icon-circle" aria-hidden="true">
+                            <!-- Icon người dùng + dấu cộng -->
+                            <svg viewBox="0 0 24 24">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="8.5" cy="7" r="4"></circle>
+                                <line x1="20" y1="8" x2="20" y2="14"></line>
+                                <line x1="23" y1="11" x2="17" y2="11"></line>
+                            </svg>
                         </div>
-                        <div class="invalid-feedback d-none" id="loginEmailFeedback">Email không hợp lệ.</div>
-                    </div>
+                        <h1 class="auth-title">Đăng Ký Tài Khoản</h1>
+                        <p class="auth-subtitle">Khởi tạo hồ sơ định hướng sự nghiệp CNTT cá nhân</p>
+                    </header>
 
-                    <!-- Mật khẩu -->
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <label for="loginPassword" class="form-label">Mật khẩu <span class="text-danger">*</span></label>
-                            <a href="javascript:void(0)" class="small text-decoration-none text-primary" onclick="Utils.showToast('Vui lòng liên hệ quản trị viên để cấp lại mật khẩu!', 'info')">Quên mật khẩu?</a>
+                    <form class="auth-form" id="registerForm" novalidate>
+                        <!-- 1. Họ và tên sinh viên * -->
+                        <div class="field-group">
+                            <label class="field-label" for="regFullName">Họ và tên sinh viên<span class="req-star">*</span></label>
+                            <div class="input-box" id="regFullNameBox">
+                                <span class="input-icon" aria-hidden="true">
+                                    <!-- Icon người -->
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                </span>
+                                <input
+                                    type="text"
+                                    class="input-control"
+                                    id="regFullName"
+                                    placeholder="Ví dụ: Nguyễn Văn An"
+                                    autocomplete="name"
+                                    required
+                                >
+                            </div>
+                            <span class="field-error" id="regFullNameError" role="alert"></span>
                         </div>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-key"></i></span>
-                            <input type="password" class="form-control border-start-0 border-end-0 ps-0" id="loginPassword" 
-                                   placeholder="••••••••" value="123456" required autocomplete="current-password">
-                            <button class="btn btn-outline-secondary border-start-0 bg-light text-muted" type="button" id="togglePasswordBtn">
-                                <i class="bi bi-eye"></i>
-                            </button>
+
+                        <!-- 2. Email trường hoặc cá nhân * -->
+                        <div class="field-group">
+                            <label class="field-label" for="regEmail">Email trường hoặc cá nhân<span class="req-star">*</span></label>
+                            <div class="input-box" id="regEmailBox">
+                                <span class="input-icon" aria-hidden="true">
+                                    <!-- Icon phong bì -->
+                                    <svg viewBox="0 0 24 24">
+                                        <rect x="2" y="4" width="20" height="16" rx="3"></rect>
+                                        <path d="M22 7l-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+                                    </svg>
+                                </span>
+                                <input
+                                    type="email"
+                                    class="input-control"
+                                    id="regEmail"
+                                    placeholder="sinhvien@sis.hust.edu.vn"
+                                    autocomplete="email"
+                                    required
+                                >
+                            </div>
+                            <span class="field-error" id="regEmailError" role="alert"></span>
                         </div>
-                        <div class="invalid-feedback d-none" id="loginPasswordFeedback">Vui lòng nhập mật khẩu.</div>
-                    </div>
 
-                    <!-- Ghi nhớ đăng nhập -->
-                    <div class="form-check mb-4">
-                        <input class="form-check-input" type="checkbox" id="rememberMe" checked>
-                        <label class="form-check-label small text-secondary" for="rememberMe">
-                            Ghi nhớ phiên đăng nhập trên thiết bị này
-                        </label>
-                    </div>
+                        <!-- 3. Mật khẩu bảo mật * -->
+                        <div class="field-group">
+                            <label class="field-label" for="regPassword">Mật khẩu bảo mật<span class="req-star">*</span></label>
+                            <div class="input-box" id="regPasswordBox">
+                                <span class="input-icon" aria-hidden="true">
+                                    <!-- Icon ổ khóa -->
+                                    <svg viewBox="0 0 24 24">
+                                        <rect x="3" y="11" width="18" height="11" rx="2"></rect>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                    </svg>
+                                </span>
+                                <input
+                                    type="password"
+                                    class="input-control has-toggle"
+                                    id="regPassword"
+                                    placeholder="Tối thiểu 6 ký tự"
+                                    autocomplete="new-password"
+                                    required
+                                >
+                                <button
+                                    type="button"
+                                    class="password-toggle"
+                                    data-target="regPassword"
+                                    aria-label="Hiện hoặc ẩn mật khẩu bảo mật"
+                                    aria-pressed="false"
+                                >
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </button>
+                            </div>
+                            <span class="field-error" id="regPasswordError" role="alert"></span>
+                        </div>
 
-                    <!-- Nút đăng nhập -->
-                    <div class="d-grid mb-3">
-                        <button type="submit" class="btn btn-primary btn-lg fs-6 fw-semibold py-2" id="btnLoginSubmit">
-                            <i class="bi bi-box-arrow-in-right me-2"></i>Đăng nhập ngay
+                        <!-- 4. Nhập lại mật khẩu * -->
+                        <div class="field-group">
+                            <label class="field-label" for="regConfirmPassword">Nhập lại mật khẩu<span class="req-star">*</span></label>
+                            <div class="input-box" id="regConfirmPasswordBox">
+                                <span class="input-icon" aria-hidden="true">
+                                    <!-- Icon dấu check trong khiên -->
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                        <path d="M9 12l2 2 4-4"></path>
+                                    </svg>
+                                </span>
+                                <input
+                                    type="password"
+                                    class="input-control has-toggle"
+                                    id="regConfirmPassword"
+                                    placeholder="Nhập lại đúng mật khẩu phía trên"
+                                    autocomplete="new-password"
+                                    required
+                                >
+                                <button
+                                    type="button"
+                                    class="password-toggle"
+                                    data-target="regConfirmPassword"
+                                    aria-label="Hiện hoặc ẩn mật khẩu nhập lại"
+                                    aria-pressed="false"
+                                >
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </button>
+                            </div>
+                            <span class="field-error" id="regConfirmPasswordError" role="alert"></span>
+                        </div>
+
+                        <!-- Điều khoản sử dụng -->
+                        <div class="checkbox-group" id="regTermsBox">
+                            <label class="neu-checkbox-label" for="regTerms">
+                                <input type="checkbox" class="neu-checkbox" id="regTerms" required>
+                                <span>Tôi đồng ý với các điều khoản sử dụng và chính sách dữ liệu đề tài NLCNPM23CS-38.</span>
+                            </label>
+                            <span class="field-error" id="regTermsError" role="alert"></span>
+                        </div>
+
+                        <!-- Nút tạo tài khoản -->
+                        <button type="submit" class="primary-btn" id="btnRegisterSubmit">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="8.5" cy="7" r="4"></circle>
+                                <polyline points="17 11 19 13 23 9"></polyline>
+                            </svg>
+                            <span>Tạo tài khoản ngay</span>
                         </button>
-                    </div>
+                    </form>
 
-                    <!-- Chuyển sang đăng ký -->
-                    <div class="text-center pt-2 border-top">
-                        <p class="small text-muted mb-0">Chưa có tài khoản sinh viên? 
-                            <a href="/register" class="fw-semibold text-primary text-decoration-none">Đăng ký tài khoản</a>
-                        </p>
-                    </div>
-                </form>
+                    <div class="panel-divider" role="separator"></div>
+                    <p class="switch-footer">
+                        Đã có tài khoản?
+                        <button type="button" class="switch-link" data-switch="login">Đăng nhập tại đây</button>
+                    </p>
+                </div>
             </div>
-        </div>
+        </section>
+    </main>
 
-        <!-- Hộp gợi ý tài khoản mẫu (1-Click chọn nhanh Sinh viên hoặc Admin) -->
-        <div class="card mt-3 border-0 bg-white shadow-sm p-3 rounded-3 small">
-            <div class="text-center fw-semibold text-dark mb-2">
-                <i class="bi bi-lightbulb-fill text-warning me-1"></i>Chọn nhanh tài khoản dùng thử (Mật khẩu chung: <code>123456</code>):
-            </div>
-            <div class="d-grid gap-2">
-                <button type="button" class="btn btn-outline-danger btn-sm text-start d-flex justify-content-between align-items-center"
-                        onclick="document.getElementById('loginEmail').value='admin@hust.edu.vn'; document.getElementById('loginPassword').value='123456';">
-                    <span><i class="bi bi-shield-lock-fill me-1"></i><strong>Admin 1:</strong> admin@hust.edu.vn</span>
-                    <span class="badge bg-danger-subtle text-danger">Quản trị viên</span>
-                </button>
-                <button type="button" class="btn btn-outline-danger btn-sm text-start d-flex justify-content-between align-items-center"
-                        onclick="document.getElementById('loginEmail').value='long.admin@hust.edu.vn'; document.getElementById('loginPassword').value='123456';">
-                    <span><i class="bi bi-shield-check me-1"></i><strong>Admin 2:</strong> long.admin@hust.edu.vn</span>
-                    <span class="badge bg-danger-subtle text-danger">Quản trị viên</span>
-                </button>
-                <button type="button" class="btn btn-outline-primary btn-sm text-start d-flex justify-content-between align-items-center"
-                        onclick="document.getElementById('loginEmail').value='an.nguyen20@sis.hust.edu.vn'; document.getElementById('loginPassword').value='123456';">
-                    <span><i class="bi bi-mortarboard-fill me-1"></i><strong>Nguyễn Văn An:</strong> an.nguyen20@sis.hust.edu.vn</span>
-                    <span class="badge bg-primary-subtle text-primary">SV Backend</span>
-                </button>
-                <button type="button" class="btn btn-outline-primary btn-sm text-start d-flex justify-content-between align-items-center"
-                        onclick="document.getElementById('loginEmail').value='ngoc.tran21@student.edu.vn'; document.getElementById('loginPassword').value='123456';">
-                    <span><i class="bi bi-mortarboard-fill me-1"></i><strong>Trần Thị Bích Ngọc:</strong> ngoc.tran21@student.edu.vn</span>
-                    <span class="badge bg-info-subtle text-info">SV Frontend</span>
-                </button>
-                <button type="button" class="btn btn-outline-primary btn-sm text-start d-flex justify-content-between align-items-center"
-                        onclick="document.getElementById('loginEmail').value='nam.le21@student.edu.vn'; document.getElementById('loginPassword').value='123456';">
-                    <span><i class="bi bi-mortarboard-fill me-1"></i><strong>Lê Hoàng Nam:</strong> nam.le21@student.edu.vn</span>
-                    <span class="badge bg-success-subtle text-success">SV Data Analyst</span>
-                </button>
-                <button type="button" class="btn btn-outline-primary btn-sm text-start d-flex justify-content-between align-items-center"
-                        onclick="document.getElementById('loginEmail').value='tuan.pham22@student.edu.vn'; document.getElementById('loginPassword').value='123456';">
-                    <span><i class="bi bi-mortarboard-fill me-1"></i><strong>Phạm Minh Tuấn:</strong> tuan.pham22@student.edu.vn</span>
-                    <span class="badge bg-warning-subtle text-dark">SV AI / ML</span>
-                </button>
-            </div>
-        </div>
+    <!-- Thông báo Toast tiếng Việt -->
+    <div class="toast" id="toast" role="status" aria-live="polite">
+        <span class="toast-dot" aria-hidden="true"></span>
+        <span id="toastMessage"></span>
     </div>
-</div>
-{% endblock %}
 
-{% block extra_js %}
-<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
-{% endblock %}
+    <script>
+        (function () {
+            "use strict";
+
+            // =================================================================
+            // 1. TRẠNG THÁI & THAM CHIẾU DOM
+            // =================================================================
+            let currentMode = "{{ initial_mode }}";
+            let isSubmitting = false;
+            let isSwitching = false;
+            let toastTimer = null;
+
+            const htmlEl = document.documentElement;
+            const themeToggleBtn = document.getElementById("themeToggleBtn");
+            const themeIconMoon = document.getElementById("themeIconMoon");
+            const themeIconSun = document.getElementById("themeIconSun");
+
+            const tabSwitcher = document.getElementById("tabSwitcher");
+            const tabLogin = document.getElementById("tabLogin");
+            const tabSignup = document.getElementById("tabSignup");
+            const panelViewport = document.getElementById("panelViewport");
+            const loginPanel = document.getElementById("loginPanel");
+            const signupPanel = document.getElementById("signupPanel");
+
+            const loginForm = document.getElementById("loginForm");
+            const loginEmail = document.getElementById("loginEmail");
+            const loginPassword = document.getElementById("loginPassword");
+            const btnLoginSubmit = document.getElementById("btnLoginSubmit");
+            const forgotPasswordBtn = document.getElementById("forgotPasswordBtn");
+
+            const registerForm = document.getElementById("registerForm");
+            const regFullName = document.getElementById("regFullName");
+            const regEmail = document.getElementById("regEmail");
+            const regPassword = document.getElementById("regPassword");
+            const regConfirmPassword = document.getElementById("regConfirmPassword");
+            const regTerms = document.getElementById("regTerms");
+            const btnRegisterSubmit = document.getElementById("btnRegisterSubmit");
+
+            const toast = document.getElementById("toast");
+            const toastMessage = document.getElementById("toastMessage");
+
+            const LOGIN_BTN_HTML = btnLoginSubmit.innerHTML;
+            const REGISTER_BTN_HTML = btnRegisterSubmit.innerHTML;
+
+            const EYE_OPEN_SVG = `
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>`;
+
+            const EYE_CLOSED_SVG = `
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-6.5 0-10-7-10-7a18.4 18.4 0 0 1 5.06-5.94"></path>
+                    <path d="M9.9 4.24A10.8 10.8 0 0 1 12 4c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19"></path>
+                    <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="2" y1="2" x2="22" y2="22"></line>
+                </svg>`;
+
+            // =================================================================
+            // 2. CHUYỂN ĐỔI SÁNG / TỐI NEUMORPHISM
+            // =================================================================
+            function syncThemeIcon(theme) {
+                const isDark = theme === "dark";
+                themeIconMoon.style.display = isDark ? "none" : "block";
+                themeIconSun.style.display = isDark ? "block" : "none";
+                themeToggleBtn.setAttribute("aria-pressed", String(isDark));
+            }
+
+            syncThemeIcon(htmlEl.getAttribute("data-neumorph-theme") || "light");
+
+            themeToggleBtn.addEventListener("click", () => {
+                const current = htmlEl.getAttribute("data-neumorph-theme") || "light";
+                const next = current === "dark" ? "light" : "dark";
+                htmlEl.setAttribute("data-neumorph-theme", next);
+                try {
+                    localStorage.setItem("neumorph_auth_theme", next);
+                } catch (e) {}
+                syncThemeIcon(next);
+            });
+
+            // =================================================================
+            // 2B. CHUYỂN ĐỔI NGÔN NGỮ VI | EN (ĐỒNG BỘ app_lang)
+            // =================================================================
+            const AUTH_DICT = {
+                'Đăng nhập': 'Login',
+                'Đăng ký': 'Sign Up',
+                'Đăng Nhập Hệ Thống': 'System Sign In',
+                'IT Career Compass — Định hướng Kỹ năng Nghề nghiệp CNTT': 'IT Career Compass — IT Career Skill Guidance',
+                'Địa chỉ Email': 'Email Address',
+                'Mật khẩu': 'Password',
+                'Quên mật khẩu?': 'Forgot Password?',
+                'Ghi nhớ phiên đăng nhập trên thiết bị này': 'Remember me on this device',
+                'Đăng nhập ngay': 'Sign In Now',
+                'Chưa có tài khoản sinh viên?': "Don't have a student account?",
+                'Đăng ký tài khoản': 'Create an account',
+                'Đăng Ký Tài Khoản': 'Create an Account',
+                'Khởi tạo hồ sơ định hướng sự nghiệp CNTT cá nhân': 'Create your personal IT career guidance profile',
+                'Họ và tên sinh viên': 'Student Full Name',
+                'Email trường hoặc cá nhân': 'University or Personal Email',
+                'Mật khẩu bảo mật': 'Password',
+                'Nhập lại mật khẩu': 'Confirm Password',
+                'Tôi đồng ý với các điều khoản sử dụng và chính sách dữ liệu đề tài NLCNPM23CS-38.': 'I agree to the terms of use and data policy of project NLCNPM23CS-38.',
+                'Tạo tài khoản ngay': 'Create Account Now',
+                'Đã có tài khoản?': 'Already have an account?',
+                'Đăng nhập tại đây': 'Sign in here',
+                'Ví dụ: Nguyễn Văn An': 'e.g. Nguyen Van An',
+                'Tối thiểu 6 ký tự': 'At least 6 characters',
+                'Nhập lại đúng mật khẩu phía trên': 'Re-enter your password'
+            };
+
+            const langToggleBtn = document.getElementById("langToggleBtn");
+            const langOptVi = document.getElementById("langOptVi");
+            const langOptEn = document.getElementById("langOptEn");
+
+            function applyAuthLanguage(lang) {
+                const targetLang = lang === "en" ? "en" : "vi";
+                htmlEl.lang = targetLang;
+                try {
+                    localStorage.setItem("app_lang", targetLang);
+                } catch (e) {}
+
+                if (targetLang === "en") {
+                    langOptEn.classList.add("lang-active");
+                    langOptVi.classList.remove("lang-active");
+                } else {
+                    langOptVi.classList.add("lang-active");
+                    langOptEn.classList.remove("lang-active");
+                }
+
+                const walker = document.createTreeWalker(document.querySelector(".auth-card"), NodeFilter.SHOW_TEXT, {
+                    acceptNode: (node) => (node.nodeValue && node.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT)
+                });
+                const nodes = [];
+                while (walker.nextNode()) nodes.push(walker.currentNode);
+
+                nodes.forEach((node) => {
+                    if (targetLang === "en") {
+                        const baseVi = node._origVi !== undefined ? node._origVi : node.nodeValue;
+                        const norm = baseVi.trim().replace(/\s+/g, " ");
+                        if (Object.prototype.hasOwnProperty.call(AUTH_DICT, norm)) {
+                            node._origVi = baseVi;
+                            const lead = (baseVi.match(/^\s*/) || [""])[0];
+                            const trail = (baseVi.match(/\s*$/) || [""])[0];
+                            node.nodeValue = lead + AUTH_DICT[norm] + trail;
+                        }
+                    } else if (node._origVi !== undefined) {
+                        node.nodeValue = node._origVi;
+                    }
+                });
+
+                document.querySelectorAll(".auth-card input[placeholder]").forEach((inp) => {
+                    const orig = inp.dataset.origPlaceholderVi || inp.getAttribute("placeholder");
+                    if (targetLang === "en" && Object.prototype.hasOwnProperty.call(AUTH_DICT, orig)) {
+                        inp.dataset.origPlaceholderVi = orig;
+                        inp.setAttribute("placeholder", AUTH_DICT[orig]);
+                    } else if (targetLang === "vi" && inp.dataset.origPlaceholderVi) {
+                        inp.setAttribute("placeholder", inp.dataset.origPlaceholderVi);
+                    }
+                });
+            }
+
+            applyAuthLanguage((function () {
+                try { return localStorage.getItem("app_lang") || "vi"; } catch (e) { return "vi"; }
+            })());
+
+            langToggleBtn.addEventListener("click", (e) => {
+                const cur = (function () { try { return localStorage.getItem("app_lang") || "vi"; } catch (err) { return "vi"; } })();
+                const opt = e.target.closest("[data-lang]");
+                let next = cur === "vi" ? "en" : "vi";
+                if (opt && opt.dataset.lang && opt.dataset.lang !== cur) {
+                    next = opt.dataset.lang;
+                }
+                applyAuthLanguage(next);
+                showToast(next === "en" ? "Switched language to English (EN)" : "Đã chuyển ngôn ngữ sang Tiếng Việt (VI)");
+            });
+
+            // =================================================================
+            // 3. TIỆN ÍCH THÔNG BÁO TOAST & BÁO LỖI + RUNG NHẸ (SHAKE)
+            // =================================================================
+            function showToast(message, variant = "info") {
+                clearTimeout(toastTimer);
+                toastMessage.textContent = message;
+                toast.classList.remove("is-success", "is-error");
+                if (variant === "success") toast.classList.add("is-success");
+                if (variant === "error") toast.classList.add("is-error");
+                toast.classList.add("is-visible");
+                toastTimer = setTimeout(() => {
+                    toast.classList.remove("is-visible");
+                }, 3200);
+            }
+
+            function triggerShake(el) {
+                if (!el) return;
+                el.classList.remove("shake");
+                void el.offsetWidth;
+                el.classList.add("shake");
+            }
+
+            function setFieldError(prefix, message) {
+                const box = document.getElementById(prefix + "Box");
+                const errorEl = document.getElementById(prefix + "Error");
+                if (!errorEl) return;
+
+                if (message) {
+                    errorEl.textContent = message;
+                    errorEl.classList.add("is-visible");
+                    if (box) {
+                        box.classList.add("is-invalid");
+                        triggerShake(box);
+                    }
+                    if (prefix === "regTerms") {
+                        regTerms.classList.add("is-invalid");
+                    }
+                } else {
+                    errorEl.textContent = "";
+                    errorEl.classList.remove("is-visible");
+                    if (box) box.classList.remove("is-invalid", "shake");
+                    if (prefix === "regTerms") {
+                        regTerms.classList.remove("is-invalid");
+                    }
+                }
+            }
+
+            function clearAllErrors() {
+                ["loginEmail", "loginPassword", "regFullName", "regEmail", "regPassword", "regConfirmPassword", "regTerms"]
+                    .forEach((id) => setFieldError(id, ""));
+            }
+
+            // =================================================================
+            // 4. CHUYỂN TAB ĐĂNG NHẬP <-> ĐĂNG KÝ KHÔNG RELOAD (FADE + SLIDE)
+            // =================================================================
+            function switchMode(nextMode) {
+                if (nextMode === currentMode || isSubmitting || isSwitching) return;
+                isSwitching = true;
+
+                const isSignup = nextMode === "signup";
+                const outgoing = currentMode === "signup" ? signupPanel : loginPanel;
+                const incoming = isSignup ? signupPanel : loginPanel;
+                currentMode = nextMode;
+
+                clearAllErrors();
+                tabSwitcher.setAttribute("data-active", nextMode);
+                tabLogin.setAttribute("aria-selected", String(!isSignup));
+                tabSignup.setAttribute("aria-selected", String(isSignup));
+
+                // Khóa chiều cao hiện tại để card co giãn mượt mà
+                const startHeight = outgoing.offsetHeight + 36;
+                panelViewport.style.height = startHeight + "px";
+
+                outgoing.classList.add("is-fading-out");
+
+                setTimeout(() => {
+                    outgoing.classList.add("is-hidden");
+                    outgoing.classList.remove("is-fading-out");
+
+                    incoming.classList.add("is-entering");
+                    incoming.classList.remove("is-hidden");
+
+                    const targetHeight = incoming.offsetHeight + 36;
+                    panelViewport.style.height = targetHeight + "px";
+
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            incoming.classList.remove("is-entering");
+                        });
+                    });
+
+                    setTimeout(() => {
+                        panelViewport.style.height = "auto";
+                        isSwitching = false;
+                    }, 300);
+                }, 140);
+            }
+
+            tabLogin.addEventListener("click", () => switchMode("login"));
+            tabSignup.addEventListener("click", () => switchMode("signup"));
+            document.querySelectorAll("[data-switch]").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    switchMode(btn.getAttribute("data-switch"));
+                });
+            });
+
+            // =================================================================
+            // 5. BẬT / TẮT HIỂN THỊ MẬT KHẨU (CON MẮT SVG)
+            // =================================================================
+            document.querySelectorAll(".password-toggle").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const targetId = btn.getAttribute("data-target");
+                    const input = document.getElementById(targetId);
+                    if (!input) return;
+
+                    const show = input.type === "password";
+                    input.type = show ? "text" : "password";
+                    btn.innerHTML = show ? EYE_CLOSED_SVG : EYE_OPEN_SVG;
+                    btn.setAttribute("aria-pressed", String(show));
+                    btn.setAttribute("aria-label", show ? "Ẩn mật khẩu" : "Hiện mật khẩu");
+                });
+            });
+
+            // Xóa thông báo lỗi ngay khi người dùng nhập lại
+            [
+                ["loginEmail", loginEmail],
+                ["loginPassword", loginPassword],
+                ["regFullName", regFullName],
+                ["regEmail", regEmail],
+                ["regPassword", regPassword],
+                ["regConfirmPassword", regConfirmPassword]
+            ].forEach(([prefix, el]) => {
+                el.addEventListener("input", () => setFieldError(prefix, ""));
+            });
+            regTerms.addEventListener("change", () => setFieldError("regTerms", ""));
+
+            // =================================================================
+            // 6. QUÊN MẬT KHẨU
+            // =================================================================
+            forgotPasswordBtn.addEventListener("click", () => {
+                showToast("Vui lòng liên hệ quản trị viên để được cấp lại mật khẩu!");
+            });
+
+            // =================================================================
+            // 7. XỬ LÝ ĐĂNG NHẬP (/api/auth/login)
+            // =================================================================
+            const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            loginForm.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                if (isSubmitting) return;
+                clearAllErrors();
+
+                const email = loginEmail.value.trim();
+                const password = loginPassword.value;
+                let firstInvalid = null;
+
+                if (!EMAIL_REGEX.test(email)) {
+                    setFieldError("loginEmail", "Vui lòng nhập định dạng email hợp lệ (vd: an@domain.com).");
+                    firstInvalid = firstInvalid || loginEmail;
+                }
+                if (password.length < 6) {
+                    setFieldError("loginPassword", "Mật khẩu phải có ít nhất 6 ký tự!");
+                    firstInvalid = firstInvalid || loginPassword;
+                }
+
+                if (firstInvalid) {
+                    firstInvalid.focus();
+                    return;
+                }
+
+                isSubmitting = true;
+                btnLoginSubmit.disabled = true;
+                btnLoginSubmit.innerHTML = '<span class="spinner" aria-hidden="true"></span><span>Đang xử lý...</span>';
+
+                const minDelay = new Promise((resolve) => setTimeout(resolve, 1200));
+
+                try {
+                    const [response] = await Promise.all([
+                        fetch("/api/auth/login", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Accept": "application/json"
+                            },
+                            body: JSON.stringify({ email, password })
+                        }),
+                        minDelay
+                    ]);
+
+                    const result = await response.json().catch(() => ({
+                        success: false,
+                        message: "Lỗi phân tích phản hồi máy chủ!"
+                    }));
+
+                    if (!response.ok || !result.success || !result.data) {
+                        const msg = result.message || "Email hoặc mật khẩu không chính xác!";
+                        setFieldError("loginPassword", msg);
+                        showToast(msg, "error");
+                        isSubmitting = false;
+                        btnLoginSubmit.disabled = false;
+                        btnLoginSubmit.innerHTML = LOGIN_BTN_HTML;
+                        applyAuthLanguage(htmlEl.lang || "vi");
+                        return;
+                    }
+
+                    // Lưu phiên vào localStorage đồng bộ với config.js & utils.js
+                    localStorage.setItem("it_career_user", JSON.stringify(result.data));
+                    localStorage.setItem("it_career_token", result.data.token || ("user_" + (result.data.id || 1)));
+
+                    btnLoginSubmit.classList.add("is-success");
+                    btnLoginSubmit.innerHTML = "<span>&#10003; Đăng nhập thành công</span>";
+                    showToast(result.message || "Đăng nhập thành công! Đang chuyển hướng...", "success");
+
+                    setTimeout(() => {
+                        window.location.href = "/profile";
+                    }, 750);
+                } catch (err) {
+                    showToast("Lỗi kết nối máy chủ khi đăng nhập!", "error");
+                    isSubmitting = false;
+                    btnLoginSubmit.disabled = false;
+                    btnLoginSubmit.innerHTML = LOGIN_BTN_HTML;
+                    applyAuthLanguage(htmlEl.lang || "vi");
+                }
+            });
+
+            // =================================================================
+            // 8. XỬ LÝ ĐĂNG KÝ (/api/auth/register)
+            // =================================================================
+            registerForm.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                if (isSubmitting) return;
+                clearAllErrors();
+
+                const fullName = regFullName.value.trim();
+                const email = regEmail.value.trim();
+                const password = regPassword.value;
+                const confirm = regConfirmPassword.value;
+                let firstInvalid = null;
+
+                if (fullName.length < 2) {
+                    setFieldError("regFullName", "Vui lòng nhập họ và tên sinh viên.");
+                    firstInvalid = firstInvalid || regFullName;
+                }
+                if (!EMAIL_REGEX.test(email)) {
+                    setFieldError("regEmail", "Email không đúng định dạng!");
+                    firstInvalid = firstInvalid || regEmail;
+                }
+                if (password.length < 6) {
+                    setFieldError("regPassword", "Mật khẩu phải chứa ít nhất 6 ký tự.");
+                    firstInvalid = firstInvalid || regPassword;
+                }
+                if (!confirm || confirm !== password) {
+                    setFieldError("regConfirmPassword", "Mật khẩu nhập lại không khớp!");
+                    firstInvalid = firstInvalid || regConfirmPassword;
+                }
+                if (!regTerms.checked) {
+                    setFieldError("regTerms", "Bạn cần đồng ý với điều khoản sử dụng.");
+                    firstInvalid = firstInvalid || regTerms;
+                }
+
+                if (firstInvalid) {
+                    firstInvalid.focus();
+                    return;
+                }
+
+                isSubmitting = true;
+                btnRegisterSubmit.disabled = true;
+                btnRegisterSubmit.innerHTML = '<span class="spinner" aria-hidden="true"></span><span>Đang tạo tài khoản...</span>';
+
+                const minDelay = new Promise((resolve) => setTimeout(resolve, 1200));
+
+                try {
+                    const [response] = await Promise.all([
+                        fetch("/api/auth/register", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Accept": "application/json"
+                            },
+                            body: JSON.stringify({
+                                full_name: fullName,
+                                email: email,
+                                password: password
+                            })
+                        }),
+                        minDelay
+                    ]);
+
+                    const result = await response.json().catch(() => ({
+                        success: false,
+                        message: "Lỗi phân tích phản hồi máy chủ!"
+                    }));
+
+                    if (!response.ok || !result.success || !result.data) {
+                        const msg = result.message || "Đăng ký thất bại, vui lòng thử lại.";
+                        setFieldError("regEmail", msg);
+                        showToast(msg, "error");
+                        isSubmitting = false;
+                        btnRegisterSubmit.disabled = false;
+                        btnRegisterSubmit.innerHTML = REGISTER_BTN_HTML;
+                        applyAuthLanguage(htmlEl.lang || "vi");
+                        return;
+                    }
+
+                    localStorage.setItem("it_career_user", JSON.stringify(result.data));
+                    localStorage.setItem("it_career_token", result.data.token || ("user_" + (result.data.id || 1)));
+
+                    btnRegisterSubmit.classList.add("is-success");
+                    btnRegisterSubmit.innerHTML = "<span>&#10003; Tạo tài khoản thành công</span>";
+                    showToast("Tạo tài khoản thành công! Đang chuyển đến hồ sơ...", "success");
+
+                    setTimeout(() => {
+                        window.location.href = "/profile";
+                    }, 750);
+                } catch (err) {
+                    showToast("Lỗi kết nối máy chủ khi đăng ký tài khoản!", "error");
+                    isSubmitting = false;
+                    btnRegisterSubmit.disabled = false;
+                    btnRegisterSubmit.innerHTML = REGISTER_BTN_HTML;
+                    applyAuthLanguage(htmlEl.lang || "vi");
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
