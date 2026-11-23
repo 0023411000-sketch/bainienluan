@@ -1037,6 +1037,103 @@ a:hover {
 }
 
 /* ==========================================================================
+   NIGHT SKY ASTROPHOTOGRAPHY BACKGROUND (DARK MODE ONLY)
+   ========================================================================== */
+.night-sky-bg-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.45s ease, visibility 0.45s ease;
+}
+
+[data-theme="light"] .night-sky-bg-canvas {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    display: none !important;
+}
+
+html[data-theme="dark"] {
+    background-color: #020811;
+}
+
+[data-theme="dark"] .night-sky-bg-canvas {
+    opacity: 1;
+    visibility: visible;
+}
+
+[data-theme="dark"] body {
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] .app-container {
+    position: relative;
+}
+
+[data-theme="dark"] .app-container,
+[data-theme="dark"] .app-viewport,
+[data-theme="dark"] .app-content {
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] .app-sidebar {
+    background-color: rgba(5, 16, 29, 0.76);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-right-color: rgba(148, 197, 232, 0.14);
+}
+
+[data-theme="dark"] .app-header.navbar {
+    background-color: rgba(5, 16, 29, 0.74) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom-color: rgba(148, 197, 232, 0.14);
+}
+
+[data-theme="dark"] .card,
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .bg-white:not(.badge),
+[data-theme="dark"] .bg-light:not(.badge),
+[data-theme="dark"] .bg-light-subtle:not(.badge) {
+    background-color: rgba(8, 20, 36, 0.66) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-color: rgba(148, 197, 232, 0.16) !important;
+}
+
+[data-theme="dark"] .card-header,
+[data-theme="dark"] .card-footer {
+    background-color: rgba(6, 16, 29, 0.66) !important;
+    border-color: rgba(148, 197, 232, 0.12) !important;
+}
+
+[data-theme="dark"] .list-group-item {
+    background-color: transparent !important;
+    border-color: rgba(148, 197, 232, 0.12) !important;
+}
+
+[data-theme="dark"] .table td {
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] .table th,
+[data-theme="dark"] .table-light th,
+[data-theme="dark"] .table-light td {
+    background-color: rgba(8, 20, 35, 0.78) !important;
+}
+
+[data-theme="dark"] .footer {
+    background-color: rgba(5, 16, 29, 0.62) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top-color: rgba(148, 197, 232, 0.12) !important;
+}
+
+/* ==========================================================================
    FOOTER (DARK ELEGANT)
    ========================================================================== */
 .footer {
@@ -1324,7 +1421,8 @@ pre {
     color: var(--text-body) !important;
 }
 
-[data-theme="light"] .app-viewport {
+[data-theme="light"] .app-viewport,
+[data-theme="light"] .app-content {
     background-color: var(--bg-main) !important;
 }
 

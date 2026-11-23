@@ -68,29 +68,68 @@
             --ease-smooth: 0.22s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
-        /* Biến thể Dark Neumorphism */
+        /* Biến thể Dark Neumorphism trên nền công nghệ Navy sâu */
         [data-neumorph-theme="dark"] {
-            --bg-base: #1f232e;
-            --bg-pill-active: #262b38;
+            --bg-base: #0b1428;
+            --bg-pill-active: #122140;
 
-            --text-primary: #edf1f8;
-            --text-secondary: #98a1b8;
-            --text-placeholder: #646d85;
-            --icon-muted: #848da6;
+            --text-primary: #edf4ff;
+            --text-secondary: #8ea5c9;
+            --text-placeholder: #5a7094;
+            --icon-muted: #7c97c2;
 
-            --shadow-card: 14px 14px 30px #151820, -14px -14px 30px #292e3c;
-            --shadow-raised: 6px 6px 14px #151820, -6px -6px 14px #292e3c;
-            --shadow-raised-hover: 8px 8px 18px #12151c, -8px -8px 18px #2c3140;
-            --shadow-badge-icon: 8px 8px 16px #151820, -8px -8px 16px #292e3c;
-            --shadow-inset: inset 5px 5px 10px #151820, inset -5px -5px 10px #292e3c;
-            --shadow-inset-deep: inset 6px 6px 12px #13161d, inset -6px -6px 12px #2b303f;
-            --shadow-inset-sm: inset 3px 3px 6px #151820, inset -3px -3px 6px #292e3c;
+            --accent-start: #22d3ee;
+            --accent-end: #2563eb;
 
-            --shadow-btn-accent: 0 10px 22px -6px rgba(74, 123, 232, 0.48), 4px 4px 10px #151820, -4px -4px 10px #292e3c;
-            --shadow-btn-accent-hover: 0 14px 26px -6px rgba(74, 123, 232, 0.62), 6px 6px 14px #151820, -6px -6px 14px #292e3c;
+            --shadow-card: 0 24px 60px rgba(0, 4, 16, 0.78), 0 0 38px rgba(0, 212, 255, 0.12), inset 1px 1px 0 rgba(125, 211, 252, 0.14);
+            --shadow-raised: 6px 6px 14px rgba(3, 8, 20, 0.75), -5px -5px 12px rgba(30, 58, 108, 0.28);
+            --shadow-raised-hover: 8px 8px 18px rgba(2, 6, 16, 0.85), -6px -6px 14px rgba(38, 76, 138, 0.36);
+            --shadow-badge-icon: 8px 8px 16px rgba(3, 8, 20, 0.75), -6px -6px 14px rgba(34, 68, 124, 0.3);
+            --shadow-inset: inset 5px 5px 10px rgba(3, 8, 20, 0.82), inset -4px -4px 9px rgba(32, 62, 114, 0.26);
+            --shadow-inset-deep: inset 6px 6px 12px rgba(2, 6, 16, 0.9), inset -5px -5px 10px rgba(38, 76, 138, 0.32);
+            --shadow-inset-sm: inset 3px 3px 6px rgba(3, 8, 20, 0.82), inset -3px -3px 6px rgba(32, 62, 114, 0.26);
 
-            --divider-shadow-dark: rgba(15, 18, 25, 0.75);
-            --divider-shadow-light: rgba(255, 255, 255, 0.08);
+            --shadow-btn-accent: 0 10px 24px -6px rgba(0, 180, 255, 0.45), 4px 4px 12px rgba(2, 6, 16, 0.7);
+            --shadow-btn-accent-hover: 0 14px 30px -6px rgba(0, 212, 255, 0.62), 6px 6px 16px rgba(2, 6, 16, 0.8);
+
+            --focus-ring: 0 0 0 3px rgba(34, 211, 238, 0.32);
+            --divider-shadow-dark: rgba(2, 6, 16, 0.8);
+            --divider-shadow-light: rgba(125, 211, 252, 0.12);
+        }
+
+        [data-neumorph-theme="dark"] body {
+            background-color: #040a18;
+        }
+
+        /* Canvas nền công nghệ chấm sáng Cyan / Electric Blue — chỉ hiển thị ở Dark Mode */
+        .dark-tech-bg-canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.45s ease, visibility 0.45s ease;
+        }
+
+        [data-neumorph-theme="dark"] .dark-tech-bg-canvas {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        [data-neumorph-theme="dark"] .auth-card {
+            background-color: rgba(11, 20, 40, 0.84);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        [data-neumorph-theme="dark"] .lang-toggle-btn,
+        [data-neumorph-theme="dark"] .theme-toggle-btn {
+            background-color: rgba(11, 20, 40, 0.84);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
 
         /* =====================================================================
@@ -216,6 +255,8 @@
         }
 
         .auth-stage {
+            position: relative;
+            z-index: 2;
             width: 100%;
             max-width: 420px;
             display: flex;
@@ -821,6 +862,9 @@
     </style>
 </head>
 <body>
+    <!-- Nền công nghệ chấm sáng Cyan / Electric Blue (chỉ bật khi ở giao diện Tối) -->
+    <canvas id="darkTechBgCanvas" class="dark-tech-bg-canvas" aria-hidden="true"></canvas>
+
     <!-- Cụm nút nhỏ góc trên phải: Ngôn ngữ VI | EN & Sáng / Tối Neumorphism -->
     <div class="top-right-tools">
         <button
@@ -1217,13 +1261,243 @@
                 </svg>`;
 
             // =================================================================
-            // 2. CHUYỂN ĐỔI SÁNG / TỐI NEUMORPHISM
+            // 2. CHUYỂN ĐỔI SÁNG / TỐI NEUMORPHISM & NỀN CÔNG NGHỆ DARK MODE
             // =================================================================
+            const DarkTechGridBg = (function () {
+                const canvas = document.getElementById("darkTechBgCanvas");
+                if (!canvas || !canvas.getContext) {
+                    return { start() {}, stop() {} };
+                }
+                const ctx = canvas.getContext("2d", { alpha: false });
+                const LOOP_SECONDS = 12;
+                const TWO_PI = Math.PI * 2;
+                const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+                let rafId = null;
+                let running = false;
+                let width = 0;
+                let height = 0;
+                let dpr = 1;
+                let dots = [];
+                let startTime = 0;
+                let bgGradient = null;
+
+                // Tạo trước 3 sprite phát sáng mềm (cyan, electric blue, bokeh chiều sâu)
+                function createGlowSprite(size, innerColor, midColor, outerColor) {
+                    const off = document.createElement("canvas");
+                    off.width = size;
+                    off.height = size;
+                    const octx = off.getContext("2d");
+                    const half = size / 2;
+                    const g = octx.createRadialGradient(half, half, 0, half, half, half);
+                    g.addColorStop(0, innerColor);
+                    g.addColorStop(0.22, midColor);
+                    g.addColorStop(0.55, outerColor);
+                    g.addColorStop(1, "rgba(0, 0, 0, 0)");
+                    octx.fillStyle = g;
+                    octx.fillRect(0, 0, size, size);
+                    return off;
+                }
+
+                const spriteCyan = createGlowSprite(
+                    64,
+                    "rgba(224, 254, 255, 1)",
+                    "rgba(0, 240, 255, 0.85)",
+                    "rgba(0, 195, 255, 0.16)"
+                );
+                const spriteBlue = createGlowSprite(
+                    64,
+                    "rgba(205, 236, 255, 1)",
+                    "rgba(37, 150, 255, 0.85)",
+                    "rgba(18, 92, 255, 0.16)"
+                );
+                const spriteBokeh = createGlowSprite(
+                    96,
+                    "rgba(120, 235, 255, 0.55)",
+                    "rgba(24, 145, 255, 0.28)",
+                    "rgba(10, 75, 220, 0.04)"
+                );
+
+                // Bộ sinh số giả ngẫu nhiên ổn định theo tọa độ lưới
+                function hash2D(c, r, seed) {
+                    const n = Math.sin(c * 127.1 + r * 311.7 + seed * 74.7) * 43758.5453123;
+                    return n - Math.floor(n);
+                }
+
+                function buildGrid() {
+                    dpr = Math.min(window.devicePixelRatio || 1, 2);
+                    width = window.innerWidth;
+                    height = window.innerHeight;
+                    canvas.width = Math.floor(width * dpr);
+                    canvas.height = Math.floor(height * dpr);
+                    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+                    // Nền xanh Navy sâu thẳm có chiều sâu nhẹ ở tâm
+                    bgGradient = ctx.createRadialGradient(
+                        width * 0.5,
+                        height * 0.45,
+                        Math.min(width, height) * 0.05,
+                        width * 0.5,
+                        height * 0.5,
+                        Math.max(width, height) * 0.78
+                    );
+                    bgGradient.addColorStop(0, "#081936");
+                    bgGradient.addColorStop(0.55, "#051025");
+                    bgGradient.addColorStop(1, "#020713");
+
+                    // Lưới chấm tròn đồng đều phủ toàn màn hình (camera tĩnh)
+                    const spacing = width < 640 ? 26 : 30;
+                    const cols = Math.ceil(width / spacing) + 1;
+                    const rows = Math.ceil(height / spacing) + 1;
+                    const offsetX = (width - (cols - 1) * spacing) * 0.5;
+                    const offsetY = (height - (rows - 1) * spacing) * 0.5;
+
+                    dots = [];
+                    const cx = width * 0.5;
+                    const cy = height * 0.5;
+                    const maxDist = Math.hypot(cx, cy) || 1;
+
+                    for (let r = 0; r < rows; r++) {
+                        for (let c = 0; c < cols; c++) {
+                            const x = offsetX + c * spacing;
+                            const y = offsetY + r * spacing;
+
+                            // Độ sâu trường ảnh nhẹ (outer edge hơi mờ mềm hơn)
+                            const edgeFactor = Math.hypot(x - cx, y - cy) / maxDist;
+                            const h1 = hash2D(c, r, 1);
+                            const h2 = hash2D(c, r, 2);
+                            const h3 = hash2D(c, r, 3);
+                            const h4 = hash2D(c, r, 4);
+                            const h5 = hash2D(c, r, 5);
+
+                            // Tần số nguyên (1..5 chu kỳ / 12s) đảm bảo vòng lặp mượt tuyệt đối (seamless loop)
+                            const freq1 = 1 + Math.floor(h1 * 3);
+                            const freq2 = 2 + Math.floor(h2 * 4);
+
+                            dots.push({
+                                x,
+                                y,
+                                nx: x / (width || 1),
+                                ny: y / (height || 1),
+                                freq1,
+                                freq2,
+                                phase1: h3 * TWO_PI,
+                                phase2: h4 * TWO_PI,
+                                isCyan: h5 > 0.44,
+                                baseSize: 1.45 + h1 * 1.15,
+                                pulseAmp: 0.75 + h2 * 1.45,
+                                baseAlpha: 0.16 + h3 * 0.24,
+                                depthBlur: edgeFactor > 0.72 && h4 > 0.55
+                            });
+                        }
+                    }
+                }
+
+                function drawFrame(nowMs) {
+                    if (!startTime) startTime = nowMs;
+                    const elapsedSec = ((nowMs - startTime) * 0.001) % LOOP_SECONDS;
+                    const loopAngle = (elapsedSec / LOOP_SECONDS) * TWO_PI;
+
+                    ctx.globalCompositeOperation = "source-over";
+                    ctx.globalAlpha = 1;
+                    ctx.fillStyle = bgGradient;
+                    ctx.fillRect(0, 0, width, height);
+
+                    // Chế độ cộng sáng mềm (lighter) cho hiệu ứng phát sáng high-tech
+                    ctx.globalCompositeOperation = "lighter";
+
+                    for (let i = 0; i < dots.length; i++) {
+                        const d = dots[i];
+
+                        // Nhấp nháy và co giãn độc lập từng điểm dữ liệu / vì sao
+                        const twinkleA = 0.5 + 0.5 * Math.sin(loopAngle * d.freq1 + d.phase1);
+                        const twinkleB = 0.5 + 0.5 * Math.sin(loopAngle * d.freq2 + d.phase2);
+                        const twinkle = twinkleA * 0.65 + twinkleB * 0.35;
+                        const sparkle = Math.pow(twinkleA * twinkleB, 3);
+
+                        // Sóng ánh sáng lấp lánh bất quy tắc quét ngang qua lưới
+                        const wave1 = Math.sin(
+                            d.nx * 7.2 + d.ny * 4.1 - loopAngle * 1 + Math.sin(d.ny * 5.0 + loopAngle) * 0.85
+                        );
+                        const wave2 = Math.sin(
+                            d.nx * -5.4 + d.ny * 6.8 + loopAngle * 2 + Math.cos(d.nx * 4.5 - loopAngle) * 0.7
+                        );
+                        const waveBoost =
+                            Math.pow(Math.max(0, wave1), 3) * 0.62 +
+                            Math.pow(Math.max(0, wave2), 4) * 0.42;
+
+                        const brightness = Math.min(
+                            1,
+                            d.baseAlpha + twinkle * 0.42 + sparkle * 0.55 + waveBoost * 0.65
+                        );
+                        const radius = d.baseSize + (twinkle * 0.65 + waveBoost * 0.75 + sparkle * 0.85) * d.pulseAmp;
+
+                        // Vẽ quầng sáng chiều sâu nhẹ (slight depth of field)
+                        if (d.depthBlur) {
+                            const bokehSize = radius * 7.2;
+                            ctx.globalAlpha = brightness * 0.58;
+                            ctx.drawImage(spriteBokeh, d.x - bokehSize * 0.5, d.y - bokehSize * 0.5, bokehSize, bokehSize);
+                        } else {
+                            const glowSize = radius * (4.4 + waveBoost * 1.8 + sparkle * 1.4);
+                            ctx.globalAlpha = brightness;
+                            const sprite = (d.isCyan || waveBoost > 0.38) ? spriteCyan : spriteBlue;
+                            ctx.drawImage(sprite, d.x - glowSize * 0.5, d.y - glowSize * 0.5, glowSize, glowSize);
+                        }
+                    }
+
+                    ctx.globalAlpha = 1;
+                    ctx.globalCompositeOperation = "source-over";
+                }
+
+                function tick(nowMs) {
+                    if (!running) return;
+                    drawFrame(nowMs);
+                    rafId = window.requestAnimationFrame(tick);
+                }
+
+                let resizeTimer = null;
+                window.addEventListener("resize", () => {
+                    clearTimeout(resizeTimer);
+                    resizeTimer = setTimeout(() => {
+                        buildGrid();
+                        if (running && reducedMotion) {
+                            drawFrame(performance.now());
+                        }
+                    }, 120);
+                });
+
+                return {
+                    start() {
+                        if (running) return;
+                        running = true;
+                        buildGrid();
+                        startTime = 0;
+                        if (reducedMotion) {
+                            drawFrame(performance.now());
+                        } else {
+                            rafId = window.requestAnimationFrame(tick);
+                        }
+                    },
+                    stop() {
+                        running = false;
+                        if (rafId !== null) {
+                            window.cancelAnimationFrame(rafId);
+                            rafId = null;
+                        }
+                    }
+                };
+            })();
+
             function syncThemeIcon(theme) {
                 const isDark = theme === "dark";
                 themeIconMoon.style.display = isDark ? "none" : "block";
                 themeIconSun.style.display = isDark ? "block" : "none";
                 themeToggleBtn.setAttribute("aria-pressed", String(isDark));
+                if (isDark) {
+                    DarkTechGridBg.start();
+                } else {
+                    DarkTechGridBg.stop();
+                }
             }
 
             syncThemeIcon(htmlEl.getAttribute("data-neumorph-theme") || "light");
