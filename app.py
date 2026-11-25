@@ -73,7 +73,7 @@ def is_current_user_admin():
 
 # Các đường dẫn không yêu cầu đăng nhập
 PUBLIC_PAGES = {"/login", "/register"}
-PUBLIC_APIS = {"/api/auth/login", "/api/auth/register", "/api/auth/logout", "/api/chatbot"}
+PUBLIC_APIS = {"/api/auth/login", "/api/auth/register", "/api/auth/logout", "/api/chatbot", "/api/chatbot/history"}
 
 
 @app.before_request
@@ -273,6 +273,7 @@ def api_login():
 
     session["user_id"] = user["id"]
     session.pop("guest_chat_count", None)
+    session.pop("guest_chat_history", None)
     user_data = {
         "id": user["id"],
         "full_name": user["full_name"],
@@ -288,6 +289,7 @@ def api_login():
 def api_logout():
     session.pop("user_id", None)
     session.pop("guest_chat_count", None)
+    session.pop("guest_chat_history", None)
     return api_response(True, None, "Đã đăng xuất thành công!")
 
 
@@ -1995,44 +1997,427 @@ def api_delete_plan(plan_id):
 # ĐIỀN API KEY GEMINI CỦA BẠN VÀO ĐÂY (hoặc đặt biến môi trường GEMINI_API_KEY):
 CHATBOT_GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 CHATBOT_GEMINI_MODEL = "gemini-2.5-flash"
+CHATBOT_MAX_SAVED_MESSAGES = 60
+
+
+def _ensure_chat_messages_table(conn):
+    """Đảm bảo bảng chat_messages luôn tồn tại ngay cả trên file database.db cũ."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+    """)
+
+
+def _load_user_chat_history(user_id, limit=40):
+    """Đọc lịch sử hội thoại của người dùng đã đăng nhập từ SQLite."""
+    if not user_id:
+        return []
+    conn = get_db_connection()
+    try:
+        _ensure_chat_messages_table(conn)
+        rows = conn.execute(
+            """
+            SELECT role, content FROM (
+                SELECT id, role, content FROM chat_messages
+                WHERE user_id = ?
+                ORDER BY id DESC
+                LIMIT ?
+            ) ORDER BY id ASC
+            """,
+            (user_id, limit),
+        ).fetchall()
+        return [{"role": r["role"], "content": r["content"]} for r in rows]
+    finally:
+        conn.close()
+
+
+def _save_user_chat_turn(user_id, user_message, bot_reply):
+    """Lưu cặp câu hỏi - câu trả lời vào SQLite để giữ nguyên hội thoại khi chuyển tab/trang."""
+    if not user_id or not user_message or not bot_reply:
+        return
+    conn = get_db_connection()
+    try:
+        _ensure_chat_messages_table(conn)
+        conn.execute(
+            "INSERT INTO chat_messages (user_id, role, content) VALUES (?, 'user', ?)",
+            (user_id, user_message),
+        )
+        conn.execute(
+            "INSERT INTO chat_messages (user_id, role, content) VALUES (?, 'assistant', ?)",
+            (user_id, bot_reply),
+        )
+        conn.execute(
+            """
+            DELETE FROM chat_messages
+            WHERE user_id = ? AND id NOT IN (
+                SELECT id FROM chat_messages WHERE user_id = ? ORDER BY id DESC LIMIT ?
+            )
+            """,
+            (user_id, user_id, CHATBOT_MAX_SAVED_MESSAGES),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _normalize_history(history, max_items=8):
+    """Chuẩn hóa danh sách lịch sử hội thoại theo thứ tự luân phiên user/assistant sạch sẽ."""
+    cleaned = []
+    for h in (history or []):
+        if not isinstance(h, dict):
+            continue
+        raw_role = str(h.get("role") or "").strip().lower()
+        role = "user" if raw_role == "user" else "assistant"
+        content = (h.get("content") or "").strip()
+        if not content:
+            continue
+        if cleaned and cleaned[-1]["role"] == role:
+            if cleaned[-1]["content"] != content:
+                cleaned[-1]["content"] += "\n" + content
+        else:
+            cleaned.append({"role": role, "content": content})
+    return cleaned[-max_items:]
+
+
+def _build_chatbot_system_prompt(website_context, is_guest=False):
+    """Xây dựng System Prompt tự nhiên, mạch lạc, nghiêm cấm lặp từ và lặp lại câu trả lời cũ."""
+    if is_guest:
+        return (
+            "Bạn là Trợ lý AI của website IT Career Compass.\n"
+            f"{website_context}\n\n"
+            "QUY TẮC TRẢ LỜI:\n"
+            "- Xưng 'mình' và gọi người dùng là 'bạn', giọng điệu tự nhiên, thân thiện.\n"
+            "- Trả lời thật ngắn gọn trong 1-2 câu (dưới 50 từ) bằng tiếng Việt, không lặp từ, không liệt kê dài dòng."
+        )
+    return (
+        "Bạn là Trợ lý AI Định hướng Nghề nghiệp CNTT của website IT Career Compass (Đề tài NLCNPM23CS-38).\n"
+        "Hãy đóng vai một cố vấn nghề nghiệp (Career Mentor) gần gũi, thông minh và thực tế; xưng 'mình' và gọi người dùng là 'bạn'.\n\n"
+        "QUY TẮC DIỄN ĐẠT TỰ NHIÊN & CHỐNG LẶP TỪ (BẮT BUỘC TUÂN THỦ):\n"
+        "1. Đi thẳng vào trọng tâm câu hỏi ngay từ câu đầu tiên. KHÔNG mở bài rập khuôn hay nhắc lại nguyên văn câu hỏi của người dùng (tránh kiểu 'Để đánh giá hồ sơ hiện tại của bạn..., chúng ta cần xem xét...').\n"
+        "2. Viết tiếng Việt tự nhiên, trôi chảy, đa dạng từ ngữ: KHÔNG lặp lại cùng một kỹ năng nhiều lần trong một câu, KHÔNG lặp đi lặp lại các từ nối hoặc cụm từ (như 'Tuy nhiên...', 'Ngoài ra...', 'nền tảng vững chắc...', 'cần phải...').\n"
+        "3. Trong hội thoại nhiều lượt, TUYỆT ĐỐI KHÔNG chép lại hoặc tóm tắt lại nội dung mình vừa trả lời ở lượt trước; chỉ trả lời trực tiếp ý mới mà người dùng đang hỏi.\n"
+        "4. Bám sát 100% dữ liệu thực tế bên dưới. Nếu người dùng hỏi hồ sơ phù hợp vị trí nào, hãy nêu rõ Top vị trí đạt tỷ lệ phù hợp cao nhất trong 8 vị trí, đồng thời nhận xét ngắn gọn về vị trí mục tiêu hiện tại của bạn ấy.\n"
+        "5. Trình bày gọn gàng bằng Markdown (in đậm từ khóa chính, gạch đầu dòng ngắn gọn dễ đọc), độ dài vừa phải (khoảng 100 - 250 từ), luôn kết thúc câu trọn vẹn.\n\n"
+        f"{website_context}"
+    )
+
+
+def _polish_bot_reply(reply, history=None):
+    """Hậu xử lý câu trả lời AI: loại bỏ tiền tố thừa, cắt bỏ đoạn lặp từ lượt trước, khử câu trùng lặp và tránh cụt câu."""
+    import re
+
+    if not reply:
+        return ""
+
+    text = str(reply).strip()
+    # 1. Xóa tiền tố vai trò nếu mô hình vô tình sinh ra
+    text = re.sub(r"^(Trợ lý AI|Assistant|Bot|AI)\s*:\s*", "", text, flags=re.IGNORECASE).strip()
+
+    # 2. Nếu mô hình vô tình chép lại đoạn đầu câu trả lời của lượt trước (lỗi phổ biến ở model nhỏ), tự động gỡ bỏ
+    prev_assistant_msgs = [
+        (h.get("content") or "").strip()
+        for h in (history or [])
+        if isinstance(h, dict) and h.get("role") in ("assistant", "bot", "model") and (h.get("content") or "").strip()
+    ]
+    if prev_assistant_msgs:
+        last_bot = prev_assistant_msgs[-1]
+        if len(text) > len(last_bot) + 25 and text.startswith(last_bot):
+            text = text[len(last_bot):].lstrip(" \n\r\t—-")
+        else:
+            last_paras = [p.strip() for p in last_bot.split("\n\n") if len(p.strip()) >= 40]
+            cur_paras = [p.strip() for p in text.split("\n\n") if p.strip()]
+            removed = False
+            while last_paras and len(cur_paras) > 1 and cur_paras[0] == last_paras[0]:
+                cur_paras.pop(0)
+                last_paras.pop(0)
+                removed = True
+            if removed and cur_paras:
+                text = "\n\n".join(cur_paras).strip()
+
+    # 3. Loại bỏ các dòng/đoạn trùng lặp liên tiếp hoặc câu bị lặp nguyên văn trong cùng đoạn
+    raw_lines = text.splitlines()
+    deduped_lines = []
+    prev_norm_line = None
+    for line in raw_lines:
+        stripped = line.strip()
+        norm_line = re.sub(r"\s+", " ", stripped.lower())
+        if norm_line and norm_line == prev_norm_line:
+            continue
+        deduped_lines.append(line)
+        if norm_line:
+            prev_norm_line = norm_line
+    text = "\n".join(deduped_lines)
+
+    # Khử lặp cụm từ lắp bắp sát nhau (ví dụ: "và Docker ... và Docker" hoặc câu lặp liền kề)
+    cleaned_paragraphs = []
+    seen_long_sentences = set()
+    for para in text.split("\n\n"):
+        p_strip = para.strip()
+        if not p_strip:
+            continue
+        # Nếu là đoạn văn xuôi bình thường (không phải danh sách bullet)
+        if not re.match(r"^[-*•\d#]", p_strip):
+            parts = re.split(r"(?<=[.!?])\s+", p_strip)
+            unique_parts = []
+            for s in parts:
+                s_norm = re.sub(r"[^\w\s]", "", s.lower()).strip()
+                s_norm = re.sub(r"\s+", " ", s_norm)
+                if len(s_norm) >= 35 and s_norm in seen_long_sentences:
+                    continue
+                if len(s_norm) >= 35:
+                    seen_long_sentences.add(s_norm)
+                unique_parts.append(s)
+            p_strip = " ".join(unique_parts).strip()
+        if p_strip:
+            cleaned_paragraphs.append(p_strip)
+
+    text = "\n\n".join(cleaned_paragraphs).strip()
+    text = re.sub(r"\n{3,}", "\n\n", text)
+
+    # 4. Nếu câu trả lời dài bị cắt cụt giữa chừng do giới hạn token, cắt gọn về câu hoàn chỉnh gần nhất
+    if len(text) > 220 and text[-1] not in ".!?:)`*\"'”’]%":
+        last_punct = max(text.rfind(". "), text.rfind(".\n"), text.rfind("!"), text.rfind("?"))
+        if last_punct > len(text) * 0.55:
+            text = text[: last_punct + 1].strip()
+
+    return text
+
+
+def _build_natural_local_advisor_reply(
+    message,
+    msg_lower,
+    student_name,
+    student_code,
+    student_uni,
+    student_major,
+    student_gpa,
+    best_pos,
+    target_pos_name,
+    target_score,
+    eval_data,
+    all_pos_scores,
+    positions,
+    user_courses,
+    unique_skill_items,
+    user_certs,
+    user_exps,
+    plan_items,
+    recent_jobs,
+    total_jobs,
+    suggested_courses_list,
+):
+    """Cố vấn nghề nghiệp thông minh nội bộ dựa trên SQLite: diễn đạt tiếng Việt tự nhiên,
+    hiểu ngữ cảnh câu hỏi tiếp nối (follow-up), không lặp từ và không trả lời rập khuôn."""
+    missing_skills = list(dict.fromkeys((eval_data or {}).get("missing", [])))
+    matched_skills = list(dict.fromkeys((eval_data or {}).get("have", [])))
+
+    # 1. Hỏi chào hỏi / cảm ơn xã giao
+    if any(msg_lower == g or msg_lower.startswith(g + " ") for g in ["xin chào", "chào bạn", "chào ai", "hello", "hi", "hey"]):
+        return (
+            f"Chào **{student_name}**! 👋 Mình đã kết nối trực tiếp với hồ sơ của bạn rồi "
+            f"(hiện bạn đang khớp cao nhất với **{best_pos['name']} - {best_pos['score']}%**). "
+            "Hôm nay bạn muốn mình tư vấn chọn hướng nghề nghiệp, gợi ý kỹ năng cần học tiếp theo hay lọc việc làm phù hợp?"
+        )
+
+    if any(k in msg_lower for k in ["cảm ơn", "cam on", "thank", "tuyệt vời", "ok nhé"]):
+        return (
+            f"Rất vui được đồng hành cùng **{student_name}**! 😊 Khi nào cần kiểm tra lại độ phù hợp, "
+            "tìm học phần bổ trợ hay cập nhật [Kế hoạch học tập](/plan), bạn cứ nhắn mình bất cứ lúc nào nhé!"
+        )
+
+    # 2. Hỏi chi tiết về một vị trí nghề nghiệp cụ thể (Backend, Frontend, Fullstack, DevOps, Data, AI, Mobile, QA...)
+    pos_aliases = [
+        (["backend"], "backend"),
+        (["frontend", "front-end", "ui/ux"], "frontend"),
+        (["fullstack", "full-stack"], "fullstack"),
+        (["devops", "cloud"], "devops"),
+        (["data analyst", "phân tích dữ liệu", "data"], "data"),
+        (["ai engineer", "trí tuệ nhân tạo", "machine learning", "ai/ml"], "ai"),
+        (["mobile", "di động", "flutter", "react native"], "mobile"),
+        (["qa", "qc", "tester", "kiểm thử"], "kiểm thử"),
+    ]
+    if any(k in msg_lower for k in ["cần những kỹ năng", "cần kỹ năng", "yêu cầu gì", "cần học gì", "vị trí "]):
+        for aliases, key_hint in pos_aliases:
+            if any(a in msg_lower for a in aliases):
+                matched_pos = None
+                for p in positions:
+                    if key_hint in p["name"].lower() or key_hint in (p["code"] or "").lower():
+                        matched_pos = p
+                        break
+                if matched_pos:
+                    core_sk = parse_json_list(matched_pos["core_skills"])
+                    pos_score_item = next((x for x in all_pos_scores if x["id"] == matched_pos["id"]), None)
+                    p_score = pos_score_item["score"] if pos_score_item else 0
+                    p_have = pos_score_item.get("have", []) if pos_score_item else []
+                    p_miss = pos_score_item.get("missing", []) if pos_score_item else []
+                    have_note = f"Bạn đã có sẵn: **{', '.join(p_have[:5])}**." if p_have else "Hiện hồ sơ của bạn chưa có nhiều kỹ năng trùng khớp với nhóm này."
+                    miss_note = f"Nên trau dồi thêm: **{', '.join(p_miss[:5])}**." if p_miss else "Bạn đã đáp ứng hầu hết kỹ năng nền tảng!"
+                    return (
+                        f"Đối với vị trí **{matched_pos['name']}** *(nhu cầu tuyển dụng: {matched_pos['demand_level']})*, "
+                        f"các doanh nghiệp thường yêu cầu nhóm kỹ năng cốt lõi gồm: **{', '.join(core_sk)}**.\n\n"
+                        f"So với hồ sơ hiện tại của bạn (đạt **{p_score}%** độ phù hợp):\n"
+                        f"- {have_note}\n"
+                        f"- {miss_note}\n\n"
+                        f"Bạn có thể đối sánh chi tiết hơn tại trang [Đánh giá phù hợp](/compare) nhé!"
+                    )
+
+    # 3. Hỏi lộ trình / nên học thêm kỹ năng hay môn học nào tiếp theo (bao gồm câu hỏi tiếp nối!)
+    if any(k in msg_lower for k in ["học thêm", "tiếp theo", "ưu tiên học", "nên học", "lộ trình", "bổ sung"]):
+        top_missing = missing_skills[:4]
+        skill_advice = (
+            f"- **Kỹ năng chuyên môn cần ưu tiên:** {', '.join(f'**{s}**' for s in top_missing)} (để bứt phá điểm phù hợp ở vị trí *{target_pos_name}*)."
+            if top_missing
+            else f"- **Kỹ năng chuyên môn:** Bạn đã nắm khá vững nền tảng cho *{target_pos_name}*, hãy tập trung làm dự án thực tế chuyên sâu hơn."
+        )
+        if suggested_courses_list:
+            course_items = ", ".join([f"**{c['code']} - {c['name']}**" for c in suggested_courses_list[:3]])
+            course_advice = f"- **Học phần đại học gợi ý đăng ký:** {course_items}."
+        else:
+            course_advice = "- **Học phần đại học:** Bạn đã hoàn thành tốt các môn cốt lõi hiện có trong khung chương trình."
+
+        recs = (eval_data or {}).get("recommendations", [])[:2]
+        rec_advice = (
+            "- **Khóa học thực chiến nên tham khảo:** " + "; ".join([f"*{r['title']}* ({r['provider']})" for r in recs]) + "."
+            if recs else ""
+        )
+        parts = [
+            f"Để nâng cao năng lực cạnh tranh cho hướng **{target_pos_name}** (hiện đạt **{target_score}%**), mình gợi ý lộ trình ngắn hạn cho bạn như sau:",
+            skill_advice,
+            course_advice,
+        ]
+        if rec_advice:
+            parts.append(rec_advice)
+        parts.append("💡 Bạn có thể nhắn `Thêm kế hoạch <Tên mục tiêu>` để mình lưu trực tiếp vào trang [Kế hoạch học tập](/plan) giúp bạn theo dõi tiến độ nhé!")
+        return "\n".join(parts)
+
+    # 4. So sánh toàn bộ 8 vị trí CNTT
+    if any(k in msg_lower for k in ["so sánh", "8 vị trí", "tất cả vị trí", "xếp hạng"]):
+        lines = "\n".join([
+            f"- **{idx + 1}. {p['name']}**: **{p['score']}%** *(Nhu cầu: {p['demand']})*"
+            for idx, p in enumerate(all_pos_scores)
+        ])
+        return (
+            f"Dưới đây là mức độ tương thích của hồ sơ **{student_name}** trên toàn bộ **{len(all_pos_scores)} vị trí CNTT** trong hệ thống:\n"
+            f"{lines}\n\n"
+            f"👉 Nhìn chung, thế mạnh hiện tại của bạn nghiêng rõ nhất về **{best_pos['name']} ({best_pos['score']}%)**. "
+            f"Nếu bạn vẫn muốn theo đuổi mục tiêu **{target_pos_name} ({target_score}%)**, hãy ưu tiên bù đắp sớm **{', '.join(missing_skills[:3]) or 'kinh nghiệm dự án'}**."
+        )
+
+    # 5. Đánh giá hồ sơ phù hợp vị trí nào
+    if any(k in msg_lower for k in ["đánh giá", "phù hợp", "vị trí nào", "hồ sơ của tôi", "hồ sơ hiện tại"]):
+        top3 = all_pos_scores[:3]
+        top_lines = "\n".join([f"- **{p['name']}**: đạt **{p['score']}%** *(Nhu cầu: {p['demand']})*" for p in top3])
+        gap_note = (
+            f"Hiện bạn đang đặt mục tiêu là **{target_pos_name}** (**{target_score}%**). Để thu hẹp khoảng cách với yêu cầu doanh nghiệp, bạn nên bổ sung thêm **{', '.join(missing_skills[:4])}**."
+            if target_pos_name != best_pos["name"] and missing_skills
+            else f"Bạn đang đi rất đúng hướng với mục tiêu **{target_pos_name}**! Chỉ cần trau dồi thêm **{', '.join(missing_skills[:3]) or 'dự án thực tế'}** là hồ sơ sẽ rất ấn tượng."
+        )
+        return (
+            f"Qua phân tích kỹ năng, học phần và kinh nghiệm của **{student_name}** (GPA **{student_gpa}/4.0**), 3 vị trí phù hợp nhất với bạn hiện nay là:\n"
+            f"{top_lines}\n\n"
+            f"{gap_note}"
+        )
+
+    # 6. Tin tuyển dụng & mức lương
+    if any(k in msg_lower for k in ["tuyển dụng", "việc làm", "lương", "công ty", "job"]):
+        if recent_jobs:
+            job_lines = "\n".join([
+                f"- **{j['title']}** tại *{j['company']}* — Lương: **{j['salary']}** ({j['location']})"
+                for j in recent_jobs[:5]
+            ])
+            return (
+                f"Hệ thống đang cập nhật **{total_jobs} tin tuyển dụng** thực tế từ doanh nghiệp, nổi bật có:\n"
+                f"{job_lines}\n\n"
+                f"Với nền tảng hiện tại, bạn có thể xem thêm các tin thuộc nhóm **{best_pos['name']}** tại trang [Tin tuyển dụng](/jobs) để chuẩn bị CV ứng tuyển nhé!"
+            )
+        return "Hiện hệ thống chưa ghi nhận tin tuyển dụng mới. Bạn có thể kiểm tra tại trang [Tin tuyển dụng](/jobs) nhé!"
+
+    # 7. Học phần đã học
+    if any(k in msg_lower for k in ["môn", "học phần", "điểm", "tín chỉ", "đã học"]):
+        if user_courses:
+            lines = "\n".join([f"- **{c['code']} - {c['name']}** ({c['credits']} tín chỉ) — Điểm: **{c['grade']}**" for c in user_courses])
+            sug_str = ", ".join([f"**{c['code']} - {c['name']}**" for c in suggested_courses_list[:3]])
+            sug = f"\n\n💡 Để bổ trợ cho hướng **{target_pos_name}**, bạn nên đăng ký thêm: {sug_str}." if sug_str else ""
+            return f"Bạn đã tích lũy **{len(user_courses)} học phần** trong hồ sơ (GPA **{student_gpa}/4.0**):\n{lines}{sug}"
+        return f"Hồ sơ của **{student_name}** chưa có học phần nào. Bạn hãy cập nhật bảng điểm tại [Hồ sơ sinh viên](/profile) để mình tư vấn sát hơn nhé!"
+
+    # 8. Kỹ năng cá nhân
+    if any(k in msg_lower for k in ["kỹ năng", "skill"]):
+        if unique_skill_items:
+            lines = "\n".join([f"- {item}" for item in unique_skill_items])
+            return (
+                f"Bạn đã cập nhật **{len(unique_skill_items)} kỹ năng** chuyên môn:\n{lines}\n\n"
+                f"So với yêu cầu của **{target_pos_name}**, bạn đã khớp **{len(matched_skills)} kỹ năng** và có thể trau dồi thêm **{', '.join(missing_skills[:4]) or 'kỹ năng chuyên sâu'}**."
+            )
+        return "Hồ sơ của bạn hiện chưa có kỹ năng nào. Nhắn `Thêm kỹ năng Python` ngay tại đây hoặc vào [Hồ sơ sinh viên](/profile) để bổ sung nhé!"
+
+    # 9. Chứng chỉ
+    if any(k in msg_lower for k in ["chứng chỉ", "toeic", "ielts", "coursera", "aws"]):
+        if user_certs:
+            lines = "\n".join([f"- **{c['name']}** — *{c['organization']}* (cấp: {c['issue_date'] or 'N/A'})" for c in user_certs])
+            rec_certs = (eval_data or {}).get("missing_certs", [])[:2]
+            extra = f"\n\n💡 Chứng chỉ nên cân nhắc thi thêm cho vị trí **{target_pos_name}**: **{', '.join(rec_certs)}**." if rec_certs else ""
+            return f"Bạn hiện sở hữu **{len(user_certs)} chứng chỉ** trong hồ sơ:\n{lines}{extra}"
+        return f"Hiện bạn chưa thêm chứng chỉ nào vào [Hồ sơ sinh viên](/profile)."
+
+    # 10. Kinh nghiệm & dự án
+    if any(k in msg_lower for k in ["kinh nghiệm", "dự án", "thực tập", "project", "đồ án"]):
+        if user_exps:
+            lines = "\n".join([f"- **{e['title']}** tại *{e['company']}* ({e['role_type']}, {e['start_date']} - {e['end_date']})" for e in user_exps])
+            return f"Bạn đã có **{len(user_exps)} mục kinh nghiệm & dự án thực tế**:\n{lines}"
+        return f"Hồ sơ của **{student_name}** hiện chưa có mục kinh nghiệm hay dự án nào tại [Hồ sơ sinh viên](/profile)."
+
+    # 11. Kế hoạch học tập
+    if any(k in msg_lower for k in ["kế hoạch", "mục tiêu", "plan"]):
+        if plan_items:
+            lines = "\n".join([f"- **{p['title']}** (*{p['category']}*) — Trạng thái: **{p['status']}** (Hạn: {p['target_date'] or 'N/A'})" for p in plan_items])
+            return f"Kế hoạch cá nhân của bạn hiện có **{len(plan_items)} mục tiêu**:\n{lines}\n\n💡 Gõ `Thêm kế hoạch <Tên mục tiêu>` nếu bạn muốn bổ sung nhanh nhé!"
+        return "Bạn chưa có mục tiêu nào trong [Kế hoạch học tập](/plan). Hãy nhắn `Thêm kế hoạch Học Docker` để bắt đầu nhé!"
+
+    # 12. Tổng quan mặc định tự nhiên
+    return (
+        f"Chào **{student_name}** ({student_major} — {student_uni}, GPA **{student_gpa}/4.0**)! 👋\n"
+        f"- **Hướng phù hợp nhất hiện tại:** **{best_pos['name']}** (**{best_pos['score']}%**)\n"
+        f"- **Mục tiêu bạn đang theo đuổi:** **{target_pos_name}** (**{target_score}%**)\n"
+        f"- **Hồ sơ đã ghi nhận:** {len(user_courses)} học phần, {len(unique_skill_items)} kỹ năng, {len(user_certs)} chứng chỉ và {len(user_exps)} kinh nghiệm/dự án.\n\n"
+        "Bạn muốn mình đi sâu vào phân tích kỹ năng còn thiếu, gợi ý môn học tiếp theo hay chọn tin tuyển dụng phù hợp?"
+    )
 
 
 def _call_gemini_with_sqlite_context(api_key, user_message, history, student_context, is_guest=False):
-    """Gọi Google Gemini REST API kèm ngữ cảnh trang web & hồ sơ sinh viên từ SQLite (hoặc ngữ cảnh khách)."""
+    """Gọi Google Gemini REST API kèm systemInstruction chuẩn và lịch sử đa lượt."""
     import urllib.request
     import json as _json
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{CHATBOT_GEMINI_MODEL}:generateContent?key={api_key}"
-    if is_guest:
-        system_prompt = (
-            "Bạn là Trợ lý AI của website IT Career Compass.\n"
-            f"{student_context}\n\n"
-            "BẮT BUỘC: Trả lời CỰC KỲ NGẮN GỌN (tối đa 2 câu, dưới 50 từ) bằng tiếng Việt, chỉ trả lời chung chung, không liệt kê dài dòng."
-        )
-        ack_text = "Mình hiểu. Mình sẽ chỉ trả lời cực kỳ ngắn gọn (1-2 câu) cho các câu hỏi chung."
+    system_prompt = _build_chatbot_system_prompt(student_context, is_guest=is_guest)
+
+    clean_hist = _normalize_history(history, max_items=8)
+    contents = []
+    for h in clean_hist:
+        g_role = "user" if h["role"] == "user" else "model"
+        contents.append({"role": g_role, "parts": [{"text": h["content"]}]})
+
+    if contents and contents[-1]["role"] == "user":
+        contents[-1]["parts"][0]["text"] += "\n" + user_message
     else:
-        system_prompt = (
-            "Bạn là Trợ lý AI chính thức của website IT Career Compass (Đề tài NLCNPM23CS-38).\n"
-            "Dưới đây là toàn bộ thông tin cấu trúc trang web và dữ liệu thực tế trích xuất từ CSDL SQLite của người dùng đang trò chuyện:\n"
-            f"{student_context}\n\n"
-            "Hãy trả lời tự nhiên, thông minh, linh hoạt mọi câu hỏi của người dùng bằng tiếng Việt, bám sát dữ liệu thực tế trên trang web."
-        )
-        ack_text = "Mình đã nắm rõ toàn bộ chức năng website và hồ sơ năng lực của bạn trong CSDL."
+        contents.append({"role": "user", "parts": [{"text": user_message}]})
 
-    contents = [
-        {"role": "user", "parts": [{"text": system_prompt}]},
-        {"role": "model", "parts": [{"text": ack_text}]},
-    ]
-    for h in (history or [])[-8:]:
-        role = "user" if h.get("role") == "user" else "model"
-        text = (h.get("content") or "").strip()
-        if text:
-            contents.append({"role": role, "parts": [{"text": text}]})
-    contents.append({"role": "user", "parts": [{"text": user_message}]})
-
-    body = {"contents": contents}
-    if is_guest:
-        body["generationConfig"] = {"maxOutputTokens": 140, "temperature": 0.3}
+    body = {
+        "systemInstruction": {"parts": [{"text": system_prompt}]},
+        "contents": contents,
+        "generationConfig": {
+            "maxOutputTokens": 150 if is_guest else 900,
+            "temperature": 0.35 if is_guest else 0.55,
+            "topP": 0.9,
+        },
+    }
 
     req = urllib.request.Request(
         url,
@@ -2042,51 +2427,108 @@ def _call_gemini_with_sqlite_context(api_key, user_message, history, student_con
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
         data = _json.loads(resp.read().decode("utf-8"))
-        return data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+        raw = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+        return _polish_bot_reply(raw, clean_hist)
 
 
-def _call_hf_llama_with_sqlite_context(user_message, history, website_context, is_guest=False):
-    """Gọi Mô hình Ngôn ngữ Lớn (Llama-3.2-Instruct trên HuggingFace Space) hoàn toàn miễn phí,
-    không bị giới hạn 429, kèm 100% dữ liệu thực tế (hoặc ngữ cảnh giới hạn cho khách chưa đăng nhập)."""
+def _call_pollinations_openai_with_sqlite_context(user_message, history, website_context, is_guest=False):
+    """Cổng AI tích hợp sẵn chính (OpenAI-compatible qua Pollinations Text API):
+    Miễn phí, không cần API Key, hỗ trợ hội thoại đa lượt tự nhiên bằng tiếng Việt và không lặp từ."""
     import urllib.request
     import json as _json
 
-    history_lines = []
-    for h in (history or [])[-6:]:
-        role_label = "Người dùng" if h.get("role") == "user" else "Trợ lý AI"
-        text = (h.get("content") or "").strip()
-        if text:
-            history_lines.append(f"{role_label}: {text}")
-    history_block = "\n".join(history_lines)
+    system_prompt = _build_chatbot_system_prompt(website_context, is_guest=is_guest)
+    clean_hist = _normalize_history(history, max_items=8)
 
-    if is_guest:
-        full_prompt = (
-            "Bạn là Trợ lý AI của trang web IT Career Compass.\n"
-            f"{website_context}\n\n"
-            + (f"[LỊCH SỬ HỘI THOẠI GẦN ĐÂY]\n{history_block}\n\n" if history_block else "")
-            + f"[CÂU HỎI CỦA NGƯỜI DÙNG]: {user_message}\n\n"
-            "YÊU CẦU BẮT BUỘC:\n"
-            "- Người dùng CHƯA ĐĂNG NHẬP. Trả lời CỰC KỲ NGẮN GỌN: tối đa 2 câu (dưới 50 từ), không giải thích dài dòng, không gạch đầu dòng.\n"
-            "- Nếu câu hỏi mang tính chuyên môn sâu, đánh giá hồ sơ, kỹ năng, việc làm hay lộ trình, hãy từ chối ngắn gọn và nhắc đăng nhập tại /login."
-        )
-    else:
-        full_prompt = (
-            "Bạn là Trợ lý AI chính thức của trang web IT Career Compass (Hệ thống định hướng kỹ năng nghề nghiệp CNTT).\n"
-            "Nhiệm vụ của bạn là hỗ trợ người dùng trả lời chính xác MỌI câu hỏi dựa trên TẤT CẢ dữ liệu mà người dùng đã nhập vào trang web dưới đây:\n\n"
-            f"{website_context}\n\n"
-            + (f"[LỊCH SỬ HỘI THOẠI GẦN ĐÂY]\n{history_block}\n\n" if history_block else "")
-            + f"[CÂU HỎI CỦA NGƯỜI DÙNG]: {user_message}\n\n"
-            "YÊU CẦU TRẢ LỜI:\n"
-            "- Trả lời trực tiếp vào trọng tâm câu hỏi của người dùng bằng tiếng Việt tự nhiên, rõ ràng, thân thiện (dùng Markdown).\n"
-            "- Bám sát 100% vào dữ liệu thực tế mà người dùng đã nhập ở trên (họ tên, MSSV, trường học, GPA, từng môn học đã nhập, từng kỹ năng, chứng chỉ, dự án/kinh nghiệm, kế hoạch học tập, vị trí mục tiêu và tin tuyển dụng trên web).\n"
-            "- Tuyệt đối không trả lời chung chung."
-        )
+    messages = [{"role": "system", "content": system_prompt}]
+    for h in clean_hist:
+        messages.append({
+            "role": "user" if h["role"] == "user" else "assistant",
+            "content": h["content"],
+        })
+    messages.append({"role": "user", "content": user_message})
 
-    max_tok = 140 if is_guest else 512
+    req = urllib.request.Request(
+        "https://text.pollinations.ai/openai",
+        data=_json.dumps({
+            "model": "openai",
+            "temperature": 0.4 if is_guest else 0.55,
+            "max_tokens": 160 if is_guest else 900,
+            "messages": messages,
+        }).encode("utf-8"),
+        headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=18) as resp:
+        data = _json.loads(resp.read().decode("utf-8"))
+        raw = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        return _polish_bot_reply(raw, clean_hist)
+
+
+def _call_free_llm_with_sqlite_context(user_message, history, website_context, is_guest=False):
+    """Gọi cổng OpenAI-compatible dự phòng (LLM7) với mảng messages đa lượt chuẩn xác
+    và frequency_penalty chống lặp từ tự nhiên."""
+    import urllib.request
+    import json as _json
+
+    system_prompt = _build_chatbot_system_prompt(website_context, is_guest=is_guest)
+    clean_hist = _normalize_history(history, max_items=8)
+
+    messages = [{"role": "system", "content": system_prompt}]
+    for h in clean_hist:
+        messages.append({
+            "role": "user" if h["role"] == "user" else "assistant",
+            "content": h["content"],
+        })
+    messages.append({"role": "user", "content": user_message})
+
+    req = urllib.request.Request(
+        "https://api.llm7.io/v1/chat/completions",
+        data=_json.dumps({
+            "model": "default",
+            "temperature": 0.35 if is_guest else 0.45,
+            "top_p": 0.9,
+            "frequency_penalty": 0.35,
+            "presence_penalty": 0.2,
+            "max_tokens": 160 if is_guest else 900,
+            "messages": messages,
+        }).encode("utf-8"),
+        headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=14) as resp:
+        data = _json.loads(resp.read().decode("utf-8"))
+        raw = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        return _polish_bot_reply(raw, clean_hist)
+
+
+def _call_hf_llama_with_sqlite_context(user_message, history, website_context, is_guest=False):
+    """Cổng AI dự phòng (Llama-3.2-Instruct trên HuggingFace Space):
+    Chỉ truyền tóm tắt ngữ cảnh câu hỏi trước (không dán nguyên văn bài trả lời cũ để tránh nhại lại)
+    và tăng repetition_penalty = 1.22 chống lặp từ."""
+    import urllib.request
+    import json as _json
+
+    clean_hist = _normalize_history(history, max_items=6)
+    prior_user_questions = [h["content"] for h in clean_hist if h["role"] == "user"][-3:]
+    context_note = ""
+    if prior_user_questions:
+        joined_q = " -> ".join(prior_user_questions)
+        context_note = f"[Các ý người dùng đã hỏi trước đó để hiểu mạch chuyện: {joined_q}]\n\n"
+
+    system_rules = _build_chatbot_system_prompt(website_context, is_guest=is_guest)
+    full_prompt = (
+        f"{system_rules}\n\n"
+        f"{context_note}"
+        f"[CÂU HỎI MỚI CẦN TRẢ LỜI NGAY]: {user_message}\n"
+        "(Lưu ý: Chỉ trả lời trực tiếp câu hỏi mới này một cách tự nhiên, ngắn gọn, không lặp từ.)"
+    )
+
+    max_tok = 150 if is_guest else 800
     base = "https://huggingface-projects-llama-3-2-3b-instruct.hf.space"
     req = urllib.request.Request(
         f"{base}/gradio_api/call/generate",
-        data=_json.dumps({"data": [full_prompt, max_tok, 0.25, 0.9, 50, 1.1]}).encode("utf-8"),
+        data=_json.dumps({"data": [full_prompt, max_tok, 0.45, 0.9, 40, 1.22]}).encode("utf-8"),
         headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"},
         method="POST",
     )
@@ -2098,55 +2540,9 @@ def _call_hf_llama_with_sqlite_context(user_message, history, website_context, i
         for line in reversed(lines):
             if line.startswith("data: "):
                 arr = _json.loads(line[6:])
-                if arr and isinstance(arr[0], str) and arr[0].strip():
-                    return arr[0].strip()
+                if isinstance(arr, list) and arr and isinstance(arr[0], str) and arr[0].strip():
+                    return _polish_bot_reply(arr[0].strip(), clean_hist)
     return ""
-
-
-def _call_free_llm_with_sqlite_context(user_message, history, website_context, is_guest=False):
-    """Cổng LLM dự phòng thứ 2 (LLM7 OpenAI-compatible Gateway) kèm ngữ cảnh SQLite (hoặc ngữ cảnh khách)."""
-    import urllib.request
-    import json as _json
-
-    history_lines = []
-    for h in (history or [])[-6:]:
-        role_label = "Người dùng" if h.get("role") == "user" else "Trợ lý AI"
-        text = (h.get("content") or "").strip()
-        if text:
-            history_lines.append(f"{role_label}: {text}")
-    history_block = "\n".join(history_lines)
-
-    if is_guest:
-        full_prompt = (
-            "[CHẾ ĐỘ KHÁCH CHƯA ĐĂNG NHẬP - IT CAREER COMPASS]\n"
-            f"{website_context}\n\n"
-            + (f"[LỊCH SỬ TRÒ CHUYỆN]\n{history_block}\n\n" if history_block else "")
-            + f"[CÂU HỎI CỦA NGƯỜI DÙNG]: {user_message}\n\n"
-            "Trả lời CỰC KỲ NGẮN GỌN (tối đa 2 câu, dưới 50 từ) bằng tiếng Việt, không liệt kê dài dòng. Nếu là câu hỏi chuyên sâu, chỉ nhắc người dùng đăng nhập."
-        )
-    else:
-        full_prompt = (
-            "[DỮ LIỆU TRANG WEB IT CAREER COMPASS & HỒ SƠ NGƯỜI DÙNG ĐÃ NHẬP]\n"
-            f"{website_context}\n\n"
-            + (f"[LỊCH SỬ TRÒ CHUYỆN]\n{history_block}\n\n" if history_block else "")
-            + f"[CÂU HỎI CỦA NGƯỜI DÙNG]: {user_message}\n\n"
-            "Hãy trả lời trực tiếp, chi tiết, đúng trọng tâm câu hỏi bằng tiếng Việt dựa trên đúng dữ liệu người dùng đã nhập ở trên."
-        )
-
-    req = urllib.request.Request(
-        "https://api.llm7.io/v1/chat/completions",
-        data=_json.dumps({
-            "model": "default",
-            "temperature": 0.2,
-            "max_tokens": 140 if is_guest else 500,
-            "messages": [{"role": "user", "content": full_prompt}],
-        }).encode("utf-8"),
-        headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        data = _json.loads(resp.read().decode("utf-8"))
-        return data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
 
 
 GUEST_CHAT_MAX_QUESTIONS = 4
@@ -2201,6 +2597,15 @@ def _shorten_guest_reply(text, max_chars=180, max_sentences=2):
     return cleaned[:max_chars].rsplit(" ", 1)[0] + "..."
 
 
+def _append_guest_chat_turn(user_message, bot_reply):
+    """Lưu lịch sử chat chế độ khách trong Flask session để không bị mất khi chuyển trang."""
+    guest_hist = list(session.get("guest_chat_history") or [])
+    guest_hist.append({"role": "user", "content": user_message})
+    guest_hist.append({"role": "assistant", "content": bot_reply})
+    session["guest_chat_history"] = guest_hist[-16:]
+    session.modified = True
+
+
 def _handle_guest_chatbot(message, history, active_api_key):
     """Xử lý yêu cầu Chatbot cho khách chưa đăng nhập: chỉ trả lời ngắn gọn, chung chung và giới hạn tối đa 4 lượt."""
     guest_count = int(session.get("guest_chat_count", 0))
@@ -2230,13 +2635,14 @@ def _handle_guest_chatbot(message, history, active_api_key):
             "🔒 Câu hỏi này cần **đăng nhập tài khoản** để AI tư vấn chuyên sâu. "
             f"Vui lòng [Đăng nhập](/login)! *(Còn **{guest_remaining}/{GUEST_CHAT_MAX_QUESTIONS}** lượt)*"
         )
+        _append_guest_chat_turn(message, reply)
         return api_response(
             True,
             {
                 "reply": reply,
                 "mode": "guest_specialized_blocked",
                 "is_guest": True,
-                "require_login": False,
+                "require_login": guest_remaining == 0,
                 "guest_count": guest_count,
                 "guest_limit": GUEST_CHAT_MAX_QUESTIONS,
                 "guest_remaining": guest_remaining,
@@ -2257,9 +2663,9 @@ def _handle_guest_chatbot(message, history, active_api_key):
 
     if not ai_reply:
         try:
-            ai_reply = _call_hf_llama_with_sqlite_context(message, history, guest_context, is_guest=True)
+            ai_reply = _call_pollinations_openai_with_sqlite_context(message, history, guest_context, is_guest=True)
             if ai_reply:
-                mode = "guest_hf_llama"
+                mode = "guest_pollinations_openai"
         except Exception:
             ai_reply = ""
 
@@ -2268,6 +2674,14 @@ def _handle_guest_chatbot(message, history, active_api_key):
             ai_reply = _call_free_llm_with_sqlite_context(message, history, guest_context, is_guest=True)
             if ai_reply:
                 mode = "guest_llm7"
+        except Exception:
+            ai_reply = ""
+
+    if not ai_reply:
+        try:
+            ai_reply = _call_hf_llama_with_sqlite_context(message, history, guest_context, is_guest=True)
+            if ai_reply:
+                mode = "guest_hf_llama"
         except Exception:
             ai_reply = ""
 
@@ -2284,16 +2698,61 @@ def _handle_guest_chatbot(message, history, active_api_key):
     else:
         ai_reply += f"\n\n*(Còn **{guest_remaining}/{GUEST_CHAT_MAX_QUESTIONS}** lượt khách)*"
 
+    _append_guest_chat_turn(message, ai_reply)
     return api_response(
         True,
         {
             "reply": ai_reply,
             "mode": mode,
             "is_guest": True,
-            "require_login": False,
+            "require_login": guest_remaining == 0,
             "guest_count": guest_count,
             "guest_limit": GUEST_CHAT_MAX_QUESTIONS,
             "guest_remaining": guest_remaining,
+        },
+    )
+
+
+@app.route("/api/chatbot/history", methods=["GET", "DELETE"])
+def api_chatbot_history():
+    """Đọc hoặc xóa lịch sử hội thoại Chatbot để đồng bộ xuyên suốt các tab/trang."""
+    user_id = get_current_user_id()
+
+    if request.method == "DELETE":
+        if user_id:
+            conn = get_db_connection()
+            try:
+                _ensure_chat_messages_table(conn)
+                conn.execute("DELETE FROM chat_messages WHERE user_id = ?", (user_id,))
+                conn.commit()
+            finally:
+                conn.close()
+        else:
+            session.pop("guest_chat_history", None)
+        return api_response(True, None, "Đã làm mới cuộc trò chuyện!")
+
+    if user_id:
+        messages = _load_user_chat_history(user_id, limit=40)
+        return api_response(
+            True,
+            {
+                "messages": messages,
+                "is_guest": False,
+                "require_login": False,
+            },
+        )
+
+    guest_count = int(session.get("guest_chat_count", 0))
+    guest_remaining = max(0, GUEST_CHAT_MAX_QUESTIONS - guest_count)
+    return api_response(
+        True,
+        {
+            "messages": list(session.get("guest_chat_history") or []),
+            "is_guest": True,
+            "guest_count": guest_count,
+            "guest_limit": GUEST_CHAT_MAX_QUESTIONS,
+            "guest_remaining": guest_remaining,
+            "require_login": guest_count >= GUEST_CHAT_MAX_QUESTIONS,
         },
     )
 
@@ -2319,6 +2778,8 @@ def api_chatbot():
         return _handle_guest_chatbot(message, history, active_api_key)
 
     msg_lower = message.lower()
+    if not history:
+        history = _load_user_chat_history(user_id, limit=8)
     conn = get_db_connection()
 
     # Hỗ trợ AI thực hiện hành động trực tiếp trên web nếu người dùng yêu cầu "thêm kỹ năng ..." hoặc "thêm kế hoạch ..."
@@ -2331,10 +2792,12 @@ def api_chatbot():
             )
             conn.commit()
             conn.close()
+            reply_text = f"✅ Mình đã thêm trực tiếp kỹ năng **{skill_name}** (Mức độ: 3/5) vào mục **Hồ sơ sinh viên** ([Xem hồ sơ](/profile)) của bạn! Bạn có thể mở trang [Đánh giá phù hợp](/compare) để xem điểm số mới nhé."
+            _save_user_chat_turn(user_id, message, reply_text)
             return api_response(
                 True,
                 {
-                    "reply": f"✅ Mình đã thêm trực tiếp kỹ năng **{skill_name}** (Mức độ: 3/5) vào mục **Hồ sơ sinh viên (`/profile`)** của bạn! Bạn có thể tải lại trang Hồ sơ hoặc trang Đánh giá phù hợp để xem điểm số mới.",
+                    "reply": reply_text,
                     "mode": "action_agent",
                 },
             )
@@ -2348,10 +2811,12 @@ def api_chatbot():
             )
             conn.commit()
             conn.close()
+            reply_text = f"✅ Mình đã thêm mục tiêu **\"{plan_title}\"** vào trang [Kế hoạch học tập](/plan) của bạn (Trạng thái: *Cần làm*)!"
+            _save_user_chat_turn(user_id, message, reply_text)
             return api_response(
                 True,
                 {
-                    "reply": f"✅ Mình đã thêm mục tiêu **\"{plan_title}\"** vào trang **Kế hoạch học tập (`/plan`)** của bạn (Trạng thái: *Cần làm*)!",
+                    "reply": reply_text,
                     "mode": "action_agent",
                 },
             )
@@ -2406,13 +2871,24 @@ def api_chatbot():
     target_pos_name = eval_data["target_position"]["name"] if eval_data else "Backend Developer"
     target_score = eval_data["score"] if eval_data else 0
 
+    # Khử trùng lặp tên kỹ năng khi xây dựng ngữ cảnh cho AI để tránh model lặp từ
+    seen_skill_names = set()
+    unique_skill_items = []
+    for s in user_skills_rows:
+        sk_key = s["name"].strip().lower()
+        if sk_key not in seen_skill_names:
+            seen_skill_names.add(sk_key)
+            unique_skill_items.append(
+                f"{s['name']} ({s['category']}, mức {s['level']}/5{', ' + s['note'] if s['note'] else ''})"
+            )
+
     courses_detail_str = (
         "; ".join([f"{c['code']} - {c['name']} ({c['credits']} tín chỉ, Điểm: {c['grade']}, Học kỳ: {c['term'] or 'N/A'})" for c in user_courses])
         if user_courses else "Người dùng chưa nhập học phần nào"
     )
     skills_detail_str = (
-        "; ".join([f"{s['name']} (Nhóm: {s['category']}, Mức độ: {s['level']}/5{', Ghi chú: ' + s['note'] if s['note'] else ''})" for s in user_skills_rows])
-        if user_skills_rows else "Người dùng chưa nhập kỹ năng nào"
+        "; ".join(unique_skill_items)
+        if unique_skill_items else "Người dùng chưa nhập kỹ năng nào"
     )
     certs_detail_str = (
         "; ".join([f"{c['name']} do {c['organization']} cấp ngày {c['issue_date'] or 'N/A'}" for c in user_certs])
@@ -2427,117 +2903,111 @@ def api_chatbot():
         if plan_items else "Người dùng chưa nhập mục tiêu nào trong Kế hoạch học tập"
     )
     ranking_str = "; ".join([f"{p['name']}: {p['score']}% (Nhu cầu: {p['demand']})" for p in all_pos_scores])
+    best_pos = all_pos_scores[0] if all_pos_scores else {"name": target_pos_name, "score": target_score}
+    suggested_courses_list = eval_data.get("suggested_academic_courses", []) if eval_data else []
+    suggested_courses_str = (
+        "; ".join([f"{c['code']} - {c['name']} ({c['credits']} tín chỉ)" for c in suggested_courses_list[:5]])
+        if suggested_courses_list else "Chưa có gợi ý học phần bổ sung"
+    )
     jobs_sample_str = "; ".join([f"{j['title']} tại {j['company']} (Vị trí: {j['position_name']}, Lương: {j['salary']}, Địa điểm: {j['location']})" for j in recent_jobs[:6]])
 
     website_and_student_context = (
-        "=== 1. DỮ LIỆU CÁ NHÂN DO NGƯỜI DÙNG ĐÃ NHẬP TRÊN WEBSITE ===\n"
-        f"- Họ và tên: {student_name}\n"
-        f"- Mã số sinh viên (MSSV): {student_code}\n"
+        "=== 1. DỮ LIỆU CÁ NHÂN TRONG HỒ SƠ ===\n"
+        f"- Họ và tên: {student_name} | MSSV: {student_code}\n"
         f"- Email: {student_email} | Số điện thoại: {student_phone}\n"
-        f"- Trường học: {student_uni} | Khoa: {student_faculty} | Chuyên ngành: {student_major} | Niên khóa: {student_year}\n"
-        f"- Điểm trung bình tích lũy (GPA): {student_gpa}/4.0\n"
-        f"- Giới thiệu bản thân (Bio): {student_bio}\n"
-        f"- Vị trí nghề nghiệp mục tiêu đang chọn: {target_pos_name} (Độ phù hợp hiện tại: {target_score}%)\n\n"
-        "=== 2. DANH SÁCH HỌC PHẦN, KỸ NĂNG, CHỨNG CHỈ, KINH NGHIỆM & KẾ HOẠCH NGƯỜI DÙNG ĐÃ NHẬP ===\n"
+        f"- Trường: {student_uni} | Khoa: {student_faculty} | Chuyên ngành: {student_major} | Niên khóa: {student_year}\n"
+        f"- GPA tích lũy: {student_gpa}/4.0 | Giới thiệu: {student_bio}\n"
+        f"- Vị trí phù hợp nhất hiện tại theo năng lực thực tế: {best_pos['name']} ({best_pos['score']}%)\n"
+        f"- Vị trí mục tiêu người dùng đang đặt trên hồ sơ: {target_pos_name} (Độ phù hợp: {target_score}%)\n\n"
+        "=== 2. HỌC PHẦN, KỸ NĂNG, CHỨNG CHỈ, KINH NGHIỆM & KẾ HOẠCH ===\n"
         f"- Học phần đã học ({len(user_courses)} môn): {courses_detail_str}\n"
-        f"- Kỹ năng hiện có ({len(user_skills_rows)} kỹ năng): {skills_detail_str}\n"
-        f"- Chứng chỉ đã nhập ({len(user_certs)} chứng chỉ): {certs_detail_str}\n"
-        f"- Kinh nghiệm & Dự án đã nhập ({len(user_exps)} mục): {exps_detail_str}\n"
-        f"- Kế hoạch học tập cá nhân ({len(plan_items)} mục): {plans_detail_str}\n\n"
-        "=== 3. KẾT QUẢ PHÂN TÍCH ĐỊNH HƯỚNG & DỮ LIỆU WEBSITE ===\n"
-        f"- Điểm phù hợp của người dùng với 8 vị trí CNTT trên web: {ranking_str}\n"
-        f"- Kỹ năng đã đáp ứng cho vị trí mục tiêu ({target_pos_name}): {', '.join(eval_data.get('have', [])) if eval_data and eval_data.get('have') else 'Chưa khớp kỹ năng nào'}\n"
-        f"- Kỹ năng còn thiếu cho vị trí mục tiêu ({target_pos_name}): {', '.join(eval_data.get('missing', [])) if eval_data and eval_data.get('missing') else 'Không thiếu'}\n"
-        f"- Học phần gợi ý nên học bổ sung: {', '.join(c['code'] + ' - ' + c['name'] for c in eval_data.get('suggested_courses', [])[:5]) if eval_data else ''}\n"
-        f"- Tin tuyển dụng trên trang web ({total_jobs} tin): {jobs_sample_str}\n"
-        "- Các trang chức năng của website: Tổng quan (/dashboard), Hồ sơ sinh viên (/profile), Vị trí nghề nghiệp (/positions), Tin tuyển dụng (/jobs), Thống kê kỹ năng (/statistics), Đánh giá phù hợp (/compare), Kế hoạch học tập (/plan)."
+        f"- Kỹ năng hiện có ({len(unique_skill_items)} kỹ năng): {skills_detail_str}\n"
+        f"- Chứng chỉ ({len(user_certs)}): {certs_detail_str}\n"
+        f"- Kinh nghiệm & Dự án ({len(user_exps)}): {exps_detail_str}\n"
+        f"- Kế hoạch học tập ({len(plan_items)}): {plans_detail_str}\n\n"
+        "=== 3. PHÂN TÍCH ĐỊNH HƯỚNG & TIN TUYỂN DỤNG ===\n"
+        f"- Bảng xếp hạng độ phù hợp 8 vị trí CNTT (từ cao xuống thấp): {ranking_str}\n"
+        f"- Kỹ năng đã đáp ứng cho vị trí mục tiêu ({target_pos_name}): {', '.join(dict.fromkeys(eval_data.get('have', []))) if eval_data and eval_data.get('have') else 'Chưa khớp kỹ năng nào'}\n"
+        f"- Kỹ năng cần bổ sung cho vị trí mục tiêu ({target_pos_name}): {', '.join(dict.fromkeys(eval_data.get('missing', []))) if eval_data and eval_data.get('missing') else 'Không thiếu'}\n"
+        f"- Học phần đại học gợi ý nên đăng ký thêm: {suggested_courses_str}\n"
+        f"- Tin tuyển dụng tiêu biểu trên hệ thống ({total_jobs} tin): {jobs_sample_str}\n"
+        "- Đường dẫn nhanh trên web: [Tổng quan](/dashboard), [Hồ sơ sinh viên](/profile), [Vị trí nghề nghiệp](/positions), [Tin tuyển dụng](/jobs), [Thống kê kỹ năng](/statistics), [Đánh giá phù hợp](/compare), [Kế hoạch học tập](/plan)."
     )
 
     # ------------------------------------------------------------------
-    # TẦNG 1: Nếu người dùng nhập Gemini API Key -> Gọi Google Gemini AI
+    # TẦNG 1: Nếu có Gemini API Key -> Gọi Google Gemini AI
     # ------------------------------------------------------------------
     if active_api_key:
         try:
             ai_reply = _call_gemini_with_sqlite_context(active_api_key, message, history, website_and_student_context)
             if ai_reply:
+                _save_user_chat_turn(user_id, message, ai_reply)
                 return api_response(True, {"reply": ai_reply, "mode": "gemini_rag"})
         except Exception:
             pass
 
     # ------------------------------------------------------------------
-    # TẦNG 2 (MẶC ĐỊNH): Gọi Llama-3.2-Instruct (HuggingFace Space - Không giới hạn 429)
+    # TẦNG 2 (MẶC ĐỊNH): Gọi cổng OpenAI đa lượt tích hợp sẵn (Pollinations OpenAI)
+    # Tiếng Việt tự nhiên, mạch lạc, hỗ trợ lịch sử đa lượt không lặp từ
     # ------------------------------------------------------------------
     try:
-        hf_reply = _call_hf_llama_with_sqlite_context(message, history, website_and_student_context)
-        if hf_reply:
-            return api_response(True, {"reply": hf_reply, "mode": "hf_llama_rag"})
+        polli_reply = _call_pollinations_openai_with_sqlite_context(message, history, website_and_student_context)
+        if polli_reply:
+            _save_user_chat_turn(user_id, message, polli_reply)
+            return api_response(True, {"reply": polli_reply, "mode": "pollinations_openai_rag"})
     except Exception:
         pass
 
     # ------------------------------------------------------------------
-    # TẦNG 3: Gọi cổng LLM7 OpenAI-compatible dự phòng
+    # TẦNG 3 (DỰ PHÒNG 1): Gọi cổng OpenAI-compatible đa lượt chuẩn (LLM7)
     # ------------------------------------------------------------------
     try:
         llm_reply = _call_free_llm_with_sqlite_context(message, history, website_and_student_context)
         if llm_reply:
+            _save_user_chat_turn(user_id, message, llm_reply)
             return api_response(True, {"reply": llm_reply, "mode": "llm7_rag"})
     except Exception:
         pass
 
     # ------------------------------------------------------------------
-    # TẦNG 4 (Dự phòng khi mất mạng Internet): Trả lời chi tiết từng mục dữ liệu người dùng đã nhập
+    # TẦNG 4 (DỰ PHÒNG 2): Gọi Llama-3.2-Instruct (HuggingFace Space)
     # ------------------------------------------------------------------
-    if any(k in msg_lower for k in ["môn", "học phần", "điểm", "tín chỉ", "đã học"]):
-        if user_courses:
-            lines = "\n".join([f"• **{c['code']} - {c['name']}**: **{c['credits']} tín chỉ** — Điểm: **{c['grade']}** (Học kỳ: {c['term'] or 'N/A'})" for c in user_courses])
-            reply = f"📚 **Danh sách {len(user_courses)} học phần bạn đã nhập trên hệ thống ({student_name}):**\n{lines}"
-        else:
-            reply = f"📚 Hiện tại tài khoản **{student_name}** chưa nhập học phần nào. Bạn có thể vào trang **Hồ sơ sinh viên (`/profile`)** -> mục **Học phần đã học** để thêm môn học nhé!"
-        return api_response(True, {"reply": reply, "mode": "sqlite_direct"})
+    try:
+        hf_reply = _call_hf_llama_with_sqlite_context(message, history, website_and_student_context)
+        if hf_reply:
+            _save_user_chat_turn(user_id, message, hf_reply)
+            return api_response(True, {"reply": hf_reply, "mode": "hf_llama_rag"})
+    except Exception:
+        pass
 
-    if any(k in msg_lower for k in ["kỹ năng của tôi", "kỹ năng tôi", "tôi có kỹ năng", "đã nhập kỹ năng", "skill"]):
-        if user_skills_rows:
-            lines = "\n".join([f"• **{s['name']}** (*{s['category']}*) — Mức độ: **{s['level']}/5** {('- ' + s['note']) if s['note'] else ''}" for s in user_skills_rows])
-            reply = f"🛠️ **Các kỹ năng bạn đã nhập vào hồ sơ ({len(user_skills_rows)} kỹ năng):**\n{lines}\n\n💡 Bạn cũng có thể gõ trực tiếp vào chat: `Thêm kỹ năng <Tên kỹ năng>` để mình thêm nhanh vào hồ sơ giúp bạn!"
-        else:
-            reply = "🛠️ Bạn chưa nhập kỹ năng nào. Hãy vào **Hồ sơ sinh viên (`/profile`)** hoặc gõ `Thêm kỹ năng Python` ngay tại đây!"
-        return api_response(True, {"reply": reply, "mode": "sqlite_direct"})
-
-    if any(k in msg_lower for k in ["chứng chỉ", "toeic", "ielts", "coursera", "aws"]):
-        if user_certs:
-            lines = "\n".join([f"• **{c['name']}** — Tổ chức cấp: *{c['organization']}* (Ngày cấp: {c['issue_date'] or 'N/A'})" for c in user_certs])
-            reply = f"🏅 **Danh sách chứng chỉ bạn đã nhập ({len(user_certs)} chứng chỉ):**\n{lines}"
-        else:
-            reply = f"🏅 Hiện tại hồ sơ của **{student_name}** chưa có chứng chỉ nào được nhập. Bạn có thể vào trang **Hồ sơ sinh viên (`/profile`)** -> mục **Chứng chỉ** để bổ sung!"
-        return api_response(True, {"reply": reply, "mode": "sqlite_direct"})
-
-    if any(k in msg_lower for k in ["kinh nghiệm", "dự án", "thực tập", "project", "đồ án"]):
-        if user_exps:
-            lines = "\n".join([f"• **{e['title']}** tại *{e['company']}* ({e['role_type']}, {e['start_date']} - {e['end_date']})" for e in user_exps])
-            reply = f"💼 **Kinh nghiệm & Dự án bạn đã nhập ({len(user_exps)} mục):**\n{lines}"
-        else:
-            reply = f"💼 Hiện tại hồ sơ của **{student_name}** chưa nhập mục Kinh nghiệm & Dự án nào tại trang `/profile`."
-        return api_response(True, {"reply": reply, "mode": "sqlite_direct"})
-
-    if any(k in msg_lower for k in ["kế hoạch", "lộ trình", "mục tiêu học", "plan"]):
-        if plan_items:
-            lines = "\n".join([f"• **{p['title']}** (*{p['category']}*) — Trạng thái: **{p['status']}** (Hạn: {p['target_date'] or 'N/A'})" for p in plan_items])
-            reply = f"📌 **Kế hoạch học tập hiện tại của bạn ({len(plan_items)} mục tiêu):**\n{lines}\n\n💡 Bạn có thể gõ `Thêm kế hoạch <Tên mục tiêu>` vào chat để mình thêm trực tiếp giúp bạn!"
-        else:
-            reply = "📌 Bạn chưa có mục tiêu nào trong trang **Kế hoạch học tập (`/plan`)**."
-        return api_response(True, {"reply": reply, "mode": "sqlite_direct"})
-
-    # Trả lời tổng hợp toàn bộ dữ liệu cá nhân đã nhập khi offline
-    reply = (
-        f"👤 **Toàn bộ dữ liệu hồ sơ của bạn trên hệ thống ({student_name}):**\n"
-        f"- **MSSV:** {student_code} | **Trường:** {student_uni} | **Ngành:** {student_major} | **GPA:** **{student_gpa}**\n"
-        f"- **Vị trí mục tiêu đang chọn:** **{target_pos_name}** (Độ phù hợp: **{target_score}%**)\n"
-        f"- **Học phần đã nhập ({len(user_courses)}):** {courses_detail_str}\n"
-        f"- **Kỹ năng đã nhập ({len(user_skills_rows)}):** {skills_detail_str}\n"
-        f"- **Chứng chỉ ({len(user_certs)}):** {certs_detail_str}\n"
-        f"- **Kinh nghiệm/Dự án ({len(user_exps)}):** {exps_detail_str}\n"
-        f"- **Kế hoạch học tập ({len(plan_items)}):** {plans_detail_str}"
+    # ------------------------------------------------------------------
+    # TẦNG 5 (Trợ lý Cố vấn Nội bộ thông minh từ CSDL SQLite - Phản hồi tức thì
+    # ngay cả khi hết hạn mức API miễn phí hoặc ngoại tuyến)
+    # ------------------------------------------------------------------
+    reply = _build_natural_local_advisor_reply(
+        message=message,
+        msg_lower=msg_lower,
+        student_name=student_name,
+        student_code=student_code,
+        student_uni=student_uni,
+        student_major=student_major,
+        student_gpa=student_gpa,
+        best_pos=best_pos,
+        target_pos_name=target_pos_name,
+        target_score=target_score,
+        eval_data=eval_data,
+        all_pos_scores=all_pos_scores,
+        positions=positions,
+        user_courses=user_courses,
+        unique_skill_items=unique_skill_items,
+        user_certs=user_certs,
+        user_exps=user_exps,
+        plan_items=plan_items,
+        recent_jobs=recent_jobs,
+        total_jobs=total_jobs,
+        suggested_courses_list=suggested_courses_list,
     )
+    _save_user_chat_turn(user_id, message, reply)
     return api_response(True, {"reply": reply, "mode": "sqlite_direct"})
 
 

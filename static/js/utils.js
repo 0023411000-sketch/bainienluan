@@ -312,6 +312,9 @@ const Utils = {
         clearSession() {
             localStorage.removeItem(CONFIG.STORAGE_KEYS.USER_INFO);
             localStorage.removeItem(CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+            try {
+                sessionStorage.removeItem('it_career_chat_state_guest');
+            } catch (e) {}
         },
         isAuthenticated() {
             return !!localStorage.getItem(CONFIG.STORAGE_KEYS.AUTH_TOKEN);
