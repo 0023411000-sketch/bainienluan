@@ -21,12 +21,17 @@ from collections import Counter
 from flask import Flask, render_template, redirect, url_for, request, jsonify, session
 # pyrefly: ignore[missing-import]
 from werkzeug.security import generate_password_hash, check_password_hash
+# pyrefly: ignore[missing-import]
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from models import get_db_connection, parse_json_list, dump_json_list
 from seed_data import seed_database
 
 app = Flask(__name__)
-app.secret_key = "it-career-compass-secret-key-nlcnpm23cs-38"
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "it-career-compass-secret-key-nlcnpm23cs-38")
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 # Khởi tạo CSDL & dữ liệu mẫu khi chạy ứng dụng
 seed_database()
@@ -3012,9 +3017,12 @@ def api_chatbot():
 
 
 if __name__ == "__main__":
+    flask_debug = os.environ.get("FLASK_DEBUG", "0") == "1"
+    flask_host = os.environ.get("FLASK_HOST", "127.0.0.1")
+    flask_port = int(os.environ.get("FLASK_PORT", "5000"))
     print("=" * 68)
     print("  HE THONG DINH HUONG KY NANG NGHE NGHIEP CNTT (FLASK + SQLITE)")
-    print("  De tai: NLCNPM23CS-38 - Nhanh: thanh-vien-2")
-    print("  May chu dang chay tai: http://127.0.0.1:5000")
+    print("  De tai: NLCNPM23CS-38")
+    print(f"  May chu dang chay tai: http://{flask_host}:{flask_port} (debug={flask_debug})")
     print("=" * 68)
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=flask_debug, host=flask_host, port=flask_port, threaded=True)

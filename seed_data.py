@@ -180,11 +180,13 @@ def _ensure_admin_account(cursor):
                     p["bio"],
                 ),
             )
+            # pyrefly: ignore[bad-unpacking]
             for code, name, credits, grade, term in p["courses"]:
                 cursor.execute(
                     "INSERT INTO courses (user_id, code, name, credits, grade, term) VALUES (?, ?, ?, ?, ?, ?)",
                     (uid, code, name, credits, grade, term),
                 )
+            # pyrefly: ignore[bad-unpacking]
             for name, category, level, note in p["skills"]:
                 cursor.execute(
                     "INSERT INTO skills (user_id, name, category, level, note) VALUES (?, ?, ?, ?, ?)",
@@ -196,11 +198,13 @@ def _ensure_admin_account(cursor):
                     "INSERT INTO certificates (user_id, name, organization, issue_date, expiry_date, credential_url) VALUES (?, ?, ?, ?, ?, ?)",
                     (uid, name, org, issue_date, exp_date, url),
                 )
+            # pyrefly: ignore[bad-unpacking]
             for title, comp, rtype, sdate, edate, desc in p["exps"]:
                 cursor.execute(
                     "INSERT INTO experiences (user_id, title, company, role_type, start_date, end_date, description) VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (uid, title, comp, rtype, sdate, edate, desc),
                 )
+            # pyrefly: ignore[bad-unpacking]
             for title, cat, ptype, status, tdate, note in p["plans"]:
                 cursor.execute(
                     "INSERT INTO learning_plans (user_id, title, category, type, status, target_date, note) VALUES (?, ?, ?, ?, ?, ?, ?)",

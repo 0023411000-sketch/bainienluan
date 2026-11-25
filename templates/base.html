@@ -12,6 +12,10 @@
             document.documentElement.setAttribute('data-theme', theme);
         })();
     </script>
+    <style>
+        html[data-theme="dark"] { background-color: #020811; }
+        html[data-theme="light"] { background-color: #E6EAEF; }
+    </style>
 
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,7 +28,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 
     <!-- Custom CSS Dark Mode & Light Mode CRM -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=12">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=14">
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-main text-body">
@@ -85,7 +89,7 @@
                     <i class="bi bi-sun-fill theme-icon-light d-none"></i>
                     <i class="bi bi-moon-stars-fill theme-icon-dark"></i>
                 </a>
-                <a href="/db-viewer" class="sidebar-link" title="Xem CSDL SQLite" data-bs-toggle="tooltip" data-bs-placement="right">
+                <a href="/db-viewer" class="sidebar-link d-none {% if request.endpoint == 'db_viewer' or request.path == '/db-viewer' %}active{% endif %}" id="sidebarDbViewerItem" title="Xem CSDL SQLite" data-bs-toggle="tooltip" data-bs-placement="right">
                     <i class="bi bi-database"></i>
                 </a>
                 <a href="javascript:void(0)" class="sidebar-link" title="Đăng xuất" id="sidebarLogoutBtn" data-bs-toggle="tooltip" data-bs-placement="right">
@@ -688,6 +692,7 @@
                 const roleHeaderEl = document.getElementById('navUserRoleHeader');
                 const navAdminItem = document.getElementById('navAdminItem');
                 const sidebarAdminItem = document.getElementById('sidebarAdminItem');
+                const sidebarDbViewerItem = document.getElementById('sidebarDbViewerItem');
                 const dropdownAdminLink = document.getElementById('dropdownAdminLink');
 
                 if (user.role === 'admin') {
@@ -700,6 +705,7 @@
                     }
                     navAdminItem?.classList.remove('d-none');
                     sidebarAdminItem?.classList.remove('d-none');
+                    sidebarDbViewerItem?.classList.remove('d-none');
                     dropdownAdminLink?.classList.remove('d-none');
                 } else {
                     if (roleBadgeEl) {
@@ -711,6 +717,7 @@
                     }
                     navAdminItem?.classList.add('d-none');
                     sidebarAdminItem?.classList.add('d-none');
+                    sidebarDbViewerItem?.classList.add('d-none');
                     dropdownAdminLink?.classList.add('d-none');
                 }
                 if (LangManager.current() === 'en') {

@@ -14,5 +14,7 @@ echo   - [SV Frontend]   Tran Thi Bich Ngoc: ngoc.tran21@student.edu.vn
 echo   - [SV Data]       Le Hoang Nam     : nam.le21@student.edu.vn
 echo   - [SV AI / ML]    Pham Minh Tuan   : tuan.pham22@student.edu.vn
 echo ======================================================================
+set FLASK_DEBUG=1
+set FLASK_HOST=127.0.0.1
 .\venv\Scripts\python.exe app.py
 pause
