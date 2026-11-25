@@ -239,6 +239,18 @@ def init_db():
         );
     """)
 
+    # 12. Bảng chat_messages (Lưu lịch sử trò chuyện Trợ lý AI xuyên suốt các tab/phiên)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+    """)
+
     conn.commit()
     conn.close()
 
