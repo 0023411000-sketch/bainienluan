@@ -1,0 +1,12 @@
+<!-- Thanh chuyển đổi con trong cụm Thị trường việc làm -->
+<div class="d-inline-flex flex-wrap align-items-center gap-1 p-1 mb-3 rounded-pill border bg-white shadow-sm market-subnav">
+    <a href="/jobs" class="btn btn-sm {% if request.endpoint == 'jobs' or request.path == '/jobs' %}btn-primary{% else %}btn-light border-0 text-secondary{% endif %}">
+        <i class="bi bi-briefcase"></i><span>Tin tuyển dụng</span>
+    </a>
+    <a href="/positions" class="btn btn-sm {% if request.endpoint == 'positions' or request.path == '/positions' %}btn-primary{% else %}btn-light border-0 text-secondary{% endif %}">
+        <i class="bi bi-diagram-3"></i><span>Vị trí nghề nghiệp</span>
+    </a>
+    <a href="/statistics" class="btn btn-sm {% if request.endpoint == 'statistics' or request.path == '/statistics' %}btn-primary{% else %}btn-light border-0 text-secondary{% endif %}">
+        <i class="bi bi-bar-chart-line"></i><span>Thống kê kỹ năng</span>
+    </a>
+</div>

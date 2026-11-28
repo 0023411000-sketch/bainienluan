@@ -4,16 +4,14 @@
 
 {% block content %}
 <!-- Tiêu đề trang -->
-<div class="row align-items-center mb-4">
-    <div class="col-md-7">
-        <h2 class="h3 fw-bold text-dark mb-1">
-            <i class="bi bi-shield-lock-fill text-danger me-2"></i>Quản Trị Tài Khoản & Phân Quyền (RBAC)
-        </h2>
-        <p class="text-secondary mb-0 small">
-            Quản lý danh sách tài khoản người dùng, cấp quyền Quản trị viên (Admin) hoặc Sinh viên (Student) trong hệ thống.
-        </p>
-    </div>
-    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <h2 class="h4 fw-bold text-dark mb-0">
+        <i class="bi bi-shield-lock-fill text-danger me-2"></i>Quản Trị Tài Khoản &amp; Phân Quyền
+    </h2>
+    <div class="d-flex gap-2">
+        <a href="/db-viewer" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-database me-1"></i>Xem CSDL SQLite
+        </a>
         <button type="button" class="btn btn-primary btn-sm shadow-sm" id="btnOpenAddUserModal">
             <i class="bi bi-person-plus-fill me-1"></i>Tạo tài khoản mới
         </button>

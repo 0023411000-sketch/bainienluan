@@ -218,10 +218,11 @@ def seed_database():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Kiểm tra nếu đã có user thì bổ sung tài khoản admin & bảng mới (nếu trống) rồi thoát
+    # Kiểm tra nếu đã có user thì bổ sung tài khoản admin, vị trí & tin tuyển dụng còn thiếu rồi thoát
     cursor.execute("SELECT COUNT(*) AS cnt FROM users")
     if cursor.fetchone()["cnt"] > 0:
         _ensure_admin_account(cursor)
+        _ensure_qa_analysis_position_and_jobs(cursor)
         _seed_analytics_tables_if_empty(cursor)
         conn.commit()
         conn.close()
@@ -487,12 +488,134 @@ def seed_database():
         plans_data,
     )
 
-    # 10 & 11. Nạp dữ liệu mẫu cho course_recommendations và comparison_history
+    # 10 & 11. Nạp dữ liệu mẫu cho course_recommendations, comparison_history và ngành Phân tích, kiểm thử phần mềm
+    _ensure_qa_analysis_position_and_jobs(cursor)
     _seed_analytics_tables_if_empty(cursor)
 
     conn.commit()
     conn.close()
     print(f"Da nap du lieu mau thanh cong vao: {DB_PATH}")
+
+
+def _ensure_qa_analysis_position_and_jobs(cursor):
+    """Đảm bảo ngành 'Phân tích, kiểm thử phần mềm' luôn có đầy đủ tin tuyển dụng thực tế."""
+    cursor.execute(
+        "SELECT id FROM positions WHERE LOWER(name) = LOWER(?)",
+        ("Phân tích, kiểm thử phần mềm",),
+    )
+    pos_row = cursor.fetchone()
+    if pos_row:
+        pos_id = pos_row["id"]
+    else:
+        cursor.execute(
+            """
+            INSERT INTO positions (name, code, description, core_skills, demand_level)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                "Phân tích, kiểm thử phần mềm",
+                "Quality Control – QC, Tester",
+                "Vị trí này thuộc mảng đảm bảo chất lượng phần mềm trong ngành IT, chịu trách nhiệm phân tích yêu cầu nghiệp vụ và kiểm tra chất lượng phần mềm.",
+                dump_json_list(["SQL", "API Testing", "Automation Testing", "Ứng dụng AI hỗ trợ"]),
+                "Ổn định",
+            ),
+        )
+        pos_id = cursor.lastrowid
+
+    cursor.execute("SELECT COUNT(*) AS cnt FROM jobs WHERE position_id = ?", (pos_id,))
+    if cursor.fetchone()["cnt"] > 0:
+        return
+
+    qa_analysis_jobs = [
+        (
+            "Chuyên viên Phân tích & Kiểm thử Phần mềm (BA / QC Tester)",
+            "FPT Software",
+            pos_id,
+            "TP. Hồ Chí Minh / Đà Nẵng",
+            "12 - 22 triệu VNĐ",
+            "1 - 2 năm",
+            ["Phân tích yêu cầu", "Thiết kế Test Case", "SQL", "API Testing", "Kiểm thử phần mềm"],
+            ["Postman", "Jira", "SQL Server", "Figma"],
+            ["ISTQB Foundation Level (CTFL)"],
+            "2026-12-20",
+            "Phân tích tài liệu đặc tả nghiệp vụ (SRS/BRD), thiết kế kịch bản kiểm thử toàn diện, truy vấn SQL đối soát dữ liệu và kiểm thử API cho hệ thống tài chính - ngân hàng.",
+        ),
+        (
+            "Fresher Kiểm thử Phần mềm (Ứng dụng AI hỗ trợ Test)",
+            "Viettel Digital",
+            pos_id,
+            "Hà Nội",
+            "9 - 15 triệu VNĐ",
+            "0 - 1 năm / Fresher",
+            ["Kiểm thử phần mềm", "SQL", "API Testing", "Ứng dụng AI hỗ trợ", "Thiết kế Test Case"],
+            ["Postman", "Jira", "GitHub Copilot", "AI Test Generator"],
+            ["TOEIC 600+", "ISTQB Foundation Level (CTFL)"],
+            "2026-12-15",
+            "Thực hiện kiểm thử chức năng Web/App, ứng dụng công cụ AI sinh bộ dữ liệu kiểm thử (test data) và kịch bản biên, kiểm tra tính toàn vẹn dữ liệu bằng SQL.",
+        ),
+        (
+            "Automation & API Testing Engineer (Playwright / Postman)",
+            "VNG Corporation",
+            pos_id,
+            "TP. Hồ Chí Minh",
+            "18 - 32 triệu VNĐ",
+            "1 - 3 năm",
+            ["Automation Testing", "API Testing", "SQL", "JavaScript", "Ứng dụng AI hỗ trợ"],
+            ["Playwright", "Postman", "Docker", "GitLab CI"],
+            ["ISTQB Foundation Level (CTFL)", "Postman API Fundamentals"],
+            "2026-12-28",
+            "Xây dựng kịch bản kiểm thử tự động giao diện và RESTful API tích hợp vào pipeline CI/CD, phát hiện sớm lỗi hồi quy trước khi phát hành sản phẩm.",
+        ),
+        (
+            "Software Quality Analyst (Phân tích Chất lượng Phần mềm)",
+            "TMA Solutions",
+            pos_id,
+            "TP. Hồ Chí Minh / Bình Định",
+            "14 - 25 triệu VNĐ",
+            "1 - 2 năm",
+            ["Phân tích nghiệp vụ", "Kiểm thử phần mềm", "SQL", "API Testing", "Automation Testing"],
+            ["Selenium", "JMeter", "PostgreSQL", "TestRail"],
+            ["ISTQB Foundation Level (CTFL)"],
+            "2026-12-18",
+            "Rà soát luồng nghiệp vụ phần mềm doanh nghiệp, thực thi kiểm thử tích hợp, kiểm thử hiệu năng với JMeter và phân tích nguyên nhân gốc rễ lỗi.",
+        ),
+        (
+            "AI-Assisted QA / QC Specialist (Kiểm thử Tự động Thế hệ mới)",
+            "NashTech Vietnam",
+            pos_id,
+            "Hà Nội / TP. Hồ Chí Minh",
+            "20 - 35 triệu VNĐ",
+            "2+ năm",
+            ["Automation Testing", "Ứng dụng AI hỗ trợ", "API Testing", "SQL", "Python"],
+            ["Cypress", "Playwright", "Applitools AI", "Azure DevOps"],
+            ["ISTQB Advanced Level Test Analyst"],
+            "2026-12-30",
+            "Triển khai giải pháp kiểm thử tự động có AI hỗ trợ (Visual AI Testing), kiểm thử hồi quy đa trình duyệt và tối ưu độ bao phủ test case cho dự án quốc tế.",
+        ),
+    ]
+
+    for j in qa_analysis_jobs:
+        cursor.execute(
+            """
+            INSERT INTO jobs (
+                title, company, position_id, location, salary,
+                experience_required, skills, technologies, certificates, deadline, description
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                j[0],
+                j[1],
+                j[2],
+                j[3],
+                j[4],
+                j[5],
+                dump_json_list(j[6]),
+                dump_json_list(j[7]),
+                dump_json_list(j[8]),
+                j[9],
+                j[10],
+            ),
+        )
 
 
 def _seed_analytics_tables_if_empty(cursor):

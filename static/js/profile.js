@@ -52,6 +52,28 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('formCert')?.addEventListener('submit', handleSaveCert);
     document.getElementById('formExp')?.addEventListener('submit', handleSaveExp);
 
+    // Chặn nhập chữ / ký tự đặc biệt (kể cả bộ gõ Tiếng Việt IME) vào ô Số điện thoại
+    const phoneInput = document.getElementById('infoPhone');
+    if (phoneInput) {
+        const sanitizePhoneInput = () => {
+            const cleaned = phoneInput.value.replace(/\D+/g, '').slice(0, 11);
+            if (phoneInput.value !== cleaned) {
+                phoneInput.value = cleaned;
+            }
+        };
+        phoneInput.addEventListener('keydown', (ev) => {
+            if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+            const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+            if (allowedKeys.includes(ev.key)) return;
+            if (!/^\d$/.test(ev.key)) {
+                ev.preventDefault();
+            }
+        });
+        phoneInput.addEventListener('input', sanitizePhoneInput);
+        phoneInput.addEventListener('compositionend', sanitizePhoneInput);
+        phoneInput.addEventListener('blur', sanitizePhoneInput);
+    }
+
     // Gắn sự kiện Đổi ảnh đại diện
     const avatarInput = document.getElementById('avatarFileInput');
     document.getElementById('btnQuickChangeAvatar')?.addEventListener('click', () => avatarInput?.click());
@@ -63,6 +85,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // Gắn sự kiện chọn ảnh đại diện mẫu (Presets)
     document.querySelectorAll('.preset-avatar-btn').forEach(btn => {
         btn.addEventListener('click', handleSelectPresetAvatar);
+    });
+
+    // Gắn sự kiện Tải CV cá nhân ở tab Kinh nghiệm & gỡ CV trong Modal Kinh nghiệm
+    const quickCvInput = document.getElementById('quickCvFileInput');
+    document.getElementById('btnQuickUploadCv')?.addEventListener('click', () => quickCvInput?.click());
+    if (quickCvInput) {
+        quickCvInput.addEventListener('change', handleQuickCvUpload);
+    }
+    document.getElementById('btnDeleteGeneralCv')?.addEventListener('click', handleDeleteGeneralCv);
+    document.getElementById('btnSetTargetFromCv')?.addEventListener('click', handleSetTargetFromCv);
+    document.getElementById('expCvFileInput')?.addEventListener('change', handleExpModalCvSelect);
+    document.getElementById('btnClearExpCv')?.addEventListener('click', () => {
+        const fileEl = document.getElementById('expCvFileInput');
+        if (fileEl) fileEl.value = '';
+        document.getElementById('expCvUrl').value = '';
+        document.getElementById('expCvName').value = '';
+        document.getElementById('expCurrentCvBox')?.classList.add('d-none');
+        document.getElementById('expModalCvPreviewBox')?.classList.add('d-none');
     });
 
     // Tải dữ liệu hồ sơ
@@ -94,6 +134,7 @@ async function loadProfileData() {
             renderCourses(res.data.courses || []);
             renderCertificates(res.data.certificates || []);
             renderExperiences(res.data.experiences || []);
+            renderCvCourseAnalysis(res.data.cv_analysis || null);
             if (res.data.evaluation) {
                 renderProfileEvaluation(res.data.evaluation);
             }
@@ -231,28 +272,57 @@ function renderPersonalInfo(info) {
         const selectedOpt = targetPosEl.options[targetPosEl.selectedIndex];
         const sideTargetEl = document.getElementById('profileSideTargetPos');
         if (sideTargetEl && selectedOpt) sideTargetEl.textContent = selectedOpt.textContent;
+        const sideDetailLink = document.getElementById('linkSideTargetDetail');
+        if (sideDetailLink) sideDetailLink.href = `/positions?id=${info.target_position_id}`;
     }
     const navNameEl = document.getElementById('navUserFullName');
     if (navNameEl && info.full_name) navNameEl.textContent = info.full_name;
 
-    // Cập nhật ảnh đại diện
+    // Cập nhật ảnh đại diện & banner CV chung
     updateAvatarDisplay(info.avatar_url || '');
+    renderGeneralCvBanner(info.cv_url || '', info.cv_name || '');
 
     // Điền vào form Modal chỉnh sửa
     document.getElementById('infoFullName').value = info.full_name || '';
     document.getElementById('infoStudentCode').value = info.student_code || '';
     document.getElementById('infoEmail').value = info.email || '';
-    document.getElementById('infoPhone').value = info.phone || '';
+    document.getElementById('infoPhone').value = (info.phone || '').replace(/\D+/g, '').slice(0, 11);
     document.getElementById('infoUniversity').value = info.university || '';
     document.getElementById('infoFaculty').value = info.faculty || '';
     document.getElementById('infoMajor').value = info.major || '';
-    document.getElementById('infoAcademicYear').value = info.academic_year || '';
+    const academicYearEl = document.getElementById('infoAcademicYear');
+    if (academicYearEl) {
+        academicYearEl.querySelectorAll('option[data-dynamic-year="true"]').forEach(el => el.remove());
+        const yr = (info.academic_year || '').trim();
+        if (yr) {
+            const exists = Array.from(academicYearEl.options).some(opt => opt.value === yr);
+            if (!exists) {
+                const customOpt = document.createElement('option');
+                customOpt.value = yr;
+                customOpt.textContent = yr;
+                customOpt.dataset.dynamicYear = 'true';
+                academicYearEl.insertBefore(customOpt, academicYearEl.firstChild);
+            }
+            academicYearEl.value = yr;
+        } else {
+            academicYearEl.value = '2023 - 2027';
+        }
+    }
     document.getElementById('infoGpa').value = info.gpa || '';
     document.getElementById('infoBio').value = info.bio || '';
 }
 
 async function handleSavePersonalInfo(e) {
     e.preventDefault();
+    const phoneEl = document.getElementById('infoPhone');
+    const rawPhone = (phoneEl?.value || '').trim();
+    const cleanPhone = rawPhone.replace(/\D+/g, '');
+    if (rawPhone !== cleanPhone || (cleanPhone && !/^0\d{9,10}$/.test(cleanPhone))) {
+        Utils.showToast('Số điện thoại không hợp lệ! Vui lòng chỉ nhập 10–11 chữ số (bắt đầu bằng số 0).', 'warning');
+        phoneEl?.focus();
+        return;
+    }
+
     const btn = document.getElementById('btnSavePersonalInfo');
     Utils.setButtonLoading(btn, true);
 
@@ -260,7 +330,7 @@ async function handleSavePersonalInfo(e) {
         full_name: document.getElementById('infoFullName').value.trim(),
         student_code: document.getElementById('infoStudentCode').value.trim(),
         email: document.getElementById('infoEmail').value.trim(),
-        phone: document.getElementById('infoPhone').value.trim(),
+        phone: cleanPhone,
         university: document.getElementById('infoUniversity').value.trim(),
         faculty: document.getElementById('infoFaculty').value.trim(),
         major: document.getElementById('infoMajor').value.trim(),
@@ -295,6 +365,19 @@ async function handleSavePersonalInfo(e) {
 // ==========================================
 // 2. XỬ LÝ KỸ NĂNG (SKILLS)
 // ==========================================
+function getSkillLevelBadgeHtml(level) {
+    const lv = Math.min(Math.max(parseInt(level) || 3, 1), 5);
+    const map = {
+        1: { label: 'Nhập môn', cls: 'bg-secondary-subtle text-secondary border-secondary-subtle' },
+        2: { label: 'Cơ bản', cls: 'bg-info-subtle text-info border-info-subtle' },
+        3: { label: 'Khá', cls: 'bg-primary-subtle text-primary border-primary-subtle' },
+        4: { label: 'Thành thạo', cls: 'bg-success-subtle text-success border-success-subtle' },
+        5: { label: 'Chuyên gia', cls: 'bg-warning-subtle text-warning border-warning-subtle' }
+    };
+    const item = map[lv] || map[3];
+    return `<span class="badge ${item.cls} border px-2 py-1">${item.label}</span>`;
+}
+
 function renderSkills(skills) {
     const tbody = document.getElementById('skillsTableBody');
     document.getElementById('countSkills').textContent = skills.length;
@@ -311,7 +394,7 @@ function renderSkills(skills) {
             <tr>
                 <td class="fw-semibold text-dark">${Utils.escapeHtml(s.name)}</td>
                 <td><span class="badge badge-soft-primary">${Utils.escapeHtml(s.category || 'Khác')}</span></td>
-                <td>${Utils.renderStars(s.level)}</td>
+                <td>${getSkillLevelBadgeHtml(s.level)}</td>
                 <td class="text-muted small">${Utils.escapeHtml(s.note || '-')}</td>
                 <td class="text-end">
                     <button class="btn btn-sm btn-outline-secondary py-0 px-2 me-1" title="Sửa" onclick="openEditSkillModal(${s.id})">
@@ -332,8 +415,8 @@ function openAddSkillModal() {
     document.getElementById('skillId').value = '';
     document.getElementById('skillName').value = '';
     document.getElementById('skillCategory').value = 'Ngôn ngữ lập trình';
-    document.getElementById('skillLevel').value = 3;
-    document.getElementById('skillLevelDisplay').textContent = '3/5';
+    const lvEl = document.getElementById('skillLevel');
+    if (lvEl) lvEl.value = '3';
     document.getElementById('skillNote').value = '';
     skillModal?.show();
 }
@@ -346,8 +429,8 @@ function openEditSkillModal(id) {
     document.getElementById('skillId').value = skill.id;
     document.getElementById('skillName').value = skill.name || '';
     document.getElementById('skillCategory').value = skill.category || 'Ngôn ngữ lập trình';
-    document.getElementById('skillLevel').value = skill.level || 3;
-    document.getElementById('skillLevelDisplay').textContent = `${skill.level || 3}/5`;
+    const lvEl = document.getElementById('skillLevel');
+    if (lvEl) lvEl.value = String(skill.level || 3);
     document.getElementById('skillNote').value = skill.note || '';
     skillModal?.show();
 }
@@ -361,7 +444,7 @@ async function handleSaveSkill(e) {
     const payload = {
         name: document.getElementById('skillName').value.trim(),
         category: document.getElementById('skillCategory').value,
-        level: parseInt(document.getElementById('skillLevel').value) || 3,
+        level: parseInt(document.getElementById('skillLevel')?.value) || 3,
         note: document.getElementById('skillNote').value.trim()
     };
 
@@ -643,8 +726,272 @@ function deleteCert(id) {
 }
 
 // ==========================================
-// 5. XỬ LÝ KINH NGHIỆM & DỰ ÁN (EXPERIENCES)
+// 5. XỬ LÝ KINH NGHIỆM, DỰ ÁN & TẢI CV LÊN + LỌC MÔN HỌC TỪ CV
 // ==========================================
+let latestCvAnalysis = null;
+
+async function uploadCvFileHelper(file, saveToProfile = false, extraHint = '') {
+    const formData = new FormData();
+    formData.append('cv', file);
+    if (saveToProfile) {
+        formData.append('save_to_profile', '1');
+    }
+    if (extraHint) {
+        formData.append('extra_hint', extraHint);
+    }
+    if (API.profile && typeof API.profile.uploadCv === 'function') {
+        return await API.profile.uploadCv(formData);
+    }
+    const raw = await fetch('/api/profile/cv', { method: 'POST', body: formData });
+    return await raw.json();
+}
+
+function renderCvCourseAnalysis(analysis) {
+    latestCvAnalysis = analysis || null;
+    const card = document.getElementById('cvAnalysisCoursesCard');
+    if (!card) return;
+    if (!analysis || !analysis.detected_position) {
+        card.classList.add('d-none');
+        return;
+    }
+
+    card.classList.remove('d-none');
+    const detPos = analysis.detected_position;
+    document.getElementById('cvDetectedPositionName').textContent = detPos.name || '';
+
+    const noteEl = document.getElementById('cvAnalysisSourceNote');
+    if (noteEl) {
+        noteEl.textContent = analysis.matched_from_cv_text
+            ? `(Trích xuất từ tệp: ${analysis.cv_name || 'CV'})`
+            : `(Tệp ${analysis.cv_name || 'CV'} không chứa văn bản — đang lọc theo định hướng hiện tại)`;
+    }
+
+    const currentTargetId = Number(currentProfile?.personal_info?.target_position_id || 0);
+    const setTargetBtn = document.getElementById('btnSetTargetFromCv');
+    if (setTargetBtn) {
+        setTargetBtn.classList.toggle('d-none', Number(detPos.id) === currentTargetId);
+    }
+
+    const skillsWrap = document.getElementById('cvDetectedSkillsWrap');
+    if (skillsWrap) {
+        const detSkills = analysis.detected_skills || [];
+        if (detSkills.length > 0) {
+            skillsWrap.innerHTML = `<span class="me-1">Kỹ năng phát hiện trong CV:</span>` +
+                detSkills.map(s => `<span class="badge bg-success-subtle text-success border border-success-subtle me-1 mb-1">${Utils.escapeHtml(s)}</span>`).join('');
+        } else {
+            skillsWrap.innerHTML = `<span class="text-muted">Đã lọc danh sách các học phần cốt lõi tương ứng với ngành <strong>${Utils.escapeHtml(detPos.name)}</strong>.</span>`;
+        }
+    }
+
+    const tbody = document.getElementById('cvFilteredCoursesTbody');
+    if (!tbody) return;
+    const courses = analysis.filtered_courses || [];
+    if (courses.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-3 text-muted">Chưa có học phần gợi ý cho ngành này.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = courses.map((c, idx) => {
+        const matchedBadges = (c.cv_matched_skills || []).map(sk =>
+            `<span class="badge bg-success-subtle text-success border border-success-subtle me-1 mb-1" title="Đã có trong CV"><i class="bi bi-check2 me-1"></i>${Utils.escapeHtml(sk)}</span>`
+        ).join('');
+        const suppBadges = (c.skills_to_supplement || []).slice(0, 4).map(sk =>
+            `<span class="badge badge-soft-primary me-1 mb-1" title="Kỹ năng môn học trang bị thêm">${Utils.escapeHtml(sk)}</span>`
+        ).join('');
+
+        const actionHtml = c.already_learned
+            ? `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="bi bi-check-circle-fill me-1"></i>Đã hoàn thành</span>`
+            : `<div class="btn-group btn-group-sm">
+                   <button type="button" class="btn btn-outline-primary py-0 px-2" onclick="addCvCourseToPlanByIdx(${idx})">
+                       <i class="bi bi-calendar-plus me-1"></i>Kế hoạch
+                   </button>
+                   <button type="button" class="btn btn-outline-success py-0 px-2" onclick="markCvCourseLearnedByIdx(${idx})">
+                       <i class="bi bi-check2 me-1"></i>Đã học
+                   </button>
+               </div>`;
+
+        return `
+            <tr>
+                <td><span class="badge bg-secondary-subtle text-dark border font-monospace">${Utils.escapeHtml(c.code)}</span></td>
+                <td>
+                    <div class="fw-semibold text-dark">${Utils.escapeHtml(c.name)}</div>
+                    <div class="text-muted text-truncate" style="max-width: 260px;" title="${Utils.escapeHtml(c.description || '')}">${Utils.escapeHtml(c.description || '')}</div>
+                </td>
+                <td class="text-center"><span class="badge bg-light text-dark border">${c.credits || 3} TC</span></td>
+                <td>${matchedBadges}${suppBadges}</td>
+                <td class="text-end text-nowrap">${actionHtml}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function addCvCourseToPlanByIdx(idx) {
+    const c = latestCvAnalysis?.filtered_courses?.[idx];
+    if (!c) return;
+    addSuggestedCourseToPlan(c.code, c.name, c.description || `Môn học phù hợp với ngành ${latestCvAnalysis?.detected_position?.name || ''} trích xuất từ CV.`);
+}
+
+function markCvCourseLearnedByIdx(idx) {
+    const c = latestCvAnalysis?.filtered_courses?.[idx];
+    if (!c) return;
+    markCourseAsLearned(c.code, c.name, c.credits || 3);
+}
+
+async function handleSetTargetFromCv() {
+    const posId = latestCvAnalysis?.detected_position?.id;
+    if (!posId) return;
+    const btn = document.getElementById('btnSetTargetFromCv');
+    Utils.setButtonLoading(btn, true);
+    try {
+        const res = API.profile && typeof API.profile.setTargetPosition === 'function'
+            ? await API.profile.setTargetPosition(posId)
+            : await (await fetch('/api/profile/target-position', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ position_id: posId })
+            })).json();
+        if (res.success) {
+            Utils.showToast(res.message || 'Đã đồng bộ vị trí mục tiêu theo CV!', 'success');
+            await loadProfileData();
+        } else {
+            Utils.showToast(res.message || 'Không thể cập nhật vị trí mục tiêu!', 'danger');
+        }
+    } catch (e) {
+        Utils.showToast('Lỗi máy chủ!', 'danger');
+    } finally {
+        Utils.setButtonLoading(btn, false);
+    }
+}
+
+async function handleExpModalCvSelect(e) {
+    const file = e.target.files?.[0];
+    const previewBox = document.getElementById('expModalCvPreviewBox');
+    if (!file || !previewBox) return;
+
+    const hint = `${document.getElementById('expTitle')?.value || ''} ${document.getElementById('expDesc')?.value || ''}`.trim();
+    previewBox.classList.remove('d-none');
+    previewBox.innerHTML = `<span class="text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Đang đọc CV và lọc các môn học phù hợp với ngành...</span>`;
+
+    try {
+        const res = await uploadCvFileHelper(file, false, hint);
+        if (!res.success || !res.data) {
+            previewBox.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>${Utils.escapeHtml(res.message || 'Không thể phân tích tệp CV!')}</span>`;
+            e.target.value = '';
+            return;
+        }
+        document.getElementById('expCvUrl').value = res.data.cv_url || '';
+        document.getElementById('expCvName').value = res.data.cv_name || '';
+
+        const currentBox = document.getElementById('expCurrentCvBox');
+        const currentLink = document.getElementById('expCurrentCvLink');
+        if (currentBox && currentLink) {
+            currentBox.classList.remove('d-none');
+            currentLink.href = res.data.cv_url;
+            currentLink.textContent = res.data.cv_name;
+        }
+        e.target.value = '';
+
+        const analysis = res.data.cv_analysis;
+        if (analysis && analysis.detected_position) {
+            renderCvCourseAnalysis(analysis);
+            const coursesBadges = (analysis.filtered_courses || []).map(c =>
+                `<span class="badge ${c.already_learned ? 'bg-success-subtle text-success border-success-subtle' : 'bg-primary-subtle text-primary border-primary-subtle'} border me-1 mb-1">
+                    ${c.already_learned ? '✓ ' : ''}${Utils.escapeHtml(c.code)} - ${Utils.escapeHtml(c.name)}
+                 </span>`
+            ).join('');
+            previewBox.innerHTML = `
+                <div class="fw-bold text-dark mb-1">
+                    <i class="bi bi-stars text-primary me-1"></i>Ngành nhận diện từ CV:
+                    <span class="text-primary">${Utils.escapeHtml(analysis.detected_position.name)}</span>
+                </div>
+                <div class="text-secondary mb-1">Các môn học phù hợp với ngành trong CV (${analysis.total_courses} môn):</div>
+                <div>${coursesBadges || '<span class="text-muted">Chưa có môn học tương ứng</span>'}</div>
+            `;
+        } else {
+            previewBox.classList.add('d-none');
+        }
+    } catch (err) {
+        console.error(err);
+        previewBox.innerHTML = `<span class="text-danger">Lỗi kết nối khi phân tích CV!</span>`;
+    }
+}
+
+function renderGeneralCvBanner(cvUrl, cvName) {
+    const banner = document.getElementById('profileGeneralCvBanner');
+    if (!banner) return;
+    if (!cvUrl) {
+        banner.classList.add('d-none');
+        return;
+    }
+    banner.classList.remove('d-none');
+    const displayName = cvName || cvUrl.split('/').pop() || 'CV_Sinh_Vien.pdf';
+    const nameEl = document.getElementById('profileGeneralCvName');
+    const viewBtn = document.getElementById('btnViewGeneralCv');
+    const dlBtn = document.getElementById('btnDownloadGeneralCv');
+    if (nameEl) {
+        nameEl.textContent = displayName;
+        nameEl.href = cvUrl;
+    }
+    if (viewBtn) viewBtn.href = cvUrl;
+    if (dlBtn) {
+        dlBtn.href = cvUrl;
+        dlBtn.setAttribute('download', displayName);
+    }
+}
+
+async function handleQuickCvUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+        Utils.showLoading(true, 'Đang tải tệp CV lên hệ thống...');
+        const res = await uploadCvFileHelper(file, true);
+        if (res.success && res.data) {
+            if (currentProfile?.personal_info) {
+                currentProfile.personal_info.cv_url = res.data.cv_url;
+                currentProfile.personal_info.cv_name = res.data.cv_name;
+            }
+            renderGeneralCvBanner(res.data.cv_url, res.data.cv_name);
+            if (res.data.cv_analysis) {
+                renderCvCourseAnalysis(res.data.cv_analysis);
+            }
+            Utils.showToast(res.message || 'Đã tải CV lên thành công!', 'success');
+        } else {
+            Utils.showToast(res.message || 'Tải CV thất bại!', 'danger');
+        }
+    } catch (err) {
+        console.error(err);
+        Utils.showToast('Lỗi kết nối khi tải CV lên!', 'danger');
+    } finally {
+        e.target.value = '';
+        Utils.showLoading(false);
+    }
+}
+
+function handleDeleteGeneralCv() {
+    Utils.confirmModal({
+        title: 'Gỡ tệp CV cá nhân',
+        message: 'Bạn có chắc chắn muốn gỡ tệp CV đính kèm hiện tại không?',
+        confirmText: 'Gỡ CV',
+        confirmClass: 'btn-danger',
+        onConfirm: async () => {
+            const raw = API.profile && typeof API.profile.deleteCv === 'function'
+                ? await API.profile.deleteCv()
+                : await (await fetch('/api/profile/cv', { method: 'DELETE' })).json();
+            if (raw.success) {
+                if (currentProfile?.personal_info) {
+                    currentProfile.personal_info.cv_url = '';
+                    currentProfile.personal_info.cv_name = '';
+                }
+                renderGeneralCvBanner('', '');
+                await loadProfileData();
+                Utils.showToast('Đã gỡ tệp CV cá nhân!', 'info');
+            } else {
+                Utils.showToast(raw.message || 'Không thể gỡ tệp CV!', 'danger');
+            }
+        }
+    });
+}
+
 function renderExperiences(exps) {
     const container = document.getElementById('experiencesContainer');
     document.getElementById('countExp').textContent = exps.length;
@@ -654,7 +1001,7 @@ function renderExperiences(exps) {
         Utils.renderEmptyState(container, {
             icon: 'bi-briefcase',
             title: 'Chưa có kinh nghiệm thực tế',
-            message: 'Hãy bổ sung các kỳ thực tập, đồ án nghiên cứu hoặc hoạt động ngoại khóa để làm đẹp CV!'
+            message: 'Hãy bổ sung các kỳ thực tập, đồ án nghiên cứu hoặc tải CV của bạn lên!'
         });
         return;
     }
@@ -662,6 +1009,17 @@ function renderExperiences(exps) {
     let html = '';
     exps.forEach(e => {
         const timeSpan = `${Utils.formatDate(e.start_date)} - ${e.end_date ? Utils.formatDate(e.end_date) : 'Hiện tại'}`;
+        const cvDisplayName = e.cv_name || (e.cv_url ? e.cv_url.split('/').pop() : '');
+        const cvHtml = e.cv_url
+            ? `<div class="mt-2 pt-2 border-top d-flex flex-wrap align-items-center gap-2">
+                   <a href="${Utils.escapeHtml(e.cv_url)}" target="_blank" class="btn btn-sm btn-outline-primary py-1 px-2 text-decoration-none">
+                       <i class="bi bi-file-earmark-person me-1"></i>Xem CV: ${Utils.escapeHtml(cvDisplayName)}
+                   </a>
+                   <a href="${Utils.escapeHtml(e.cv_url)}" download="${Utils.escapeHtml(cvDisplayName)}" class="btn btn-sm btn-outline-success py-1 px-2" title="Tải CV xuống">
+                       <i class="bi bi-download"></i>
+                   </a>
+               </div>`
+            : '';
 
         html += `
             <div class="col-12">
@@ -686,6 +1044,7 @@ function renderExperiences(exps) {
                     </div>
                     <div class="text-muted small mb-2"><i class="bi bi-calendar3 me-1"></i>${timeSpan}</div>
                     <p class="text-secondary small mb-0">${Utils.escapeHtml(e.description || 'Không có mô tả chi tiết.')}</p>
+                    ${cvHtml}
                 </div>
             </div>
         `;
@@ -702,6 +1061,12 @@ function openAddExpModal() {
     document.getElementById('expStartDate').value = '';
     document.getElementById('expEndDate').value = '';
     document.getElementById('expDesc').value = '';
+    const fileEl = document.getElementById('expCvFileInput');
+    if (fileEl) fileEl.value = '';
+    document.getElementById('expCvUrl').value = '';
+    document.getElementById('expCvName').value = '';
+    document.getElementById('expCurrentCvBox')?.classList.add('d-none');
+    document.getElementById('expModalCvPreviewBox')?.classList.add('d-none');
     expModal?.show();
 }
 
@@ -717,6 +1082,25 @@ function openEditExpModal(id) {
     document.getElementById('expStartDate').value = exp.start_date || '';
     document.getElementById('expEndDate').value = exp.end_date || '';
     document.getElementById('expDesc').value = exp.description || '';
+
+    const fileEl = document.getElementById('expCvFileInput');
+    if (fileEl) fileEl.value = '';
+    const cvUrl = exp.cv_url || '';
+    const cvName = exp.cv_name || (cvUrl ? cvUrl.split('/').pop() : '');
+    document.getElementById('expCvUrl').value = cvUrl;
+    document.getElementById('expCvName').value = cvName;
+    const currentBox = document.getElementById('expCurrentCvBox');
+    const currentLink = document.getElementById('expCurrentCvLink');
+    if (currentBox && currentLink) {
+        if (cvUrl) {
+            currentBox.classList.remove('d-none');
+            currentLink.href = cvUrl;
+            currentLink.textContent = cvName || 'CV_dinh_kem.pdf';
+        } else {
+            currentBox.classList.add('d-none');
+        }
+    }
+    document.getElementById('expModalCvPreviewBox')?.classList.add('d-none');
     expModal?.show();
 }
 
@@ -726,16 +1110,32 @@ async function handleSaveExp(e) {
     const btn = document.getElementById('btnSaveExp');
     Utils.setButtonLoading(btn, true);
 
-    const payload = {
-        title: document.getElementById('expTitle').value.trim(),
-        company: document.getElementById('expCompany').value.trim(),
-        role_type: document.getElementById('expRoleType').value,
-        start_date: document.getElementById('expStartDate').value,
-        end_date: document.getElementById('expEndDate').value,
-        description: document.getElementById('expDesc').value.trim()
-    };
-
     try {
+        let cvUrl = document.getElementById('expCvUrl')?.value?.trim() || '';
+        let cvName = document.getElementById('expCvName')?.value?.trim() || '';
+        const cvFile = document.getElementById('expCvFileInput')?.files?.[0];
+
+        if (cvFile) {
+            const uploadRes = await uploadCvFileHelper(cvFile, false);
+            if (!uploadRes.success || !uploadRes.data) {
+                Utils.showToast(uploadRes.message || 'Lỗi tải tệp CV đính kèm!', 'danger');
+                return;
+            }
+            cvUrl = uploadRes.data.cv_url;
+            cvName = uploadRes.data.cv_name;
+        }
+
+        const payload = {
+            title: document.getElementById('expTitle').value.trim(),
+            company: document.getElementById('expCompany').value.trim(),
+            role_type: document.getElementById('expRoleType').value,
+            start_date: document.getElementById('expStartDate').value,
+            end_date: document.getElementById('expEndDate').value,
+            description: document.getElementById('expDesc').value.trim(),
+            cv_url: cvUrl,
+            cv_name: cvName
+        };
+
         let res;
         if (id) {
             res = await API.profile.updateExperience(id, payload);
@@ -1039,12 +1439,12 @@ function renderSuggestedOnlineCourses(recs, certs) {
             <div class="col-md-6">
                 <div class="border rounded-3 p-3 bg-white h-100 d-flex flex-column justify-content-between shadow-sm">
                     <div>
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
-                                <span class="badge badge-soft-danger me-1"><i class="bi bi-tag-fill me-1"></i>${skillEscaped}</span>
+                        <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap mb-2">
+                            <div class="d-flex flex-wrap gap-1 min-w-0">
+                                <span class="badge badge-soft-danger text-truncate"><i class="bi bi-tag-fill me-1"></i>${skillEscaped}</span>
                                 ${typeBadge}
                             </div>
-                            <span class="badge bg-secondary-subtle text-secondary border small">${Utils.escapeHtml(r.provider || 'Coursera / Udemy')}</span>
+                            <span class="badge bg-secondary-subtle text-secondary border small flex-shrink-0">${Utils.escapeHtml(r.provider || 'Coursera / Udemy')}</span>
                         </div>
                         <h6 class="fw-bold text-dark mb-1">${titleEscaped}</h6>
                         <p class="text-secondary small mb-3">${Utils.escapeHtml(r.description || 'Khóa học bồi dưỡng kỹ năng thực tế theo yêu cầu tuyển dụng.')}</p>

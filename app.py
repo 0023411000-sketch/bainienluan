@@ -15,7 +15,13 @@ Chức năng hệ thống:
 """
 
 import os
+import re
+import time
 import math
+import secrets
+import smtplib
+import sqlite3
+from email.mime.text import MIMEText
 from collections import Counter
 # pyrefly: ignore[missing-import]
 from flask import Flask, render_template, redirect, url_for, request, jsonify, session
@@ -35,6 +41,21 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 # Khởi tạo CSDL & dữ liệu mẫu khi chạy ứng dụng
 seed_database()
+
+
+def _ensure_cv_columns():
+    conn = get_db_connection()
+    for tbl_name in ("student_profiles", "experiences"):
+        cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({tbl_name})").fetchall()}
+        if "cv_url" not in cols:
+            conn.execute(f"ALTER TABLE {tbl_name} ADD COLUMN cv_url TEXT DEFAULT ''")
+        if "cv_name" not in cols:
+            conn.execute(f"ALTER TABLE {tbl_name} ADD COLUMN cv_name TEXT DEFAULT ''")
+    conn.commit()
+    conn.close()
+
+
+_ensure_cv_columns()
 
 
 def api_response(success=True, data=None, message="Thành công", status_code=200):
@@ -78,7 +99,17 @@ def is_current_user_admin():
 
 # Các đường dẫn không yêu cầu đăng nhập
 PUBLIC_PAGES = {"/login", "/register"}
-PUBLIC_APIS = {"/api/auth/login", "/api/auth/register", "/api/auth/logout", "/api/chatbot", "/api/chatbot/history"}
+PUBLIC_APIS = {
+    "/api/auth/login",
+    "/api/auth/register",
+    "/api/auth/logout",
+    "/api/auth/forgot-password",
+    "/api/auth/forgot-password/send-code",
+    "/api/auth/forgot-password/verify-code",
+    "/api/auth/forgot-password/reset",
+    "/api/chatbot",
+    "/api/chatbot/history",
+}
 
 
 @app.before_request
@@ -201,6 +232,9 @@ def page_not_found(e):
 # PHẦN 1 (THÀNH VIÊN 2): API XÁC THỰC & QUẢN LÝ TÀI KHOẢN (/api/auth/*)
 # ==============================================================================
 
+EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+
+
 @app.route("/api/auth/register", methods=["POST"])
 def api_register():
     payload = request.get_json(silent=True) or {}
@@ -208,45 +242,249 @@ def api_register():
     email = (payload.get("email") or "").strip().lower()
     password = payload.get("password") or ""
 
-    if not full_name or not email or len(password) < 6:
+    if len(full_name) < 2 or not email or len(password) < 6:
         return api_response(False, None, "Vui lòng nhập đầy đủ họ tên, email và mật khẩu từ 6 ký tự!", 400)
 
+    if not EMAIL_PATTERN.match(email):
+        return api_response(False, None, "Địa chỉ email không đúng định dạng hợp lệ!", 400)
+
     conn = get_db_connection()
-    existing = conn.execute("SELECT id FROM users WHERE LOWER(email) = ?", (email,)).fetchone()
-    if existing:
-        conn.close()
+    try:
+        existing = conn.execute("SELECT id FROM users WHERE LOWER(email) = ?", (email,)).fetchone()
+        if existing:
+            return api_response(False, None, "Email này đã được đăng ký trong hệ thống!", 400)
+
+        pwd_hash = generate_password_hash(password)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO users (full_name, email, password_hash, role) VALUES (?, ?, ?, 'student')",
+            (full_name, email, pwd_hash),
+        )
+        new_user_id = cursor.lastrowid
+
+        pos_row = conn.execute("SELECT id FROM positions ORDER BY id ASC LIMIT 1").fetchone()
+        default_pos_id = pos_row["id"] if pos_row else 1
+
+        # Khởi tạo hồ sơ sinh viên mặc định cho tài khoản mới
+        cursor.execute(
+            """
+            INSERT INTO student_profiles (
+                user_id, full_name, student_code, email, phone,
+                university, faculty, major, academic_year, gpa, target_position_id, bio
+            ) VALUES (?, ?, ?, ?, '', 'Đại học Đồng Tháp', 'Khoa Công nghệ Thông tin', 'Công nghệ Thông tin', '2023 - 2027', '3.20', ?, 'Sinh viên CNTT định hướng phát triển phần mềm.')
+            """,
+            (new_user_id, full_name, f"SV{new_user_id:05d}", email, default_pos_id),
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.rollback()
         return api_response(False, None, "Email này đã được đăng ký trong hệ thống!", 400)
-
-    pwd_hash = generate_password_hash(password)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO users (full_name, email, password_hash, role) VALUES (?, ?, ?, 'student')",
-        (full_name, email, pwd_hash),
-    )
-    new_user_id = cursor.lastrowid
-
-    # Khởi tạo hồ sơ sinh viên mặc định cho tài khoản mới
-    cursor.execute(
-        """
-        INSERT INTO student_profiles (
-            user_id, full_name, student_code, email, phone,
-            university, faculty, major, academic_year, gpa, target_position_id, bio
-        ) VALUES (?, ?, ?, ?, '', 'Đại học Đồng Tháp', 'Khoa Công nghệ Thông tin', 'Công nghệ Thông tin', '2023 - 2027', '3.20', 1, 'Sinh viên CNTT định hướng phát triển phần mềm.')
-        """,
-        (new_user_id, full_name, f"SV{new_user_id:05d}", email),
-    )
-    conn.commit()
-    conn.close()
+    finally:
+        conn.close()
 
     session["user_id"] = new_user_id
+    session.pop("guest_chat_count", None)
+    session.pop("guest_chat_history", None)
     user_data = {
         "id": new_user_id,
         "full_name": full_name,
         "email": email,
         "role": "student",
+        "avatar_url": "",
         "token": f"user_{new_user_id}",
     }
     return api_response(True, user_data, "Đăng ký tài khoản thành công!", 201)
+
+
+def _mask_email(email: str) -> str:
+    """Che bớt ký tự email dạng sl****3c@gmail.com để hiển thị ở Bước 2."""
+    if "@" not in email:
+        return email
+    local, domain = email.split("@", 1)
+    if len(local) > 4:
+        masked_local = f"{local[:2]}****{local[-2:]}"
+    elif len(local) >= 2:
+        masked_local = f"{local[0]}****{local[-1]}"
+    else:
+        masked_local = f"{local}****"
+    return f"{masked_local}@{domain}"
+
+
+def _try_send_otp_email(to_email: str, full_name: str, otp_code: str) -> bool:
+    """Gửi mã xác nhận qua SMTP nếu biến môi trường SMTP_USER & SMTP_PASSWORD được cấu hình."""
+    smtp_user = (os.environ.get("SMTP_USER") or "").strip()
+    smtp_pass = (os.environ.get("SMTP_PASSWORD") or "").strip()
+    if not smtp_user or not smtp_pass:
+        return False
+    smtp_host = (os.environ.get("SMTP_HOST") or "smtp.gmail.com").strip()
+    smtp_port = int(os.environ.get("SMTP_PORT") or "587")
+    subject = f"[IT Career Compass] Mã xác nhận đặt lại mật khẩu: {otp_code}"
+    body = (
+        f"Xin chào {full_name},\n\n"
+        f"Mã xác nhận khôi phục mật khẩu của bạn trên hệ thống IT Career Compass là: {otp_code}\n"
+        f"Mã có hiệu lực trong vòng 5 phút. Vui lòng không chia sẻ mã này cho người khác.\n\n"
+        f"Trân trọng,\nIT Career Compass (Đề tài NLCNPM23CS-38)"
+    )
+    try:
+        msg = MIMEText(body, "plain", "utf-8")
+        msg["Subject"] = subject
+        msg["From"] = smtp_user
+        msg["To"] = to_email
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, [to_email], msg.as_string())
+        return True
+    except Exception as exc:
+        print(f"[OTP SMTP WARN] Không gửi được SMTP tới {to_email}: {exc}")
+        return False
+
+
+def _count_password_char_types(pwd: str) -> int:
+    has_letter = any(ch.isalpha() for ch in pwd)
+    has_digit = any(ch.isdigit() for ch in pwd)
+    has_special = any(not ch.isalnum() for ch in pwd)
+    return int(has_letter) + int(has_digit) + int(has_special)
+
+
+@app.route("/api/auth/forgot-password/send-code", methods=["POST"])
+def api_forgot_password_send_code():
+    """Bước 1: Tìm tài khoản theo Email / Họ tên / MSSV và phát hành mã OTP 6 chữ số."""
+    payload = request.get_json(silent=True) or {}
+    resend = bool(payload.get("resend"))
+    identifier = (payload.get("identifier") or "").strip()
+
+    if resend and not identifier:
+        saved = session.get("pwd_reset") or {}
+        identifier = saved.get("email") or ""
+
+    if not identifier:
+        return api_response(False, None, "Vui lòng nhập tên người dùng hoặc email tài khoản!", 400)
+
+    ident_lower = identifier.lower()
+    conn = get_db_connection()
+    user = conn.execute(
+        """
+        SELECT u.id, u.full_name, u.email, COALESCE(sp.student_code, '') AS student_code
+        FROM users u
+        LEFT JOIN student_profiles sp ON sp.user_id = u.id
+        WHERE LOWER(u.email) = ?
+           OR LOWER(u.full_name) = ?
+           OR (sp.student_code IS NOT NULL AND sp.student_code != '' AND LOWER(sp.student_code) = ?)
+        ORDER BY u.id ASC
+        LIMIT 1
+        """,
+        (ident_lower, ident_lower, ident_lower),
+    ).fetchone()
+    conn.close()
+
+    if not user:
+        return api_response(
+            False,
+            None,
+            "Không tìm thấy tài khoản phù hợp trong hệ thống!",
+            404,
+        )
+
+    otp_code = f"{secrets.randbelow(900000) + 100000:06d}"
+    masked = _mask_email(user["email"])
+    sent_smtp = _try_send_otp_email(user["email"], user["full_name"], otp_code)
+    print(f"[PASSWORD RESET OTP] Tài khoản {user['email']} -> Mã xác nhận: {otp_code}")
+
+    session["pwd_reset"] = {
+        "user_id": user["id"],
+        "email": user["email"],
+        "full_name": user["full_name"],
+        "student_code": user["student_code"] or "",
+        "masked_email": masked,
+        "code": otp_code,
+        "expires_at": time.time() + 300,
+        "verified": False,
+        "attempts": 0,
+    }
+
+    resp_data = {
+        "masked_email": masked,
+        "otp_code": otp_code,
+        "demo_code": otp_code,
+        "delivery": "smtp" if sent_smtp else "system_otp",
+        "cooldown_seconds": 15,
+        "has_student_code": bool(user["student_code"]),
+    }
+
+    return api_response(
+        True,
+        resp_data,
+        "Hệ thống đã khởi tạo mã OTP xác minh bảo mật!",
+    )
+
+
+@app.route("/api/auth/forgot-password/verify-code", methods=["POST"])
+def api_forgot_password_verify_code():
+    """Bước 2: Xác minh mã OTP 6 chữ số (hoặc phương thức xác nhận dự phòng qua MSSV)."""
+    reset_state = session.get("pwd_reset")
+    if not reset_state or time.time() > float(reset_state.get("expires_at", 0)):
+        session.pop("pwd_reset", None)
+        return api_response(False, None, "Phiên xác minh đã hết hạn, vui lòng thực hiện lại từ Bước 1!", 400)
+
+    payload = request.get_json(silent=True) or {}
+    method = (payload.get("method") or "otp").strip()
+
+    if method == "student_info":
+        input_code = (payload.get("student_code") or "").strip().lower()
+        input_name = (payload.get("full_name") or "").strip().lower()
+        expected_code = (reset_state.get("student_code") or "").strip().lower()
+        expected_name = (reset_state.get("full_name") or "").strip().lower()
+        if not input_name or input_name != expected_name or (expected_code and input_code != expected_code):
+            reset_state["attempts"] = int(reset_state.get("attempts", 0)) + 1
+            session["pwd_reset"] = reset_state
+            return api_response(False, None, "Họ tên hoặc Mã số sinh viên không khớp với hồ sơ tài khoản!", 400)
+    else:
+        code = (payload.get("code") or "").strip()
+        if not code:
+            return api_response(False, None, "Vui lòng nhập mã xác nhận!", 400)
+        if int(reset_state.get("attempts", 0)) >= 5:
+            session.pop("pwd_reset", None)
+            return api_response(False, None, "Bạn đã nhập sai quá 5 lần! Vui lòng nhận lại mã mới.", 400)
+        if code != reset_state.get("code"):
+            reset_state["attempts"] = int(reset_state.get("attempts", 0)) + 1
+            session["pwd_reset"] = reset_state
+            return api_response(False, None, "Mã xác nhận không chính xác!", 400)
+
+    reset_state["verified"] = True
+    reset_state["expires_at"] = time.time() + 600
+    session["pwd_reset"] = reset_state
+    return api_response(True, {"verified": True}, "Xác minh danh tính thành công!")
+
+
+@app.route("/api/auth/forgot-password/reset", methods=["POST"])
+def api_forgot_password_reset():
+    """Bước 3: Thiết lập mật khẩu mới sau khi đã vượt qua xác minh bảo mật."""
+    reset_state = session.get("pwd_reset")
+    if not reset_state or not reset_state.get("verified") or time.time() > float(reset_state.get("expires_at", 0)):
+        session.pop("pwd_reset", None)
+        return api_response(False, None, "Phiên đặt lại mật khẩu không hợp lệ hoặc đã hết hạn!", 400)
+
+    payload = request.get_json(silent=True) or {}
+    password = payload.get("password") or ""
+    confirm_password = payload.get("confirm_password") or ""
+
+    if not (8 <= len(password) <= 30):
+        return api_response(False, None, "Mật khẩu phải bao gồm từ 8 đến 30 ký tự!", 400)
+    if _count_password_char_types(password) < 2:
+        return api_response(False, None, "Mật khẩu phải bao gồm tối thiểu 2 loại ký tự!", 400)
+    if password != confirm_password:
+        return api_response(False, None, "Hai lần nhập mật khẩu không giống nhau!", 400)
+
+    pwd_hash = generate_password_hash(password)
+    conn = get_db_connection()
+    conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (pwd_hash, reset_state["user_id"]))
+    conn.commit()
+    conn.close()
+
+    recovered_email = reset_state["email"]
+    session.pop("pwd_reset", None)
+    return api_response(True, {"email": recovered_email}, "Mật khẩu mới của bạn đã được thiết lập thành công!")
 
 
 @app.route("/api/auth/login", methods=["POST"])
@@ -335,7 +573,7 @@ def api_get_profile():
         (user_id,),
     ).fetchall()
     exps_rows = conn.execute(
-        "SELECT id, title, company, role_type, start_date, end_date, description FROM experiences WHERE user_id = ? ORDER BY id ASC",
+        "SELECT id, title, company, role_type, start_date, end_date, description, cv_url, cv_name FROM experiences WHERE user_id = ? ORDER BY id ASC",
         (user_id,),
     ).fetchall()
     courses_list = [dict(r) for r in courses_rows]
@@ -344,6 +582,23 @@ def api_get_profile():
     exps_list = [dict(r) for r in exps_rows]
     target_pos_id = prof["target_position_id"] if prof and prof["target_position_id"] else 1
     eval_result = evaluate_profile_fit_and_suggest_courses(user_id, target_pos_id, save_history=False, conn=conn)
+
+    active_cv_url = prof["cv_url"] if "cv_url" in prof.keys() and prof["cv_url"] else ""
+    active_cv_name = prof["cv_name"] if "cv_name" in prof.keys() and prof["cv_name"] else ""
+    active_hint = ""
+    if not active_cv_url:
+        for exp_item in reversed(exps_list):
+            if exp_item.get("cv_url"):
+                active_cv_url = exp_item["cv_url"]
+                active_cv_name = exp_item.get("cv_name") or ""
+                active_hint = f"{exp_item.get('title', '')} {exp_item.get('description', '')}"
+                break
+
+    cv_analysis = (
+        analyze_cv_and_filter_courses(user_id, active_cv_url, cv_name=active_cv_name, extra_hint=active_hint, conn=conn)
+        if active_cv_url
+        else None
+    )
     conn.close()
 
     data = {
@@ -360,12 +615,15 @@ def api_get_profile():
             "target_position_id": target_pos_id,
             "bio": prof["bio"],
             "avatar_url": prof["avatar_url"] if "avatar_url" in prof.keys() and prof["avatar_url"] else "",
+            "cv_url": prof["cv_url"] if "cv_url" in prof.keys() and prof["cv_url"] else "",
+            "cv_name": prof["cv_name"] if "cv_name" in prof.keys() and prof["cv_name"] else "",
         },
         "courses": courses_list,
         "skills": skills_list,
         "certificates": certs_list,
         "experiences": exps_list,
         "evaluation": eval_result,
+        "cv_analysis": cv_analysis,
     }
     return api_response(True, data)
 
@@ -378,6 +636,15 @@ def api_update_profile():
     full_name = (payload.get("full_name") or "").strip()
     if not full_name:
         return api_response(False, None, "Họ và tên không được để trống!", 400)
+
+    phone = (payload.get("phone") or "").strip()
+    if phone and not re.match(r"^0\d{9,10}$", phone):
+        return api_response(
+            False,
+            None,
+            "Số điện thoại không hợp lệ! Vui lòng chỉ nhập 10–11 chữ số bắt đầu bằng số 0.",
+            400,
+        )
 
     avatar_url = (payload.get("avatar_url") or "").strip()
 
@@ -498,6 +765,338 @@ def api_upload_avatar():
     conn.close()
 
     return api_response(True, {"avatar_url": avatar_url}, "Cập nhật ảnh đại diện thành công!")
+
+
+def _contains_cv_keyword(text_lower, kw):
+    """Kiểm tra từ khóa xuất hiện độc lập trong văn bản CV (tránh khớp nhầm âm tiết tiếng Việt như 'ai' trong 'đại')."""
+    kw_clean = (kw or "").strip().lower()
+    if not kw_clean:
+        return False
+    pattern = r"(?:^|[^a-z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ])" + re.escape(kw_clean) + r"(?:$|[^a-z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ])"
+    return re.search(pattern, text_lower) is not None
+
+
+def extract_text_from_cv_file(file_path, orig_name=""):
+    """Trích xuất nội dung văn bản từ tệp CV (PDF, DOCX, DOC) kết hợp tên tệp."""
+    chunks = []
+    if orig_name:
+        name_stem = os.path.splitext(os.path.basename(orig_name))[0]
+        chunks.append(re.sub(r"[_\-\.]+", " ", name_stem))
+
+    if not file_path or not os.path.exists(file_path):
+        return "\n".join(chunks)
+
+    ext = os.path.splitext(file_path.lower())[1]
+    extracted = ""
+    try:
+        if ext == ".pdf":
+            try:
+                import pdfplumber
+                with pdfplumber.open(file_path) as pdf:
+                    extracted = "\n".join((p.extract_text() or "") for p in pdf.pages)
+            except Exception:
+                extracted = ""
+            if not extracted.strip():
+                try:
+                    from pypdf import PdfReader
+                    reader = PdfReader(file_path)
+                    extracted = "\n".join((p.extract_text() or "") for p in reader.pages)
+                except Exception:
+                    extracted = ""
+        elif ext == ".docx":
+            import docx
+            doc = docx.Document(file_path)
+            para_text = "\n".join(p.text for p in doc.paragraphs if p.text)
+            table_text = "\n".join(
+                cell.text for tbl in doc.tables for row in tbl.rows for cell in row.cells if cell.text
+            )
+            extracted = f"{para_text}\n{table_text}"
+        elif ext == ".doc":
+            with open(file_path, "rb") as f:
+                raw_bytes = f.read()
+            decoded = raw_bytes.decode("utf-8", errors="ignore")
+            extracted = " ".join(re.findall(r"[\wÀ-ỹ\+\#\.\/\-]{2,}", decoded))
+    except Exception:
+        extracted = ""
+
+    if extracted.strip():
+        chunks.append(extracted)
+    return "\n".join(chunks)
+
+
+POSITION_CV_KEYWORDS = {
+    1: [
+        "backend", "back-end", "server-side", "lập trình viên backend", "django", "flask",
+        "fastapi", "spring boot", "springboot", "expressjs", "nestjs", "asp.net", "laravel",
+        "golang", "microservices", "restful api", "graphql", "redis",
+    ],
+    2: [
+        "frontend", "front-end", "lập trình viên frontend", "giao diện web", "reactjs", "react.js",
+        "nextjs", "next.js", "vuejs", "vue.js", "angular", "tailwind", "typescript", "html5", "css3", "ui/ux",
+    ],
+    3: [
+        "fullstack", "full-stack", "full stack", "lập trình viên fullstack", "mern", "mean",
+        "phát triển web toàn diện",
+    ],
+    4: [
+        "data analyst", "phân tích dữ liệu", "business intelligence", "khoa học dữ liệu",
+        "data science", "power bi", "tableau", "pandas", "data cleaning", "etl", "excel nâng cao",
+    ],
+    5: [
+        "devops", "cloud engineer", "kỹ sư devops", "điện toán đám mây", "kubernetes", "k8s",
+        "terraform", "ansible", "jenkins", "gitlab ci", "ci/cd", "aws", "azure", "prometheus", "linux",
+    ],
+    6: [
+        "qa", "qc", "tester", "kiểm thử phần mềm", "quality assurance", "quality control",
+        "test case", "selenium", "postman", "api testing", "automation testing", "manual testing", "istqb",
+    ],
+    7: [
+        "mobile", "ứng dụng di động", "lập trình di động", "flutter", "dart", "react native",
+        "android", "ios", "kotlin", "swift", "mobile ux",
+    ],
+    8: [
+        "ai engineer", "ml engineer", "trí tuệ nhân tạo", "artificial intelligence", "machine learning",
+        "học máy", "deep learning", "học sâu", "computer vision", "thị giác máy tính", "xử lý ảnh",
+        "nlp", "xử lý ngôn ngữ tự nhiên", "pytorch", "tensorflow", "scikit-learn", "yolo", "llm",
+    ],
+}
+
+
+def analyze_cv_and_filter_courses(user_id, cv_url, cv_name="", extra_hint="", conn=None):
+    """Đọc CV, nhận diện ngành/vị trí nghề nghiệp và lọc các môn học phù hợp với ngành trong CV."""
+    if not cv_url:
+        return None
+
+    close_conn = False
+    if conn is None:
+        conn = get_db_connection()
+        close_conn = True
+
+    try:
+        rel_path = cv_url.lstrip("/").replace("/", os.sep)
+        file_path = os.path.join(app.root_path, rel_path)
+        cv_text = extract_text_from_cv_file(file_path, cv_name)
+        combined_text = f"{cv_text}\n{extra_hint or ''}".strip()
+        text_lower = combined_text.lower()
+
+        positions_rows = conn.execute("SELECT * FROM positions ORDER BY id ASC").fetchall()
+        if not positions_rows:
+            return None
+
+        user_courses_rows = conn.execute("SELECT code, name FROM courses WHERE user_id = ?", (user_id,)).fetchall()
+        user_course_codes = {r["code"].strip().upper() for r in user_courses_rows if r["code"]}
+        user_course_names = {r["name"].strip().lower() for r in user_courses_rows if r["name"]}
+
+        # Chấm điểm mức độ khớp của từng ngành/vị trí với nội dung CV
+        best_pos = None
+        best_score = 0
+        for pos in positions_rows:
+            pid = pos["id"]
+            score = 0
+            pos_skills = parse_json_list(pos["core_skills"])
+
+            # 1. Khớp tên vị trí / mã vị trí
+            if _contains_cv_keyword(text_lower, pos["name"]):
+                score += 8
+            for part in re.split(r"[\(\)\/\-,]+", pos["name"]):
+                part_clean = part.strip()
+                if len(part_clean) >= 4 and _contains_cv_keyword(text_lower, part_clean):
+                    score += 5
+
+            # 2. Khớp bộ từ khóa chuyên ngành
+            for kw in POSITION_CV_KEYWORDS.get(pid, []):
+                if _contains_cv_keyword(text_lower, kw):
+                    score += 4
+
+            # 3. Khớp kỹ năng cốt lõi của vị trí
+            for sk in pos_skills:
+                if _contains_cv_keyword(text_lower, sk):
+                    score += 2
+                else:
+                    for sub_sk in re.split(r"[\/&]+", sk):
+                        if len(sub_sk.strip()) >= 2 and _contains_cv_keyword(text_lower, sub_sk.strip()):
+                            score += 1
+                            break
+
+            if score > best_score:
+                best_score = score
+                best_pos = pos
+
+        matched_from_cv_text = best_score > 0
+        if not best_pos:
+            prof = conn.execute("SELECT target_position_id FROM student_profiles WHERE user_id = ?", (user_id,)).fetchone()
+            fallback_id = prof["target_position_id"] if prof and prof["target_position_id"] else 1
+            best_pos = next((p for p in positions_rows if p["id"] == fallback_id), positions_rows[0])
+
+        # Trích xuất danh sách kỹ năng chuyên môn xuất hiện trong CV
+        all_known_skills = []
+        for pos in positions_rows:
+            for s in parse_json_list(pos["core_skills"]):
+                if s not in all_known_skills:
+                    all_known_skills.append(s)
+        for c in ACADEMIC_CURRICULUM:
+            for s in c.get("skills", []):
+                if s not in all_known_skills:
+                    all_known_skills.append(s)
+
+        detected_skills = []
+        for sk in all_known_skills:
+            if _contains_cv_keyword(text_lower, sk):
+                detected_skills.append(sk)
+            else:
+                for sub_sk in re.split(r"[\/&]+", sk):
+                    if len(sub_sk.strip()) >= 3 and _contains_cv_keyword(text_lower, sub_sk.strip()):
+                        detected_skills.append(sk)
+                        break
+
+        # Lọc các môn học thuộc ngành/vị trí nhận diện được từ CV
+        target_pid = best_pos["id"]
+        target_pos_skills_lower = {s.lower() for s in parse_json_list(best_pos["core_skills"])}
+        detected_skills_lower = {s.lower() for s in detected_skills}
+
+        filtered_courses = []
+        for c in ACADEMIC_CURRICULUM:
+            c_skills = c.get("skills", [])
+            in_major = target_pid in c.get("positions", [])
+            skill_overlap = sum(
+                1 for s in c_skills if any(s.lower() in ts or ts in s.lower() for ts in target_pos_skills_lower)
+            )
+            if not in_major and skill_overlap < 2:
+                continue
+
+            c_code = c["code"].strip().upper()
+            c_name = c["name"].strip().lower()
+            already_learned = (
+                c_code in user_course_codes
+                or any(c_name == uc or c_name in uc or uc in c_name for uc in user_course_names)
+            )
+            cv_matched = [
+                s for s in c_skills
+                if any(s.lower() == ds or s.lower() in ds or ds in s.lower() for ds in detected_skills_lower)
+            ]
+            skills_to_supplement = [s for s in c_skills if s not in cv_matched]
+
+            filtered_courses.append({
+                "code": c["code"],
+                "name": c["name"],
+                "credits": c["credits"],
+                "description": c.get("description", ""),
+                "skills": c_skills,
+                "cv_matched_skills": cv_matched,
+                "skills_to_supplement": skills_to_supplement,
+                "already_learned": already_learned,
+            })
+
+        # Ưu tiên các môn chưa học lên trước, sau đó sắp theo số kỹ năng bổ sung
+        filtered_courses.sort(key=lambda item: (item["already_learned"], -len(item["skills_to_supplement"])))
+
+        return {
+            "cv_url": cv_url,
+            "cv_name": cv_name or os.path.basename(cv_url),
+            "matched_from_cv_text": matched_from_cv_text,
+            "detected_position": {
+                "id": best_pos["id"],
+                "name": best_pos["name"],
+                "code": best_pos["code"],
+                "demand_level": best_pos["demand_level"],
+            },
+            "detected_skills": detected_skills[:12],
+            "filtered_courses": filtered_courses,
+            "unlearned_count": sum(1 for item in filtered_courses if not item["already_learned"]),
+            "total_courses": len(filtered_courses),
+        }
+    finally:
+        if close_conn:
+            conn.close()
+
+
+@app.route("/api/profile/cv", methods=["POST"])
+def api_upload_cv():
+    user_id = get_current_user_id()
+    if not user_id:
+        return api_response(False, None, "Vui lòng đăng nhập để tải CV lên!", 401)
+    if "cv" not in request.files:
+        return api_response(False, None, "Vui lòng chọn tệp CV cần tải lên!", 400)
+
+    file = request.files["cv"]
+    if not file or not file.filename:
+        return api_response(False, None, "Tệp CV không hợp lệ!", 400)
+
+    orig_name = os.path.basename(file.filename).strip()
+    ext = os.path.splitext(orig_name.lower())[1]
+    allowed_exts = {".pdf", ".doc", ".docx", ".png", ".jpg", ".jpeg"}
+    if ext not in allowed_exts:
+        return api_response(
+            False,
+            None,
+            "Định dạng CV không hợp lệ! Hỗ trợ PDF, DOC, DOCX, PNG, JPG.",
+            400,
+        )
+
+    file.seek(0, os.SEEK_END)
+    size_bytes = file.tell()
+    file.seek(0)
+    if size_bytes > 10 * 1024 * 1024:
+        return api_response(False, None, "Dung lượng tệp CV vượt quá giới hạn 10MB!", 400)
+
+    upload_dir = os.path.join(app.root_path, "static", "uploads", "cvs")
+    os.makedirs(upload_dir, exist_ok=True)
+
+    saved_name = f"cv_{user_id}_{int(time.time())}_{secrets.token_hex(3)}{ext}"
+    saved_path = os.path.join(upload_dir, saved_name)
+    file.save(saved_path)
+
+    cv_url = f"/static/uploads/cvs/{saved_name}"
+    cv_name = orig_name[:120]
+    extra_hint = (request.form.get("extra_hint") or "").strip()
+
+    conn = get_db_connection()
+    if request.form.get("save_to_profile") == "1":
+        conn.execute(
+            "UPDATE student_profiles SET cv_url = ?, cv_name = ? WHERE user_id = ?",
+            (cv_url, cv_name, user_id),
+        )
+        conn.commit()
+    else:
+        prof_cv = conn.execute("SELECT cv_url FROM student_profiles WHERE user_id = ?", (user_id,)).fetchone()
+        if prof_cv and not (prof_cv["cv_url"] or "").strip():
+            conn.execute(
+                "UPDATE student_profiles SET cv_url = ?, cv_name = ? WHERE user_id = ?",
+                (cv_url, cv_name, user_id),
+            )
+            conn.commit()
+
+    cv_analysis = analyze_cv_and_filter_courses(user_id, cv_url, cv_name=cv_name, extra_hint=extra_hint, conn=conn)
+    conn.close()
+
+    pos_label = cv_analysis["detected_position"]["name"] if cv_analysis else ""
+    course_cnt = cv_analysis["total_courses"] if cv_analysis else 0
+    msg = (
+        f'Đã tải CV lên & nhận diện ngành "{pos_label}" ({course_cnt} môn học phù hợp)!'
+        if pos_label
+        else "Đã tải tệp CV lên thành công!"
+    )
+
+    return api_response(
+        True,
+        {"cv_url": cv_url, "cv_name": cv_name, "cv_analysis": cv_analysis},
+        msg,
+    )
+
+
+@app.route("/api/profile/cv", methods=["DELETE"])
+def api_delete_profile_cv():
+    user_id = get_current_user_id()
+    if not user_id:
+        return api_response(False, None, "Vui lòng đăng nhập!", 401)
+    conn = get_db_connection()
+    conn.execute(
+        "UPDATE student_profiles SET cv_url = '', cv_name = '' WHERE user_id = ?",
+        (user_id,),
+    )
+    conn.commit()
+    conn.close()
+    return api_response(True, None, "Đã gỡ CV khỏi hồ sơ!")
 
 
 # --- 2.1. CRUD HỌC PHẦN (COURSES) ---
@@ -739,15 +1338,17 @@ def api_add_experience():
     start_date = (payload.get("start_date") or "").strip()
     end_date = (payload.get("end_date") or "").strip()
     description = (payload.get("description") or "").strip()
+    cv_url = (payload.get("cv_url") or "").strip()
+    cv_name = (payload.get("cv_name") or "").strip()
 
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
         """
-        INSERT INTO experiences (user_id, title, company, role_type, start_date, end_date, description)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO experiences (user_id, title, company, role_type, start_date, end_date, description, cv_url, cv_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (user_id, title, company, role_type, start_date, end_date, description),
+        (user_id, title, company, role_type, start_date, end_date, description, cv_url, cv_name),
     )
     new_id = cur.lastrowid
     conn.commit()
@@ -763,6 +1364,8 @@ def api_add_experience():
             "start_date": start_date,
             "end_date": end_date,
             "description": description,
+            "cv_url": cv_url,
+            "cv_name": cv_name,
         },
         "Thêm kinh nghiệm/dự án thành công!",
         201,
@@ -779,15 +1382,17 @@ def api_update_experience(item_id):
     start_date = (payload.get("start_date") or "").strip()
     end_date = (payload.get("end_date") or "").strip()
     description = (payload.get("description") or "").strip()
+    cv_url = (payload.get("cv_url") or "").strip()
+    cv_name = (payload.get("cv_name") or "").strip()
 
     conn = get_db_connection()
     conn.execute(
         """
         UPDATE experiences
-        SET title = ?, company = ?, role_type = ?, start_date = ?, end_date = ?, description = ?
+        SET title = ?, company = ?, role_type = ?, start_date = ?, end_date = ?, description = ?, cv_url = ?, cv_name = ?
         WHERE id = ? AND user_id = ?
         """,
-        (title, company, role_type, start_date, end_date, description, item_id, user_id),
+        (title, company, role_type, start_date, end_date, description, cv_url, cv_name, item_id, user_id),
     )
     conn.commit()
     conn.close()
@@ -802,6 +1407,8 @@ def api_update_experience(item_id):
             "start_date": start_date,
             "end_date": end_date,
             "description": description,
+            "cv_url": cv_url,
+            "cv_name": cv_name,
         },
         "Cập nhật kinh nghiệm thành công!",
     )
@@ -838,8 +1445,14 @@ def api_get_positions():
     page = max(int(request.args.get("page") or 1), 1)
     limit = max(int(request.args.get("limit") or 8), 1)
 
+    user_id = get_current_user_id()
     conn = get_db_connection()
     rows = conn.execute("SELECT * FROM positions ORDER BY id ASC").fetchall()
+    target_pos_id = None
+    if user_id:
+        prof = conn.execute("SELECT target_position_id FROM student_profiles WHERE user_id = ?", (user_id,)).fetchone()
+        if prof and prof["target_position_id"]:
+            target_pos_id = prof["target_position_id"]
     conn.close()
 
     all_items = [serialize_position(r) for r in rows]
@@ -865,18 +1478,70 @@ def api_get_positions():
             "page": page,
             "limit": limit,
             "total_pages": total_pages,
+            "target_position_id": target_pos_id,
         },
     )
 
 
 @app.route("/api/positions/<int:pos_id>", methods=["GET"])
 def api_get_position_by_id(pos_id):
+    user_id = get_current_user_id()
     conn = get_db_connection()
     row = conn.execute("SELECT * FROM positions WHERE id = ?", (pos_id,)).fetchone()
-    conn.close()
     if not row:
+        conn.close()
         return api_response(False, None, "Không tìm thấy vị trí nghề nghiệp!", 404)
-    return api_response(True, serialize_position(row))
+
+    data = serialize_position(row)
+    jobs_rows = conn.execute("SELECT * FROM jobs WHERE position_id = ? ORDER BY id DESC", (pos_id,)).fetchall()
+    data["total_jobs"] = len(jobs_rows)
+    data["related_jobs"] = [serialize_job(j) for j in jobs_rows[:4]]
+
+    if user_id:
+        prof = conn.execute("SELECT target_position_id FROM student_profiles WHERE user_id = ?", (user_id,)).fetchone()
+        data["is_target_position"] = bool(prof and prof["target_position_id"] == pos_id)
+        data["evaluation"] = evaluate_profile_fit_and_suggest_courses(user_id, pos_id, save_history=False, conn=conn)
+    else:
+        data["is_target_position"] = False
+        data["evaluation"] = None
+
+    conn.close()
+    return api_response(True, data)
+
+
+@app.route("/api/profile/target-position", methods=["PUT"])
+def api_set_target_position():
+    user_id = get_current_user_id()
+    if not user_id:
+        return api_response(False, None, "Vui lòng đăng nhập để chọn vị trí mục tiêu!", 401)
+    payload = request.get_json(silent=True) or {}
+    try:
+        pos_id = int(payload.get("position_id") or 0)
+    except (TypeError, ValueError):
+        return api_response(False, None, "Mã vị trí nghề nghiệp không hợp lệ!", 400)
+
+    conn = get_db_connection()
+    pos = conn.execute("SELECT id, name FROM positions WHERE id = ?", (pos_id,)).fetchone()
+    if not pos:
+        conn.close()
+        return api_response(False, None, "Không tìm thấy vị trí nghề nghiệp!", 404)
+
+    prof = conn.execute("SELECT id FROM student_profiles WHERE user_id = ?", (user_id,)).fetchone()
+    if prof:
+        conn.execute("UPDATE student_profiles SET target_position_id = ? WHERE user_id = ?", (pos_id, user_id))
+    else:
+        user = conn.execute("SELECT full_name, email FROM users WHERE id = ?", (user_id,)).fetchone()
+        conn.execute(
+            "INSERT INTO student_profiles (user_id, full_name, email, target_position_id) VALUES (?, ?, ?, ?)",
+            (user_id, user["full_name"] if user else "Sinh viên CNTT", user["email"] if user else "", pos_id),
+        )
+    conn.commit()
+    conn.close()
+    return api_response(
+        True,
+        {"target_position_id": pos_id, "position_name": pos["name"]},
+        f'Đã chọn "{pos["name"]}" làm vị trí nghề nghiệp mục tiêu!',
+    )
 
 
 @app.route("/api/positions", methods=["POST"])
@@ -1425,7 +2090,7 @@ ACADEMIC_CURRICULUM = [
         "name": "Cơ sở dữ liệu",
         "credits": 3,
         "skills": ["SQL", "Cơ sở dữ liệu", "Thiết kế CSDL", "Tối ưu truy vấn", "PostgreSQL"],
-        "positions": [1, 3, 4],
+        "positions": [1, 3, 4, 9],
         "description": "Trang bị kiến thức mô hình quan hệ, viết truy vấn SQL phức tạp, tối ưu chỉ mục và thiết kế kiến trúc CSDL."
     },
     {
@@ -1480,16 +2145,16 @@ ACADEMIC_CURRICULUM = [
         "code": "IT4409",
         "name": "Kiểm thử và đảm bảo chất lượng phần mềm",
         "credits": 2,
-        "skills": ["Kiểm thử phần mềm", "Thiết kế Test Case", "Postman", "Selenium", "Jira", "API Testing"],
-        "positions": [6, 3],
+        "skills": ["Kiểm thử phần mềm", "Thiết kế Test Case", "Postman", "Selenium", "Jira", "API Testing", "Automation Testing"],
+        "positions": [6, 3, 9],
         "description": "Thiết kế test case, tự động hóa kiểm thử API với Postman và giao diện web với Selenium WebDriver."
     },
     {
         "code": "IT3160",
         "name": "Nhập môn Trí tuệ nhân tạo",
         "credits": 3,
-        "skills": ["Python", "Toán rời rạc & Đại số tuyến tính", "Scikit-Learn", "Trí tuệ nhân tạo"],
-        "positions": [8, 4],
+        "skills": ["Python", "Toán rời rạc & Đại số tuyến tính", "Scikit-Learn", "Trí tuệ nhân tạo", "Ứng dụng AI hỗ trợ"],
+        "positions": [8, 4, 9],
         "description": "Nền tảng thuật toán tìm kiếm thông minh, tối ưu hóa bài toán và ứng dụng thuật toán học máy cơ bản."
     },
     {
@@ -1553,7 +2218,7 @@ ACADEMIC_CURRICULUM = [
         "name": "Quản lý dự án phần mềm & Quy trình Agile",
         "credits": 3,
         "skills": ["Git", "Jira", "CI/CD", "Kiểm thử phần mềm", "Agile/Scrum"],
-        "positions": [1, 2, 3, 5, 6],
+        "positions": [1, 2, 3, 5, 6, 9],
         "description": "Quản lý chu trình phát triển phần mềm theo chuẩn Agile/Scrum, theo dõi task trên Jira và tích hợp Git."
     }
 ]

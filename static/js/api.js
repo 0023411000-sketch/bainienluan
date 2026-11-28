@@ -193,6 +193,14 @@ const API = {
             return await httpFetch('/profile', 'PUT', infoData);
         },
 
+        async setTargetPosition(positionId) {
+            if (CONFIG.USE_MOCK) {
+                MockData.profile.personal_info.target_position_id = Number(positionId);
+                return mockResponse({ target_position_id: Number(positionId) }, true, "Đã cập nhật vị trí mục tiêu!");
+            }
+            return await httpFetch('/profile/target-position', 'PUT', { position_id: Number(positionId) });
+        },
+
         async uploadAvatar(formDataOrPayload) {
             if (CONFIG.USE_MOCK) {
                 const url = formDataOrPayload instanceof FormData 
@@ -204,6 +212,14 @@ const API = {
                 return mockResponse({ avatar_url: url }, true, "Cập nhật ảnh đại diện thành công!");
             }
             return await httpFetch('/profile/avatar', 'POST', formDataOrPayload);
+        },
+
+        async uploadCv(formData) {
+            return await httpFetch('/profile/cv', 'POST', formData);
+        },
+
+        async deleteCv() {
+            return await httpFetch('/profile/cv', 'DELETE');
         },
 
         // --- HỌC PHẦN (COURSES) ---

@@ -102,6 +102,8 @@ def init_db():
             target_position_id INTEGER DEFAULT 1,
             bio TEXT DEFAULT '',
             avatar_url TEXT DEFAULT '',
+            cv_url TEXT DEFAULT '',
+            cv_name TEXT DEFAULT '',
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         );
     """)
@@ -158,6 +160,8 @@ def init_db():
             start_date TEXT DEFAULT '',
             end_date TEXT DEFAULT '',
             description TEXT DEFAULT '',
+            cv_url TEXT DEFAULT '',
+            cv_name TEXT DEFAULT '',
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         );
     """)
@@ -250,6 +254,14 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         );
     """)
+
+    # Tự động bổ sung cột cv_url / cv_name cho CSDL hiện có (không tạo thêm bảng mới)
+    for tbl_name in ("student_profiles", "experiences"):
+        existing_cols = {r[1] for r in cursor.execute(f"PRAGMA table_info({tbl_name})").fetchall()}
+        if "cv_url" not in existing_cols:
+            cursor.execute(f"ALTER TABLE {tbl_name} ADD COLUMN cv_url TEXT DEFAULT ''")
+        if "cv_name" not in existing_cols:
+            cursor.execute(f"ALTER TABLE {tbl_name} ADD COLUMN cv_name TEXT DEFAULT ''")
 
     conn.commit()
     conn.close()

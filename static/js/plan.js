@@ -121,12 +121,12 @@ function renderPlanCards() {
         html += `
             <div class="col-md-6 col-xl-4" id="plan-card-${item.id}">
                 <div class="card h-100 shadow-sm border ${cardBorderClass} bg-white p-3">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <span class="badge bg-light text-secondary border small">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2 min-w-0">
+                        <span class="badge bg-light text-secondary border small text-truncate plan-category-badge" title="${Utils.escapeHtml(item.category || 'Mục tiêu')}">
                             <i class="bi ${typeIcon} me-1"></i>${Utils.escapeHtml(item.category || 'Mục tiêu')}
                         </span>
                         <!-- Dropdown chuyển trạng thái nhanh -->
-                        <div class="dropdown">
+                        <div class="dropdown flex-shrink-0">
                             <button class="btn btn-sm btn-light border py-0 px-2 dropdown-toggle" type="button" data-bs-toggle="dropdown">
                                 ${statusBadge}
                             </button>

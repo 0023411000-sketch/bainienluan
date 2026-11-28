@@ -153,9 +153,9 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 24px 16px;
+            padding: 12px 16px;
             -webkit-font-smoothing: antialiased;
-            line-height: 1.5;
+            line-height: 1.45;
             transition: background-color 0.25s ease, color 0.25s ease;
         }
 
@@ -258,7 +258,7 @@
             position: relative;
             z-index: 2;
             width: 100%;
-            max-width: 420px;
+            max-width: 456px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -267,8 +267,8 @@
         .auth-card {
             width: 100%;
             background-color: var(--bg-base);
-            border-radius: var(--radius-card);
-            padding: 30px;
+            border-radius: 26px;
+            padding: 22px 26px;
             box-shadow: var(--shadow-card);
             position: relative;
             transition: background-color 0.25s ease, box-shadow 0.25s ease;
@@ -281,21 +281,21 @@
             position: relative;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            padding: 6px;
+            padding: 5px;
             border-radius: var(--radius-pill);
             background-color: var(--bg-base);
             box-shadow: var(--shadow-inset);
-            margin-bottom: 24px;
+            margin-bottom: 15px;
             user-select: none;
             transition: background-color 0.25s ease, box-shadow 0.25s ease;
         }
 
         .tab-indicator {
             position: absolute;
-            top: 6px;
-            left: 6px;
-            width: calc(50% - 6px);
-            height: calc(100% - 12px);
+            top: 5px;
+            left: 5px;
+            width: calc(50% - 5px);
+            height: calc(100% - 10px);
             border-radius: var(--radius-pill);
             background-color: var(--bg-pill-active);
             box-shadow: var(--shadow-raised);
@@ -310,12 +310,12 @@
         .tab-btn {
             position: relative;
             z-index: 1;
-            height: 40px;
+            height: 35px;
             border: none;
             background: transparent;
             border-radius: var(--radius-pill);
             font-family: inherit;
-            font-size: 0.875rem;
+            font-size: 0.84rem;
             font-weight: 600;
             color: var(--text-secondary);
             cursor: pointer;
@@ -369,13 +369,13 @@
            ===================================================================== */
         .auth-header {
             text-align: center;
-            margin-bottom: 22px;
+            margin-bottom: 13px;
         }
 
         .auth-icon-circle {
-            width: 62px;
-            height: 62px;
-            margin: 0 auto 14px;
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 9px;
             border-radius: 50%;
             background-color: var(--bg-base);
             box-shadow: var(--shadow-badge-icon);
@@ -387,8 +387,8 @@
         }
 
         .auth-icon-circle svg {
-            width: 28px;
-            height: 28px;
+            width: 23px;
+            height: 23px;
             stroke: currentColor;
             fill: none;
             stroke-width: 1.9;
@@ -397,17 +397,17 @@
         }
 
         .auth-title {
-            font-size: 1.45rem;
+            font-size: 1.26rem;
             font-weight: 700;
             letter-spacing: -0.02em;
             color: var(--text-primary);
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
 
         .auth-subtitle {
-            font-size: 0.83rem;
+            font-size: 0.78rem;
             color: var(--text-secondary);
-            line-height: 1.45;
+            line-height: 1.4;
         }
 
         /* =====================================================================
@@ -418,10 +418,17 @@
             flex-direction: column;
         }
 
+        .form-row-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
         .field-group {
             display: flex;
             flex-direction: column;
-            margin-bottom: 16px;
+            margin-bottom: 11px;
+            min-width: 0;
         }
 
         .label-row {
@@ -429,19 +436,19 @@
             align-items: center;
             justify-content: space-between;
             gap: 8px;
-            margin-bottom: 7px;
+            margin-bottom: 5px;
             padding: 0 4px;
         }
 
         .field-label {
-            font-size: 0.78rem;
+            font-size: 0.76rem;
             font-weight: 600;
             color: var(--text-primary);
             display: block;
         }
 
         .field-group > .field-label {
-            margin-bottom: 7px;
+            margin-bottom: 5px;
             padding-left: 4px;
         }
 
@@ -477,8 +484,8 @@
 
         .input-box {
             position: relative;
-            height: 52px;
-            border-radius: var(--radius-control);
+            height: 44px;
+            border-radius: 13px;
             background-color: var(--bg-base);
             box-shadow: var(--shadow-inset);
             display: flex;
@@ -527,16 +534,16 @@
             border: none;
             outline: none;
             background: transparent;
-            padding: 0 16px 0 44px;
+            padding: 0 14px 0 40px;
             font-family: inherit;
-            font-size: 0.9rem;
+            font-size: 0.86rem;
             font-weight: 500;
             color: var(--text-primary);
-            border-radius: var(--radius-control);
+            border-radius: 13px;
         }
 
         .input-control.has-toggle {
-            padding-right: 48px;
+            padding-right: 40px;
         }
 
         .input-control::placeholder {
@@ -615,7 +622,7 @@
            7. CHECKBOX NEUMORPHIC TÙY CHỈNH
            ===================================================================== */
         .checkbox-group {
-            margin: 2px 2px 18px;
+            margin: 2px 2px 13px;
         }
 
         .neu-checkbox-label {
@@ -680,13 +687,13 @@
            ===================================================================== */
         .primary-btn {
             width: 100%;
-            height: 52px;
+            height: 45px;
             border: none;
-            border-radius: var(--radius-control);
+            border-radius: 13px;
             background: linear-gradient(135deg, var(--accent-start) 0%, var(--accent-end) 100%);
             color: #ffffff;
             font-family: inherit;
-            font-size: 0.94rem;
+            font-size: 0.89rem;
             font-weight: 700;
             cursor: pointer;
             box-shadow: var(--shadow-btn-accent);
@@ -749,7 +756,7 @@
         .panel-divider {
             height: 1.5px;
             border-radius: 99px;
-            margin: 22px 0 16px;
+            margin: 14px 0 11px;
             background: var(--divider-shadow-dark);
             box-shadow: 0 1px 0 var(--divider-shadow-light);
         }
@@ -805,7 +812,7 @@
             display: inline-flex;
             align-items: center;
             gap: 9px;
-            z-index: 100;
+            z-index: 200;
             max-width: calc(100vw - 32px);
             text-align: center;
             transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
@@ -832,19 +839,641 @@
             background-color: var(--error-color);
         }
 
-        @media (max-width: 440px) {
+        /* =====================================================================
+           10. LINK XEM ĐIỀU KHOẢN & HỘP THOẠI MODAL NEUMORPHISM (ĐIỀU KHOẢN / EMAIL)
+           ===================================================================== */
+        .terms-inline-btn {
+            border: none;
+            background: transparent;
+            padding: 0;
+            margin: 0;
+            font-family: inherit;
+            font-size: inherit;
+            font-weight: 700;
+            color: var(--accent-end);
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .terms-inline-btn:hover {
+            color: var(--accent-start);
+        }
+
+        .terms-inline-btn:focus-visible {
+            outline: none;
+            border-radius: 4px;
+            box-shadow: var(--focus-ring);
+        }
+
+        .neu-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 120;
+            background: rgba(15, 23, 42, 0.48);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.24s ease, visibility 0.24s ease;
+        }
+
+        [data-neumorph-theme="dark"] .neu-modal-backdrop {
+            background: rgba(2, 6, 18, 0.72);
+        }
+
+        .neu-modal-backdrop.is-open {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .neu-modal-dialog {
+            width: 100%;
+            max-width: 490px;
+            max-height: min(88dvh, 660px);
+            background-color: var(--bg-base);
+            border-radius: 26px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transform: translateY(14px) scale(0.97);
+            transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.25s ease;
+        }
+
+        [data-neumorph-theme="dark"] .neu-modal-dialog {
+            background-color: rgba(11, 20, 40, 0.96);
+            border: 1px solid rgba(125, 211, 252, 0.16);
+            box-shadow: 0 28px 64px rgba(0, 4, 16, 0.85), 0 0 32px rgba(0, 212, 255, 0.12);
+        }
+
+        .neu-modal-backdrop.is-open .neu-modal-dialog {
+            transform: translateY(0) scale(1);
+        }
+
+        .neu-modal-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 22px 24px 14px;
+            border-bottom: 1px solid var(--divider-shadow-dark);
+        }
+
+        .neu-modal-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .neu-modal-badge {
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            background-color: var(--bg-base);
+            box-shadow: var(--shadow-raised);
+            color: var(--accent-end);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .neu-modal-badge svg {
+            width: 20px;
+            height: 20px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.9;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .neu-modal-title {
+            font-size: 1.08rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.3;
+        }
+
+        .neu-modal-subtitle {
+            font-size: 0.76rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .neu-modal-close {
+            width: 34px;
+            height: 34px;
+            border: none;
+            border-radius: 50%;
+            background-color: var(--bg-base);
+            box-shadow: var(--shadow-raised);
+            color: var(--text-secondary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            font-size: 1.15rem;
+            line-height: 1;
+            transition: color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+        }
+
+        .neu-modal-close:hover {
+            color: var(--error-color);
+            transform: scale(1.06);
+        }
+
+        .neu-modal-body {
+            padding: 18px 24px;
+            overflow-y: auto;
+            font-size: 0.83rem;
+            color: var(--text-secondary);
+            line-height: 1.58;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .terms-item {
+            padding: 12px 14px;
+            border-radius: 14px;
+            background-color: var(--bg-pill-active);
+            box-shadow: var(--shadow-inset-sm);
+        }
+
+        .terms-item h3 {
+            font-size: 0.84rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .terms-item p {
+            font-size: 0.79rem;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .neu-modal-footer {
+            padding: 14px 24px 20px;
+            border-top: 1px solid var(--divider-shadow-dark);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .secondary-btn {
+            height: 44px;
+            padding: 0 18px;
+            border: none;
+            border-radius: 13px;
+            background-color: var(--bg-base);
+            box-shadow: var(--shadow-raised);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.84rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            text-decoration: none;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, color 0.2s ease;
+        }
+
+        .secondary-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-raised-hover);
+            color: var(--accent-end);
+        }
+
+        .secondary-btn:active {
+            transform: translateY(0);
+            box-shadow: var(--shadow-inset-sm);
+        }
+
+        .modal-primary-btn {
+            height: 44px;
+            padding: 0 20px;
+            width: auto;
+            font-size: 0.85rem;
+            border-radius: 13px;
+        }
+
+        /* =====================================================================
+           11. LUỒNG QUÊN MẬT KHẨU 3 BƯỚC NEUMORPHISM (THEO MẪU STEPPER 1 - 2 - 3)
+           ===================================================================== */
+        .tab-switcher.is-collapsed {
+            display: none;
+        }
+
+        .fp-title {
+            text-align: center;
+            font-size: 1.28rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+            margin-bottom: 14px;
+        }
+
+        .fp-stepper {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            position: relative;
+            margin: 0 2px 18px;
+            gap: 4px;
+        }
+
+        .fp-step-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            flex: 1 1 0;
+            position: relative;
+            z-index: 2;
+            text-align: center;
+        }
+
+        .fp-step-circle {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: var(--bg-base);
+            box-shadow: var(--shadow-raised);
+            border: 1.6px solid rgba(138, 144, 166, 0.35);
+            color: var(--text-placeholder);
+            font-size: 0.82rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.25s ease;
+        }
+
+        .fp-step-circle svg {
+            width: 15px;
+            height: 15px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2.3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .fp-step-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-placeholder);
+            line-height: 1.3;
+            transition: color 0.25s ease;
+        }
+
+        .fp-step-item.is-active .fp-step-circle {
+            background: linear-gradient(135deg, var(--accent-start) 0%, var(--accent-end) 100%);
+            border-color: transparent;
+            color: #ffffff;
+            box-shadow: var(--shadow-btn-accent);
+        }
+
+        .fp-step-item.is-active .fp-step-label {
+            color: var(--accent-end);
+        }
+
+        .fp-step-item.is-done .fp-step-circle {
+            background-color: var(--bg-pill-active);
+            border-color: var(--accent-end);
+            color: var(--accent-end);
+            box-shadow: var(--shadow-raised);
+        }
+
+        .fp-step-item.is-done .fp-step-label {
+            color: var(--accent-end);
+        }
+
+        .fp-step-line {
+            flex: 0 0 42px;
+            height: 2px;
+            margin-top: 14px;
+            border-radius: 99px;
+            background-color: var(--divider-shadow-dark);
+            transition: background-color 0.25s ease;
+        }
+
+        .fp-step-line.is-done {
+            background: linear-gradient(90deg, var(--accent-start), var(--accent-end));
+        }
+
+        .fp-step-pane {
+            display: none;
+            animation: fpFadeIn 0.24s ease;
+        }
+
+        .fp-step-pane.is-active {
+            display: block;
+        }
+
+        @keyframes fpFadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fp-prompt-left {
+            font-size: 0.86rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            padding-left: 2px;
+        }
+
+        .fp-hero-badge {
+            width: 58px;
+            height: 58px;
+            margin: 0 auto 12px;
+            border-radius: 50%;
+            background-color: var(--bg-base);
+            box-shadow: var(--shadow-badge-icon);
+            color: var(--accent-end);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fp-hero-badge svg {
+            width: 26px;
+            height: 26px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.85;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .fp-center-desc {
+            text-align: center;
+            font-size: 0.84rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            line-height: 1.5;
+            margin-bottom: 6px;
+        }
+
+        .fp-masked-email {
+            text-align: center;
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--accent-end);
+            margin-bottom: 14px;
+            word-break: break-all;
+        }
+
+        .fp-generated-otp-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 11px 16px;
+            margin-bottom: 14px;
+            border-radius: 14px;
+            background-color: var(--bg-pill-active);
+            box-shadow: var(--shadow-inset-sm);
+            border: 1px dashed rgba(91, 141, 239, 0.42);
+            cursor: pointer;
+            user-select: none;
+            transition: border-color 0.2s ease, transform 0.15s ease;
+        }
+
+        [data-neumorph-theme="dark"] .fp-generated-otp-card {
+            border-color: rgba(34, 211, 238, 0.38);
+        }
+
+        .fp-generated-otp-card:hover {
+            border-color: var(--accent-start);
+            transform: translateY(-1px);
+        }
+
+        .fp-generated-otp-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .fp-generated-otp-label {
+            font-size: 0.69rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+        }
+
+        .fp-generated-otp-hint {
+            font-size: 0.68rem;
+            color: var(--text-placeholder);
+        }
+
+        .fp-generated-otp-code {
+            font-family: 'Consolas', 'SFMono-Regular', Menlo, monospace;
+            font-size: 1.24rem;
+            font-weight: 800;
+            letter-spacing: 0.22em;
+            color: var(--accent-start);
+            padding-left: 4px;
+        }
+
+        .input-control.no-left-icon {
+            padding-left: 18px;
+        }
+
+        .fp-code-box {
+            padding-right: 6px;
+        }
+
+        .fp-code-box .input-control {
+            padding-left: 18px;
+            padding-right: 8px;
+        }
+
+        .fp-code-divider {
+            width: 1px;
+            height: 22px;
+            background-color: var(--divider-shadow-dark);
+            flex-shrink: 0;
+        }
+
+        .fp-resend-btn {
+            border: none;
+            background: transparent;
+            padding: 0 12px;
+            height: 38px;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent-end);
+            white-space: nowrap;
+            cursor: pointer;
+            border-radius: 10px;
+            flex-shrink: 0;
+            transition: color 0.2s ease, opacity 0.2s ease;
+        }
+
+        .fp-resend-btn:disabled {
+            color: var(--text-placeholder);
+            cursor: default;
+        }
+
+        .fp-resend-btn:not(:disabled):hover {
+            color: var(--accent-start);
+            text-decoration: underline;
+        }
+
+        .primary-btn.is-soft-disabled {
+            background: var(--bg-pill-active);
+            color: var(--text-placeholder);
+            box-shadow: var(--shadow-inset-sm);
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .fp-alt-method-wrap {
+            text-align: center;
+            margin-top: 16px;
+        }
+
+        .fp-alt-link {
+            border: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: 0.83rem;
+            font-weight: 600;
+            color: var(--accent-end);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: color 0.2s ease;
+        }
+
+        .fp-alt-link:hover {
+            color: var(--accent-start);
+            text-decoration: underline;
+        }
+
+        .fp-pwd-rules {
+            list-style: none;
+            margin: 2px 0 20px;
+            padding: 0 2px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .fp-pwd-rule {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: color 0.2s ease;
+        }
+
+        .fp-pwd-rule svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-placeholder);
+            fill: none;
+            stroke-width: 1.9;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            flex-shrink: 0;
+            transition: stroke 0.2s ease;
+        }
+
+        .fp-pwd-rule.is-valid {
+            color: var(--success-color);
+        }
+
+        .fp-pwd-rule.is-valid svg {
+            stroke: var(--success-color);
+        }
+
+        .fp-success-wrap {
+            text-align: center;
+            padding: 8px 4px 6px;
+        }
+
+        .fp-success-halo {
+            width: 96px;
+            height: 96px;
+            margin: 6px auto 20px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(38, 166, 117, 0.22) 0%, rgba(38, 166, 117, 0.05) 68%, transparent 100%);
+            box-shadow: var(--shadow-badge-icon);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fp-success-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #34d399 0%, var(--success-color) 100%);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 20px rgba(38, 166, 117, 0.42);
+        }
+
+        .fp-success-circle svg {
+            width: 24px;
+            height: 24px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .fp-success-msg {
+            font-size: 0.94rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 22px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 480px) {
             body {
-                padding: 16px 12px;
+                padding: 12px 10px;
             }
 
             .auth-card {
-                padding: 24px 20px;
-                border-radius: 28px;
+                padding: 20px 18px;
+                border-radius: 24px;
+            }
+
+            .form-row-2col {
+                grid-template-columns: 1fr;
+                gap: 0;
             }
 
             .top-right-tools {
-                top: 12px;
-                right: 12px;
+                top: 10px;
+                right: 10px;
                 gap: 8px;
             }
 
@@ -1096,81 +1725,86 @@
                             <span class="field-error" id="regEmailError" role="alert"></span>
                         </div>
 
-                        <!-- 3. Mật khẩu bảo mật * -->
-                        <div class="field-group">
-                            <label class="field-label" for="regPassword">Mật khẩu bảo mật<span class="req-star">*</span></label>
-                            <div class="input-box" id="regPasswordBox">
-                                <span class="input-icon" aria-hidden="true">
-                                    <!-- Icon ổ khóa -->
-                                    <svg viewBox="0 0 24 24">
-                                        <rect x="3" y="11" width="18" height="11" rx="2"></rect>
-                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                    </svg>
-                                </span>
-                                <input
-                                    type="password"
-                                    class="input-control has-toggle"
-                                    id="regPassword"
-                                    placeholder="Tối thiểu 6 ký tự"
-                                    autocomplete="new-password"
-                                    required
-                                >
-                                <button
-                                    type="button"
-                                    class="password-toggle"
-                                    data-target="regPassword"
-                                    aria-label="Hiện hoặc ẩn mật khẩu bảo mật"
-                                    aria-pressed="false"
-                                >
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                </button>
+                        <!-- 3 & 4. Mật khẩu bảo mật & Nhập lại mật khẩu (2 cột gọn gàng ở Zoom 100%) -->
+                        <div class="form-row-2col">
+                            <div class="field-group">
+                                <label class="field-label" for="regPassword">Mật khẩu bảo mật<span class="req-star">*</span></label>
+                                <div class="input-box" id="regPasswordBox">
+                                    <span class="input-icon" aria-hidden="true">
+                                        <!-- Icon ổ khóa -->
+                                        <svg viewBox="0 0 24 24">
+                                            <rect x="3" y="11" width="18" height="11" rx="2"></rect>
+                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                        </svg>
+                                    </span>
+                                    <input
+                                        type="password"
+                                        class="input-control has-toggle"
+                                        id="regPassword"
+                                        placeholder="Tối thiểu 6 ký tự"
+                                        autocomplete="new-password"
+                                        required
+                                    >
+                                    <button
+                                        type="button"
+                                        class="password-toggle"
+                                        data-target="regPassword"
+                                        aria-label="Hiện hoặc ẩn mật khẩu bảo mật"
+                                        aria-pressed="false"
+                                    >
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <span class="field-error" id="regPasswordError" role="alert"></span>
                             </div>
-                            <span class="field-error" id="regPasswordError" role="alert"></span>
-                        </div>
 
-                        <!-- 4. Nhập lại mật khẩu * -->
-                        <div class="field-group">
-                            <label class="field-label" for="regConfirmPassword">Nhập lại mật khẩu<span class="req-star">*</span></label>
-                            <div class="input-box" id="regConfirmPasswordBox">
-                                <span class="input-icon" aria-hidden="true">
-                                    <!-- Icon dấu check trong khiên -->
-                                    <svg viewBox="0 0 24 24">
-                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                                        <path d="M9 12l2 2 4-4"></path>
-                                    </svg>
-                                </span>
-                                <input
-                                    type="password"
-                                    class="input-control has-toggle"
-                                    id="regConfirmPassword"
-                                    placeholder="Nhập lại đúng mật khẩu phía trên"
-                                    autocomplete="new-password"
-                                    required
-                                >
-                                <button
-                                    type="button"
-                                    class="password-toggle"
-                                    data-target="regConfirmPassword"
-                                    aria-label="Hiện hoặc ẩn mật khẩu nhập lại"
-                                    aria-pressed="false"
-                                >
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                </button>
+                            <div class="field-group">
+                                <label class="field-label" for="regConfirmPassword">Nhập lại mật khẩu<span class="req-star">*</span></label>
+                                <div class="input-box" id="regConfirmPasswordBox">
+                                    <span class="input-icon" aria-hidden="true">
+                                        <!-- Icon dấu check trong khiên -->
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                            <path d="M9 12l2 2 4-4"></path>
+                                        </svg>
+                                    </span>
+                                    <input
+                                        type="password"
+                                        class="input-control has-toggle"
+                                        id="regConfirmPassword"
+                                        placeholder="Nhập lại mật khẩu"
+                                        autocomplete="new-password"
+                                        required
+                                    >
+                                    <button
+                                        type="button"
+                                        class="password-toggle"
+                                        data-target="regConfirmPassword"
+                                        aria-label="Hiện hoặc ẩn mật khẩu nhập lại"
+                                        aria-pressed="false"
+                                    >
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <span class="field-error" id="regConfirmPasswordError" role="alert"></span>
                             </div>
-                            <span class="field-error" id="regConfirmPasswordError" role="alert"></span>
                         </div>
 
                         <!-- Điều khoản sử dụng -->
                         <div class="checkbox-group" id="regTermsBox">
                             <label class="neu-checkbox-label" for="regTerms">
                                 <input type="checkbox" class="neu-checkbox" id="regTerms" required>
-                                <span>Tôi đồng ý với các điều khoản sử dụng và chính sách dữ liệu đề tài NLCNPM23CS-38.</span>
+                                <span>
+                                    <span>Tôi đồng ý với</span>
+                                    <button type="button" class="terms-inline-btn" id="openTermsBtn">Điều khoản sử dụng &amp; Chính sách dữ liệu</button>
+                                    <span>đề tài NLCNPM23CS-38.</span>
+                                </span>
                             </label>
                             <span class="field-error" id="regTermsError" role="alert"></span>
                         </div>
@@ -1192,9 +1826,310 @@
                         <button type="button" class="switch-link" data-switch="login">Đăng nhập tại đây</button>
                     </p>
                 </div>
+
+                <!-- =========================================================
+                     MÀN HÌNH QUÊN MẬT KHẨU 3 BƯỚC (NHẬP TK -> XÁC MINH -> ĐẶT LẠI)
+                     ========================================================= -->
+                <div class="auth-panel is-hidden" id="forgotPanel" aria-label="Quên mật khẩu">
+                    <h1 class="fp-title">Quên Mật Khẩu</h1>
+
+                    <!-- Thanh tiến trình 3 bước -->
+                    <div class="fp-stepper" id="fpStepper">
+                        <div class="fp-step-item is-active" id="fpStepNav1">
+                            <span class="fp-step-circle" id="fpStepCircle1">1</span>
+                            <span class="fp-step-label">Nhập tài khoản</span>
+                        </div>
+                        <span class="fp-step-line" id="fpStepLine1" aria-hidden="true"></span>
+                        <div class="fp-step-item" id="fpStepNav2">
+                            <span class="fp-step-circle" id="fpStepCircle2">2</span>
+                            <span class="fp-step-label">Xác Minh Bảo Mật</span>
+                        </div>
+                        <span class="fp-step-line" id="fpStepLine2" aria-hidden="true"></span>
+                        <div class="fp-step-item" id="fpStepNav3">
+                            <span class="fp-step-circle" id="fpStepCircle3">3</span>
+                            <span class="fp-step-label">Thiết lập mật khẩu</span>
+                        </div>
+                    </div>
+
+                    <!-- BƯỚC 1: Nhập tài khoản -->
+                    <div class="fp-step-pane is-active" id="fpStepPane1">
+                        <form id="fpFormStep1" novalidate>
+                            <p class="fp-prompt-left">Vui lòng nhập tài khoản cần tìm lại mật khẩu</p>
+                            <div class="field-group" style="margin-bottom: 22px;">
+                                <div class="input-box" id="fpIdentifierBox">
+                                    <input
+                                        type="text"
+                                        class="input-control no-left-icon"
+                                        id="fpIdentifier"
+                                        spellcheck="false"
+                                        placeholder="Tên Người Dùng/Email"
+                                        autocomplete="username"
+                                    >
+                                </div>
+                                <span class="field-error" id="fpIdentifierError" role="alert"></span>
+                            </div>
+                            <button type="submit" class="primary-btn is-soft-disabled" id="btnFpStep1" disabled>
+                                <span>Tiếp Tục</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- BƯỚC 2: Xác Minh Bảo Mật (OTP Hệ thống tự sinh + Phương thức xác nhận khác) -->
+                    <div class="fp-step-pane" id="fpStepPane2">
+                        <div class="fp-hero-badge" aria-hidden="true">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                <path d="M9 12l2 2 4-4"></path>
+                            </svg>
+                        </div>
+
+                        <!-- Chế độ 2A: Mã OTP hệ thống tự sinh -->
+                        <div id="fpOtpSubMode">
+                            <form id="fpFormStep2" novalidate>
+                                <p class="fp-center-desc">Vui lòng nhập mã OTP hệ thống tự sinh để xác minh danh tính</p>
+                                <p class="fp-masked-email" id="fpMaskedEmailText">an****20@sis.hust.edu.vn</p>
+
+                                <div class="fp-generated-otp-card" id="fpGeneratedOtpCard" title="Nhấn để điền nhanh mã OTP">
+                                    <div class="fp-generated-otp-meta">
+                                        <span class="fp-generated-otp-label">Mã OTP hệ thống</span>
+                                        <span class="fp-generated-otp-hint">Nhấn vào khung để điền nhanh</span>
+                                    </div>
+                                    <span class="fp-generated-otp-code" id="fpGeneratedOtpText">------</span>
+                                </div>
+
+                                <div class="field-group" style="margin-bottom: 20px;">
+                                    <div class="input-box fp-code-box" id="fpOtpCodeBox">
+                                        <input
+                                            type="text"
+                                            class="input-control"
+                                            id="fpOtpCode"
+                                            inputmode="numeric"
+                                            maxlength="6"
+                                            autocomplete="one-time-code"
+                                            placeholder="Nhập mã OTP 6 số"
+                                        >
+                                        <span class="fp-code-divider" aria-hidden="true"></span>
+                                        <button type="button" class="fp-resend-btn" id="btnFpResend" disabled>Đổi mã (15s)</button>
+                                    </div>
+                                    <span class="field-error" id="fpOtpCodeError" role="alert"></span>
+                                </div>
+
+                                <button type="submit" class="primary-btn is-soft-disabled" id="btnFpStep2" disabled>
+                                    <span>Tiếp Tục</span>
+                                </button>
+                            </form>
+                            <div class="fp-alt-method-wrap">
+                                <button type="button" class="fp-alt-link" id="btnSwitchToAltVerify">Phương thức xác nhận khác</button>
+                            </div>
+                        </div>
+
+                        <!-- Chế độ 2B: Phương thức xác nhận dự phòng (Họ tên & MSSV) -->
+                        <div id="fpAltSubMode" style="display: none;">
+                            <form id="fpFormStep2Alt" novalidate>
+                                <p class="fp-center-desc" style="margin-bottom: 14px;">Xác minh danh tính bằng thông tin hồ sơ sinh viên</p>
+                                <div class="field-group" style="margin-bottom: 12px;">
+                                    <div class="input-box" id="fpAltNameBox">
+                                        <input
+                                            type="text"
+                                            class="input-control no-left-icon"
+                                            id="fpAltName"
+                                            spellcheck="false"
+                                            placeholder="Họ và tên đăng ký"
+                                        >
+                                    </div>
+                                </div>
+                                <div class="field-group" style="margin-bottom: 20px;">
+                                    <div class="input-box" id="fpAltCodeBox">
+                                        <input
+                                            type="text"
+                                            class="input-control no-left-icon"
+                                            id="fpAltStudentCode"
+                                            spellcheck="false"
+                                            placeholder="Mã số sinh viên (VD: 20204501)"
+                                        >
+                                    </div>
+                                    <span class="field-error" id="fpAltCodeError" role="alert"></span>
+                                </div>
+                                <button type="submit" class="primary-btn" id="btnFpStep2Alt">
+                                    <span>Tiếp Tục</span>
+                                </button>
+                            </form>
+                            <div class="fp-alt-method-wrap">
+                                <button type="button" class="fp-alt-link" id="btnSwitchBackToOtp">Xác nhận bằng mã OTP hệ thống</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BƯỚC 3: Thiết lập mật khẩu -->
+                    <div class="fp-step-pane" id="fpStepPane3">
+                        <div class="fp-hero-badge" aria-hidden="true">
+                            <svg viewBox="0 0 24 24">
+                                <rect x="4" y="11" width="16" height="10" rx="2.5"></rect>
+                                <path d="M8 11V7a4 4 0 0 1 7.6-1.7"></path>
+                                <circle cx="12" cy="16" r="1.3"></circle>
+                            </svg>
+                        </div>
+                        <p class="fp-center-desc" style="margin-bottom: 16px;">Vui lòng thiết lập mật khẩu tương đối mạnh</p>
+
+                        <form id="fpFormStep3" novalidate>
+                            <div class="field-group" style="margin-bottom: 14px;">
+                                <div class="input-box" id="fpNewPasswordBox">
+                                    <input
+                                        type="password"
+                                        class="input-control no-left-icon has-toggle"
+                                        id="fpNewPassword"
+                                        placeholder="Vui lòng nhập mật khẩu"
+                                        autocomplete="new-password"
+                                    >
+                                    <button
+                                        type="button"
+                                        class="password-toggle"
+                                        data-target="fpNewPassword"
+                                        aria-label="Hiện hoặc ẩn mật khẩu mới"
+                                        aria-pressed="false"
+                                    >
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="field-group" style="margin-bottom: 14px;">
+                                <div class="input-box" id="fpConfirmPasswordBox">
+                                    <input
+                                        type="password"
+                                        class="input-control no-left-icon has-toggle"
+                                        id="fpConfirmPassword"
+                                        placeholder="Vui lòng nhập lại mật khẩu"
+                                        autocomplete="new-password"
+                                    >
+                                    <button
+                                        type="button"
+                                        class="password-toggle"
+                                        data-target="fpConfirmPassword"
+                                        aria-label="Hiện hoặc ẩn mật khẩu nhập lại"
+                                        aria-pressed="false"
+                                    >
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <span class="field-error" id="fpConfirmPasswordError" role="alert"></span>
+                            </div>
+
+                            <ul class="fp-pwd-rules">
+                                <li class="fp-pwd-rule" id="fpRuleLength">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <circle cx="12" cy="12" r="9"></circle>
+                                        <polyline points="8.5 12.2 10.9 14.6 15.6 9.8"></polyline>
+                                    </svg>
+                                    <span>Mật khẩu bao gồm 8-30 số, chữ cái hoặc ký tự</span>
+                                </li>
+                                <li class="fp-pwd-rule" id="fpRuleTypes">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <circle cx="12" cy="12" r="9"></circle>
+                                        <polyline points="8.5 12.2 10.9 14.6 15.6 9.8"></polyline>
+                                    </svg>
+                                    <span>Tối thiểu gồm 2 loại ký tự</span>
+                                </li>
+                                <li class="fp-pwd-rule" id="fpRuleMatch">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <circle cx="12" cy="12" r="9"></circle>
+                                        <polyline points="8.5 12.2 10.9 14.6 15.6 9.8"></polyline>
+                                    </svg>
+                                    <span>Đảm bảo hai lần nhập mật khẩu giống nhau</span>
+                                </li>
+                            </ul>
+
+                            <button type="submit" class="primary-btn is-soft-disabled" id="btnFpStep3" disabled>
+                                <span>Hoàn Thành</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- MÀN HÌNH 4: Thành công -->
+                    <div class="fp-step-pane" id="fpStepPane4">
+                        <div class="fp-success-wrap">
+                            <div class="fp-success-halo" aria-hidden="true">
+                                <div class="fp-success-circle">
+                                    <svg viewBox="0 0 24 24">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </div>
+                            </div>
+                            <p class="fp-success-msg">Mật khẩu mới của bạn đã được thiết lập thành công</p>
+                            <button type="button" class="primary-btn" id="btnFpDoneToLogin">
+                                <span>Đăng nhập ngay</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="fpBackFooter">
+                        <div class="panel-divider" role="separator"></div>
+                        <p class="switch-footer">
+                            Nhớ lại mật khẩu?
+                            <button type="button" class="switch-link" data-switch="login">Quay lại đăng nhập</button>
+                        </p>
+                    </div>
+                </div>
             </div>
         </section>
     </main>
+
+    <!-- Hộp thoại Modal 1: Chi tiết Điều khoản sử dụng & Chính sách dữ liệu -->
+    <div class="neu-modal-backdrop" id="termsModal" role="dialog" aria-modal="true" aria-labelledby="termsModalTitle" aria-hidden="true">
+        <div class="neu-modal-dialog">
+            <div class="neu-modal-header">
+                <div class="neu-modal-title-wrap">
+                    <span class="neu-modal-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                    </span>
+                    <div>
+                        <h2 class="neu-modal-title" id="termsModalTitle">Điều Khoản &amp; Chính Sách Dữ Liệu</h2>
+                        <p class="neu-modal-subtitle">IT Career Compass — Đề tài NLCNPM23CS-38</p>
+                    </div>
+                </div>
+                <button type="button" class="neu-modal-close" data-close-modal="termsModal" aria-label="Đóng cửa sổ">&times;</button>
+            </div>
+            <div class="neu-modal-body">
+                <div class="terms-item">
+                    <h3>1. Mục đích hoạt động của hệ thống</h3>
+                    <p>IT Career Compass là ứng dụng hỗ trợ sinh viên ngành Công nghệ Thông tin tự đánh giá năng lực, đối sánh hồ sơ cá nhân với yêu cầu từ tin tuyển dụng thực tế và nhận gợi ý học phần, kỹ năng, lộ trình học tập phù hợp.</p>
+                </div>
+                <div class="terms-item">
+                    <h3>2. Thu thập &amp; Sử dụng dữ liệu hồ sơ</h3>
+                    <p>Khi đăng ký và cập nhật hồ sơ, hệ thống lưu trữ họ tên, email, học phần đã học, kỹ năng, chứng chỉ, kinh nghiệm dự án và lịch sử trò chuyện cùng Trợ lý AI nhằm phục vụ tính toán độ phù hợp nghề nghiệp cho chính tài khoản của bạn.</p>
+                </div>
+                <div class="terms-item">
+                    <h3>3. Bảo mật tài khoản &amp; Quyền riêng tư</h3>
+                    <p>Mật khẩu người dùng được mã hóa một chiều an toàn trước khi lưu vào cơ sở dữ liệu. Phiên đăng nhập được bảo vệ bằng cookie xác thực ký số; dữ liệu học tập không chia sẻ cho bất kỳ bên thứ ba thương mại nào.</p>
+                </div>
+                <div class="terms-item">
+                    <h3>4. Trách nhiệm của người dùng</h3>
+                    <p>Sinh viên cam kết cung cấp thông tin trung thực để kết quả phân tích đạt độ chính xác cao, bảo mật thông tin đăng nhập cá nhân và không thực hiện hành vi gây gián đoạn hoạt động của hệ thống.</p>
+                </div>
+                <div class="terms-item">
+                    <h3>5. Quyền chỉnh sửa &amp; Liên hệ hỗ trợ</h3>
+                    <p>Bạn có toàn quyền xem, chỉnh sửa hoặc xóa thông tin năng lực trong trang Hồ sơ cá nhân bất kỳ lúc nào, hoặc liên hệ Quản trị viên qua email hỗ trợ khi cần cấp lại mật khẩu và giải đáp thắc mắc.</p>
+                </div>
+            </div>
+            <div class="neu-modal-footer">
+                <button type="button" class="secondary-btn" data-close-modal="termsModal">Đóng</button>
+                <button type="button" class="primary-btn modal-primary-btn" id="acceptTermsBtn">
+                    <span>Tôi đã đọc và Đồng ý</span>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Thông báo Toast tiếng Việt -->
     <div class="toast" id="toast" role="status" aria-live="polite">
@@ -1225,6 +2160,7 @@
             const panelViewport = document.getElementById("panelViewport");
             const loginPanel = document.getElementById("loginPanel");
             const signupPanel = document.getElementById("signupPanel");
+            const forgotPanel = document.getElementById("forgotPanel");
 
             const loginForm = document.getElementById("loginForm");
             const loginEmail = document.getElementById("loginEmail");
@@ -1533,13 +2469,45 @@
                 'Email trường hoặc cá nhân': 'University or Personal Email',
                 'Mật khẩu bảo mật': 'Password',
                 'Nhập lại mật khẩu': 'Confirm Password',
-                'Tôi đồng ý với các điều khoản sử dụng và chính sách dữ liệu đề tài NLCNPM23CS-38.': 'I agree to the terms of use and data policy of project NLCNPM23CS-38.',
+                'Tôi đồng ý với': 'I agree to the',
+                'Điều khoản sử dụng & Chính sách dữ liệu': 'Terms of Use & Data Policy',
+                'đề tài NLCNPM23CS-38.': 'of project NLCNPM23CS-38.',
                 'Tạo tài khoản ngay': 'Create Account Now',
                 'Đã có tài khoản?': 'Already have an account?',
                 'Đăng nhập tại đây': 'Sign in here',
                 'Ví dụ: Nguyễn Văn An': 'e.g. Nguyen Van An',
                 'Tối thiểu 6 ký tự': 'At least 6 characters',
-                'Nhập lại đúng mật khẩu phía trên': 'Re-enter your password'
+                'Nhập lại đúng mật khẩu phía trên': 'Re-enter your password',
+                'Điều Khoản & Chính Sách Dữ Liệu': 'Terms of Use & Data Policy',
+                'IT Career Compass — Đề tài NLCNPM23CS-38': 'IT Career Compass — Project NLCNPM23CS-38',
+                'Đóng': 'Close',
+                'Tôi đã đọc và Đồng ý': 'I Have Read & Agree',
+                'Quên Mật Khẩu': 'Forgot Password',
+                'Nhập tài khoản': 'Enter Account',
+                'Xác Minh Bảo Mật': 'Security Check',
+                'Thiết lập mật khẩu': 'Set Password',
+                'Vui lòng nhập tài khoản cần tìm lại mật khẩu': 'Please enter the account to recover your password',
+                'Tên Người Dùng/Email': 'Username / Email',
+                'Tiếp Tục': 'Continue',
+                'Vui lòng nhập mã OTP hệ thống tự sinh để xác minh danh tính': 'Please enter the system-generated OTP code to verify your identity',
+                'Mã OTP hệ thống': 'System OTP Code',
+                'Nhấn vào khung để điền nhanh': 'Click box to auto-fill',
+                'Nhập mã OTP 6 số': 'Enter 6-digit OTP',
+                'Phương thức xác nhận khác': 'Other verification method',
+                'Xác nhận bằng mã OTP hệ thống': 'Verify with System OTP',
+                'Xác minh danh tính bằng thông tin hồ sơ sinh viên': 'Verify identity using student profile details',
+                'Họ và tên đăng ký': 'Registered Full Name',
+                'Mã số sinh viên (VD: 20204501)': 'Student ID (e.g. 20204501)',
+                'Vui lòng thiết lập mật khẩu tương đối mạnh': 'Please set a reasonably strong password',
+                'Vui lòng nhập mật khẩu': 'Please enter new password',
+                'Vui lòng nhập lại mật khẩu': 'Please re-enter new password',
+                'Mật khẩu bao gồm 8-30 số, chữ cái hoặc ký tự': 'Password contains 8-30 numbers, letters, or symbols',
+                'Tối thiểu gồm 2 loại ký tự': 'Contains at least 2 character types',
+                'Đảm bảo hai lần nhập mật khẩu giống nhau': 'Both password entries match',
+                'Hoàn Thành': 'Complete',
+                'Mật khẩu mới của bạn đã được thiết lập thành công': 'Your new password has been set successfully',
+                'Nhớ lại mật khẩu?': 'Remembered your password?',
+                'Quay lại đăng nhập': 'Back to Sign In'
             };
 
             const langToggleBtn = document.getElementById("langToggleBtn");
@@ -1561,28 +2529,30 @@
                     langOptEn.classList.remove("lang-active");
                 }
 
-                const walker = document.createTreeWalker(document.querySelector(".auth-card"), NodeFilter.SHOW_TEXT, {
-                    acceptNode: (node) => (node.nodeValue && node.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT)
-                });
-                const nodes = [];
-                while (walker.nextNode()) nodes.push(walker.currentNode);
+                document.querySelectorAll(".auth-card, .neu-modal-backdrop").forEach((rootEl) => {
+                    const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, {
+                        acceptNode: (node) => (node.nodeValue && node.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT)
+                    });
+                    const nodes = [];
+                    while (walker.nextNode()) nodes.push(walker.currentNode);
 
-                nodes.forEach((node) => {
-                    if (targetLang === "en") {
-                        const baseVi = node._origVi !== undefined ? node._origVi : node.nodeValue;
-                        const norm = baseVi.trim().replace(/\s+/g, " ");
-                        if (Object.prototype.hasOwnProperty.call(AUTH_DICT, norm)) {
-                            node._origVi = baseVi;
-                            const lead = (baseVi.match(/^\s*/) || [""])[0];
-                            const trail = (baseVi.match(/\s*$/) || [""])[0];
-                            node.nodeValue = lead + AUTH_DICT[norm] + trail;
+                    nodes.forEach((node) => {
+                        if (targetLang === "en") {
+                            const baseVi = node._origVi !== undefined ? node._origVi : node.nodeValue;
+                            const norm = baseVi.trim().replace(/\s+/g, " ");
+                            if (Object.prototype.hasOwnProperty.call(AUTH_DICT, norm)) {
+                                node._origVi = baseVi;
+                                const lead = (baseVi.match(/^\s*/) || [""])[0];
+                                const trail = (baseVi.match(/\s*$/) || [""])[0];
+                                node.nodeValue = lead + AUTH_DICT[norm] + trail;
+                            }
+                        } else if (node._origVi !== undefined) {
+                            node.nodeValue = node._origVi;
                         }
-                    } else if (node._origVi !== undefined) {
-                        node.nodeValue = node._origVi;
-                    }
+                    });
                 });
 
-                document.querySelectorAll(".auth-card input[placeholder]").forEach((inp) => {
+                document.querySelectorAll(".auth-card input[placeholder], .neu-modal-backdrop input[placeholder], .neu-modal-backdrop textarea[placeholder]").forEach((inp) => {
                     const orig = inp.dataset.origPlaceholderVi || inp.getAttribute("placeholder");
                     if (targetLang === "en" && Object.prototype.hasOwnProperty.call(AUTH_DICT, orig)) {
                         inp.dataset.origPlaceholderVi = orig;
@@ -1611,7 +2581,7 @@
             // =================================================================
             // 3. TIỆN ÍCH THÔNG BÁO TOAST & BÁO LỖI + RUNG NHẸ (SHAKE)
             // =================================================================
-            function showToast(message, variant = "info") {
+            function showToast(message, variant = "info", durationMs = 3200) {
                 clearTimeout(toastTimer);
                 toastMessage.textContent = message;
                 toast.classList.remove("is-success", "is-error");
@@ -1620,7 +2590,7 @@
                 toast.classList.add("is-visible");
                 toastTimer = setTimeout(() => {
                     toast.classList.remove("is-visible");
-                }, 3200);
+                }, durationMs);
             }
 
             function triggerShake(el) {
@@ -1656,26 +2626,48 @@
             }
 
             function clearAllErrors() {
-                ["loginEmail", "loginPassword", "regFullName", "regEmail", "regPassword", "regConfirmPassword", "regTerms"]
-                    .forEach((id) => setFieldError(id, ""));
+                [
+                    "loginEmail",
+                    "loginPassword",
+                    "regFullName",
+                    "regEmail",
+                    "regPassword",
+                    "regConfirmPassword",
+                    "regTerms",
+                    "fpIdentifier",
+                    "fpOtpCode",
+                    "fpAltCode",
+                    "fpConfirmPassword"
+                ].forEach((id) => setFieldError(id, ""));
             }
 
             // =================================================================
-            // 4. CHUYỂN TAB ĐĂNG NHẬP <-> ĐĂNG KÝ KHÔNG RELOAD (FADE + SLIDE)
+            // 4. CHUYỂN TAB ĐĂNG NHẬP <-> ĐĂNG KÝ <-> QUÊN MẬT KHẨU MƯỢT MÀ
             // =================================================================
+            function getPanelByMode(mode) {
+                if (mode === "signup") return signupPanel;
+                if (mode === "forgot") return forgotPanel;
+                return loginPanel;
+            }
+
             function switchMode(nextMode) {
                 if (nextMode === currentMode || isSubmitting || isSwitching) return;
                 isSwitching = true;
 
-                const isSignup = nextMode === "signup";
-                const outgoing = currentMode === "signup" ? signupPanel : loginPanel;
-                const incoming = isSignup ? signupPanel : loginPanel;
+                const outgoing = getPanelByMode(currentMode);
+                const incoming = getPanelByMode(nextMode);
                 currentMode = nextMode;
 
                 clearAllErrors();
-                tabSwitcher.setAttribute("data-active", nextMode);
-                tabLogin.setAttribute("aria-selected", String(!isSignup));
-                tabSignup.setAttribute("aria-selected", String(isSignup));
+                if (nextMode === "forgot") {
+                    tabSwitcher.classList.add("is-collapsed");
+                } else {
+                    tabSwitcher.classList.remove("is-collapsed");
+                    const isSignup = nextMode === "signup";
+                    tabSwitcher.setAttribute("data-active", nextMode);
+                    tabLogin.setAttribute("aria-selected", String(!isSignup));
+                    tabSignup.setAttribute("aria-selected", String(isSignup));
+                }
 
                 // Khóa chiều cao hiện tại để card co giãn mượt mà
                 const startHeight = outgoing.offsetHeight + 36;
@@ -1745,10 +2737,466 @@
             regTerms.addEventListener("change", () => setFieldError("regTerms", ""));
 
             // =================================================================
-            // 6. QUÊN MẬT KHẨU
+            // 6. HỘP THOẠI ĐIỀU KHOẢN & LUỒNG QUÊN MẬT KHẨU 3 BƯỚC
             // =================================================================
+            const termsModal = document.getElementById("termsModal");
+            const openTermsBtn = document.getElementById("openTermsBtn");
+            const acceptTermsBtn = document.getElementById("acceptTermsBtn");
+
+            function openModal(modalEl) {
+                if (!modalEl) return;
+                modalEl.classList.add("is-open");
+                modalEl.setAttribute("aria-hidden", "false");
+                document.body.style.overflow = "hidden";
+            }
+
+            function closeModal(modalEl) {
+                if (!modalEl) return;
+                modalEl.classList.remove("is-open");
+                modalEl.setAttribute("aria-hidden", "true");
+                if (!document.querySelector(".neu-modal-backdrop.is-open")) {
+                    document.body.style.overflow = "";
+                }
+            }
+
+            document.querySelectorAll("[data-close-modal]").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const targetModal = document.getElementById(btn.getAttribute("data-close-modal"));
+                    closeModal(targetModal);
+                });
+            });
+
+            if (termsModal) {
+                termsModal.addEventListener("click", (e) => {
+                    if (e.target === termsModal) closeModal(termsModal);
+                });
+            }
+
+            document.addEventListener("keydown", (e) => {
+                if (e.key === "Escape") closeModal(termsModal);
+            });
+
+            openTermsBtn.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openModal(termsModal);
+            });
+
+            acceptTermsBtn.addEventListener("click", () => {
+                regTerms.checked = true;
+                setFieldError("regTerms", "");
+                closeModal(termsModal);
+                showToast("Đã đồng ý Điều khoản sử dụng & Chính sách dữ liệu!", "success");
+            });
+
+            // Tham chiếu DOM luồng Quên mật khẩu 3 bước
+            const STEP_CHECK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+            const fpStepNavs = [
+                document.getElementById("fpStepNav1"),
+                document.getElementById("fpStepNav2"),
+                document.getElementById("fpStepNav3")
+            ];
+            const fpStepCircles = [
+                document.getElementById("fpStepCircle1"),
+                document.getElementById("fpStepCircle2"),
+                document.getElementById("fpStepCircle3")
+            ];
+            const fpStepLines = [
+                document.getElementById("fpStepLine1"),
+                document.getElementById("fpStepLine2")
+            ];
+            const fpStepPanes = [
+                document.getElementById("fpStepPane1"),
+                document.getElementById("fpStepPane2"),
+                document.getElementById("fpStepPane3"),
+                document.getElementById("fpStepPane4")
+            ];
+
+            const fpFormStep1 = document.getElementById("fpFormStep1");
+            const fpIdentifier = document.getElementById("fpIdentifier");
+            const btnFpStep1 = document.getElementById("btnFpStep1");
+
+            const fpOtpSubMode = document.getElementById("fpOtpSubMode");
+            const fpAltSubMode = document.getElementById("fpAltSubMode");
+            const fpFormStep2 = document.getElementById("fpFormStep2");
+            const fpMaskedEmailText = document.getElementById("fpMaskedEmailText");
+            const fpGeneratedOtpCard = document.getElementById("fpGeneratedOtpCard");
+            const fpGeneratedOtpText = document.getElementById("fpGeneratedOtpText");
+            const fpOtpCode = document.getElementById("fpOtpCode");
+            const btnFpResend = document.getElementById("btnFpResend");
+            const btnFpStep2 = document.getElementById("btnFpStep2");
+            const btnSwitchToAltVerify = document.getElementById("btnSwitchToAltVerify");
+            const btnSwitchBackToOtp = document.getElementById("btnSwitchBackToOtp");
+            const fpFormStep2Alt = document.getElementById("fpFormStep2Alt");
+            const fpAltName = document.getElementById("fpAltName");
+            const fpAltStudentCode = document.getElementById("fpAltStudentCode");
+            const btnFpStep2Alt = document.getElementById("btnFpStep2Alt");
+
+            const fpFormStep3 = document.getElementById("fpFormStep3");
+            const fpNewPassword = document.getElementById("fpNewPassword");
+            const fpConfirmPassword = document.getElementById("fpConfirmPassword");
+            const fpRuleLength = document.getElementById("fpRuleLength");
+            const fpRuleTypes = document.getElementById("fpRuleTypes");
+            const fpRuleMatch = document.getElementById("fpRuleMatch");
+            const btnFpStep3 = document.getElementById("btnFpStep3");
+
+            const btnFpDoneToLogin = document.getElementById("btnFpDoneToLogin");
+            const fpBackFooter = document.getElementById("fpBackFooter");
+
+            let fpCountdownTimer = null;
+            let fpRemainingSec = 0;
+            let fpRecoveredEmail = "";
+            let fpCurrentSystemOtp = "";
+
+            function setSoftBtnState(btn, enabled) {
+                btn.disabled = !enabled;
+                btn.classList.toggle("is-soft-disabled", !enabled);
+            }
+
+            function renderFpStep(stepNumber) {
+                // stepNumber: 1, 2, 3, hoặc 4 (màn hình 4 giữ stepper ở mức hoàn tất bước 3 như ảnh mẫu)
+                const activeIdx = stepNumber >= 3 ? 2 : stepNumber - 1;
+                fpStepNavs.forEach((nav, idx) => {
+                    nav.classList.remove("is-active", "is-done");
+                    if (idx < activeIdx) {
+                        nav.classList.add("is-done");
+                        fpStepCircles[idx].innerHTML = STEP_CHECK_SVG;
+                    } else if (idx === activeIdx) {
+                        nav.classList.add("is-active");
+                        fpStepCircles[idx].textContent = String(idx + 1);
+                    } else {
+                        fpStepCircles[idx].textContent = String(idx + 1);
+                    }
+                });
+                fpStepLines.forEach((line, idx) => {
+                    line.classList.toggle("is-done", idx < activeIdx);
+                });
+                fpStepPanes.forEach((pane, idx) => {
+                    pane.classList.toggle("is-active", idx === stepNumber - 1);
+                });
+                fpBackFooter.style.display = stepNumber === 4 ? "none" : "block";
+            }
+
+            function stopFpCountdown() {
+                if (fpCountdownTimer) {
+                    clearInterval(fpCountdownTimer);
+                    fpCountdownTimer = null;
+                }
+            }
+
+            function updateResendLabel() {
+                const isEn = htmlEl.lang === "en";
+                if (fpRemainingSec > 0) {
+                    btnFpResend.disabled = true;
+                    btnFpResend.textContent = isEn ? `New OTP (${fpRemainingSec}s)` : `Đổi mã (${fpRemainingSec}s)`;
+                } else {
+                    btnFpResend.disabled = false;
+                    btnFpResend.textContent = isEn ? "New OTP" : "Đổi mã";
+                }
+            }
+
+            function startFpCountdown(seconds) {
+                stopFpCountdown();
+                fpRemainingSec = seconds;
+                updateResendLabel();
+                fpCountdownTimer = setInterval(() => {
+                    fpRemainingSec -= 1;
+                    if (fpRemainingSec <= 0) {
+                        fpRemainingSec = 0;
+                        stopFpCountdown();
+                    }
+                    updateResendLabel();
+                }, 1000);
+            }
+
+            function resetForgotFlow() {
+                stopFpCountdown();
+                clearAllErrors();
+                fpOtpSubMode.style.display = "block";
+                fpAltSubMode.style.display = "none";
+                fpCurrentSystemOtp = "";
+                fpGeneratedOtpText.textContent = "------";
+                fpOtpCode.value = "";
+                fpAltName.value = "";
+                fpAltStudentCode.value = "";
+                fpNewPassword.value = "";
+                fpConfirmPassword.value = "";
+                evaluateFpPasswordRules();
+                setSoftBtnState(btnFpStep2, false);
+                setSoftBtnState(btnFpStep1, fpIdentifier.value.trim().length > 0);
+                renderFpStep(1);
+            }
+
             forgotPasswordBtn.addEventListener("click", () => {
-                showToast("Vui lòng liên hệ quản trị viên để được cấp lại mật khẩu!");
+                if (loginEmail.value.trim() && !fpIdentifier.value.trim()) {
+                    fpIdentifier.value = loginEmail.value.trim();
+                }
+                resetForgotFlow();
+                switchMode("forgot");
+                setTimeout(() => fpIdentifier.focus(), 200);
+            });
+
+            fpIdentifier.addEventListener("input", () => {
+                setFieldError("fpIdentifier", "");
+                setSoftBtnState(btnFpStep1, fpIdentifier.value.trim().length > 0);
+            });
+
+            fpOtpCode.addEventListener("input", () => {
+                fpOtpCode.value = fpOtpCode.value.replace(/\D/g, "").slice(0, 6);
+                setFieldError("fpOtpCode", "");
+                setSoftBtnState(btnFpStep2, fpOtpCode.value.trim().length >= 6);
+            });
+
+            [fpAltName, fpAltStudentCode].forEach((el) => {
+                el.addEventListener("input", () => setFieldError("fpAltCode", ""));
+            });
+
+            btnSwitchToAltVerify.addEventListener("click", () => {
+                setFieldError("fpOtpCode", "");
+                fpOtpSubMode.style.display = "none";
+                fpAltSubMode.style.display = "block";
+                fpAltName.focus();
+            });
+
+            btnSwitchBackToOtp.addEventListener("click", () => {
+                setFieldError("fpAltCode", "");
+                fpAltSubMode.style.display = "none";
+                fpOtpSubMode.style.display = "block";
+                fpOtpCode.focus();
+            });
+
+            fpGeneratedOtpCard.addEventListener("click", () => {
+                if (!fpCurrentSystemOtp) return;
+                fpOtpCode.value = fpCurrentSystemOtp;
+                setFieldError("fpOtpCode", "");
+                setSoftBtnState(btnFpStep2, fpOtpCode.value.length >= 6);
+                showToast("Đã điền nhanh mã OTP hệ thống!", "success", 2000);
+                fpOtpCode.focus();
+            });
+
+            // Bước 1: Sinh mã OTP hệ thống
+            async function requestOtpCode(isResend = false) {
+                const ident = fpIdentifier.value.trim();
+                if (!isResend && !ident) {
+                    setFieldError("fpIdentifier", "Vui lòng nhập tên người dùng hoặc email!");
+                    return;
+                }
+
+                if (isResend) {
+                    btnFpResend.disabled = true;
+                } else {
+                    btnFpStep1.disabled = true;
+                    btnFpStep1.innerHTML = '<span class="spinner" aria-hidden="true"></span><span>Đang kiểm tra...</span>';
+                }
+
+                try {
+                    const res = await fetch("/api/auth/forgot-password/send-code", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                        body: JSON.stringify(isResend ? { resend: true } : { identifier: ident })
+                    });
+                    const result = await res.json().catch(() => ({ success: false }));
+
+                    if (!res.ok || !result.success || !result.data) {
+                        const msg = result.message || "Không tìm thấy tài khoản phù hợp!";
+                        if (!isResend) {
+                            setFieldError("fpIdentifier", msg);
+                            fpIdentifier.focus();
+                        }
+                        showToast(msg, "error");
+                        return;
+                    }
+
+                    fpMaskedEmailText.textContent = result.data.masked_email || ident;
+                    fpCurrentSystemOtp = String(result.data.otp_code || result.data.demo_code || "");
+                    fpGeneratedOtpText.textContent = fpCurrentSystemOtp || "------";
+                    fpOtpCode.value = "";
+                    setSoftBtnState(btnFpStep2, false);
+                    renderFpStep(2);
+                    startFpCountdown(result.data.cooldown_seconds || 15);
+                    showToast("Hệ thống đã tự sinh mã OTP 6 chữ số!", "success", 2600);
+                    setTimeout(() => fpOtpCode.focus(), 100);
+                } catch (err) {
+                    showToast("Lỗi kết nối máy chủ khi tạo mã OTP!", "error");
+                } finally {
+                    if (!isResend) {
+                        btnFpStep1.innerHTML = "<span>Tiếp Tục</span>";
+                        setSoftBtnState(btnFpStep1, fpIdentifier.value.trim().length > 0);
+                        applyAuthLanguage(htmlEl.lang || "vi");
+                    }
+                }
+            }
+
+            fpFormStep1.addEventListener("submit", (e) => {
+                e.preventDefault();
+                if (btnFpStep1.disabled) return;
+                requestOtpCode(false);
+            });
+
+            btnFpResend.addEventListener("click", () => {
+                if (fpRemainingSec > 0) return;
+                requestOtpCode(true);
+            });
+
+            // Bước 2A: Xác minh bằng mã OTP 6 chữ số
+            fpFormStep2.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                const code = fpOtpCode.value.trim();
+                if (code.length < 6) {
+                    setFieldError("fpOtpCode", "Vui lòng nhập đủ 6 chữ số mã xác nhận!");
+                    return;
+                }
+
+                btnFpStep2.disabled = true;
+                btnFpStep2.innerHTML = '<span class="spinner" aria-hidden="true"></span><span>Đang xác minh...</span>';
+
+                try {
+                    const res = await fetch("/api/auth/forgot-password/verify-code", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                        body: JSON.stringify({ method: "otp", code })
+                    });
+                    const result = await res.json().catch(() => ({ success: false }));
+
+                    if (!res.ok || !result.success) {
+                        const msg = result.message || "Mã xác nhận không chính xác!";
+                        setFieldError("fpOtpCode", msg);
+                        showToast(msg, "error");
+                        setSoftBtnState(btnFpStep2, true);
+                        return;
+                    }
+
+                    stopFpCountdown();
+                    renderFpStep(3);
+                    setTimeout(() => fpNewPassword.focus(), 100);
+                } catch (err) {
+                    showToast("Lỗi kết nối máy chủ khi xác minh mã!", "error");
+                    setSoftBtnState(btnFpStep2, true);
+                } finally {
+                    btnFpStep2.innerHTML = "<span>Tiếp Tục</span>";
+                    applyAuthLanguage(htmlEl.lang || "vi");
+                }
+            });
+
+            // Bước 2B: Phương thức xác nhận dự phòng (Họ tên & MSSV)
+            fpFormStep2Alt.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                const fullNameVal = fpAltName.value.trim();
+                const codeVal = fpAltStudentCode.value.trim();
+                if (!fullNameVal) {
+                    setFieldError("fpAltCode", "Vui lòng nhập họ và tên đăng ký của tài khoản!");
+                    return;
+                }
+
+                btnFpStep2Alt.disabled = true;
+                btnFpStep2Alt.innerHTML = '<span class="spinner" aria-hidden="true"></span><span>Đang xác minh...</span>';
+
+                try {
+                    const res = await fetch("/api/auth/forgot-password/verify-code", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                        body: JSON.stringify({ method: "student_info", full_name: fullNameVal, student_code: codeVal })
+                    });
+                    const result = await res.json().catch(() => ({ success: false }));
+
+                    if (!res.ok || !result.success) {
+                        const msg = result.message || "Thông tin xác minh không khớp với hồ sơ!";
+                        setFieldError("fpAltCode", msg);
+                        showToast(msg, "error");
+                        return;
+                    }
+
+                    stopFpCountdown();
+                    renderFpStep(3);
+                    setTimeout(() => fpNewPassword.focus(), 100);
+                } catch (err) {
+                    showToast("Lỗi kết nối máy chủ khi xác minh!", "error");
+                } finally {
+                    btnFpStep2Alt.disabled = false;
+                    btnFpStep2Alt.innerHTML = "<span>Tiếp Tục</span>";
+                    applyAuthLanguage(htmlEl.lang || "vi");
+                }
+            });
+
+            // Bước 3: Kiểm tra 3 điều kiện mật khẩu trực tiếp & Đặt mật khẩu mới
+            function countPwdCharTypes(pwd) {
+                let types = 0;
+                if (/[a-zA-ZÀ-ỹ]/.test(pwd)) types += 1;
+                if (/\d/.test(pwd)) types += 1;
+                if (/[^a-zA-Z0-9À-ỹ]/.test(pwd)) types += 1;
+                return types;
+            }
+
+            function evaluateFpPasswordRules() {
+                const pwd = fpNewPassword.value;
+                const confirmPwd = fpConfirmPassword.value;
+
+                const okLen = pwd.length >= 8 && pwd.length <= 30;
+                const okTypes = countPwdCharTypes(pwd) >= 2;
+                const okMatch = pwd.length > 0 && pwd === confirmPwd;
+
+                fpRuleLength.classList.toggle("is-valid", okLen);
+                fpRuleTypes.classList.toggle("is-valid", okTypes);
+                fpRuleMatch.classList.toggle("is-valid", okMatch);
+
+                setSoftBtnState(btnFpStep3, okLen && okTypes && okMatch);
+                return okLen && okTypes && okMatch;
+            }
+
+            fpNewPassword.addEventListener("input", () => {
+                setFieldError("fpConfirmPassword", "");
+                evaluateFpPasswordRules();
+            });
+            fpConfirmPassword.addEventListener("input", () => {
+                setFieldError("fpConfirmPassword", "");
+                evaluateFpPasswordRules();
+            });
+
+            fpFormStep3.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                if (!evaluateFpPasswordRules()) return;
+
+                btnFpStep3.disabled = true;
+                btnFpStep3.innerHTML = '<span class="spinner" aria-hidden="true"></span><span>Đang lưu mật khẩu...</span>';
+
+                try {
+                    const res = await fetch("/api/auth/forgot-password/reset", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                        body: JSON.stringify({
+                            password: fpNewPassword.value,
+                            confirm_password: fpConfirmPassword.value
+                        })
+                    });
+                    const result = await res.json().catch(() => ({ success: false }));
+
+                    if (!res.ok || !result.success) {
+                        const msg = result.message || "Không thể thiết lập mật khẩu mới!";
+                        setFieldError("fpConfirmPassword", msg);
+                        showToast(msg, "error");
+                        evaluateFpPasswordRules();
+                        return;
+                    }
+
+                    fpRecoveredEmail = (result.data && result.data.email) || "";
+                    renderFpStep(4);
+                    showToast("Thiết lập mật khẩu mới thành công!", "success");
+                } catch (err) {
+                    showToast("Lỗi kết nối máy chủ khi lưu mật khẩu!", "error");
+                    evaluateFpPasswordRules();
+                } finally {
+                    btnFpStep3.innerHTML = "<span>Hoàn Thành</span>";
+                    applyAuthLanguage(htmlEl.lang || "vi");
+                }
+            });
+
+            btnFpDoneToLogin.addEventListener("click", () => {
+                if (fpRecoveredEmail) {
+                    loginEmail.value = fpRecoveredEmail;
+                }
+                loginPassword.value = "";
+                switchMode("login");
+                setTimeout(() => loginPassword.focus(), 320);
             });
 
             // =================================================================
@@ -1905,6 +3353,7 @@
                     if (!response.ok || !result.success || !result.data) {
                         const msg = result.message || "Đăng ký thất bại, vui lòng thử lại.";
                         setFieldError("regEmail", msg);
+                        regEmail.focus();
                         showToast(msg, "error");
                         isSubmitting = false;
                         btnRegisterSubmit.disabled = false;

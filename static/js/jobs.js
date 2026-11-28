@@ -34,12 +34,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     document.getElementById('jobForm')?.addEventListener('submit', handleSaveJob);
 
-    // Bắt sự kiện tìm kiếm & lọc
-    document.getElementById('searchJobInput')?.addEventListener('input', Utils.debounce((e) => {
-        currentJobSearch = e.target.value.trim();
-        currentJobPage = 1;
-        loadJobs();
-    }, 300));
+    // Bắt sự kiện tìm kiếm (chỉ tìm khi nhấn nút Tìm kiếm hoặc Enter submit form) & lọc vị trí
+    const searchJobForm = document.getElementById('searchJobForm');
+    const searchJobInput = document.getElementById('searchJobInput');
+    const clearJobBtn = document.getElementById('btnClearJobSearch');
+
+    if (searchJobForm) {
+        searchJobForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            currentJobSearch = (searchJobInput?.value || '').trim();
+            currentJobPage = 1;
+            if (clearJobBtn) clearJobBtn.classList.toggle('d-none', !currentJobSearch);
+            loadJobs();
+        });
+    }
+
+    if (clearJobBtn) {
+        clearJobBtn.addEventListener('click', () => {
+            if (searchJobInput) searchJobInput.value = '';
+            currentJobSearch = '';
+            currentJobPage = 1;
+            clearJobBtn.classList.add('d-none');
+            loadJobs();
+        });
+    }
 
     document.getElementById('filterPositionSelect')?.addEventListener('change', (e) => {
         currentFilterPositionId = e.target.value;
@@ -61,6 +79,12 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function initPage() {
     await loadPositionsOptions();
+    const urlPosId = new URLSearchParams(window.location.search).get('position_id');
+    if (urlPosId && /^\d+$/.test(urlPosId)) {
+        currentFilterPositionId = urlPosId;
+        const filterSelect = document.getElementById('filterPositionSelect');
+        if (filterSelect) filterSelect.value = urlPosId;
+    }
     await loadJobs();
 }
 

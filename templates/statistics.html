@@ -3,21 +3,13 @@
 {% block title %}Thống Kê Kỹ Năng Theo Vị Trí Tuyển Dụng{% endblock %}
 
 {% block content %}
+{% include 'partials/market_subnav.html' %}
+
 <!-- Tiêu đề trang -->
-<div class="row align-items-center mb-4">
-    <div class="col-md-7">
-        <h2 class="h3 fw-bold text-dark mb-1">
-            <i class="bi bi-bar-chart-line-fill text-primary me-2"></i>Thống Kê Kỹ Năng & Xu Hướng Công Nghệ
-        </h2>
-        <p class="text-secondary mb-0 small">
-            Phân tích chuyên sâu tần suất xuất hiện của các kỹ năng, công nghệ và chứng chỉ từ các tin tuyển dụng thực tế.
-        </p>
-    </div>
-    <div class="col-md-5 text-md-end mt-3 mt-md-0">
-        <a href="/compare" class="btn btn-outline-primary btn-sm me-2">
-            <i class="bi bi-speedometer2 me-1"></i>So sánh với hồ sơ cá nhân
-        </a>
-    </div>
+<div class="mb-3">
+    <h2 class="h4 fw-bold text-dark mb-0">
+        <i class="bi bi-bar-chart-line-fill text-primary me-2"></i>Thống Kê Kỹ Năng &amp; Xu Hướng
+    </h2>
 </div>
 
 <!-- Bộ lọc chọn vị trí nghề nghiệp -->
